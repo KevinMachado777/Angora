@@ -1,0 +1,31 @@
+footer {
+
+    background-color: rgb(1, 46, 64);
+    clear: both;
+    text-align: center;
+    padding: 10px;
+}
+
+footer a {
+    padding: 10px;
+    text-decoration: none;
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 20px;
+
+}
+
+footer h4 {
+    margin: 10px;
+    padding-top: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    width: 100%;
+    border-top: 1px solid black;
+    
+}
+
+footer a:hover {
+
+    color: blueviolet;
+    text-decoration: underline;
+}
