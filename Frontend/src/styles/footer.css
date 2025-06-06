@@ -1,0 +1,40 @@
+footer {
+    background-color: rgb(1, 46, 64);
+    clear: both;
+    text-align: center;
+    padding: 10px;
+    max-width: 100%;
+    margin-left: 13.5%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+footer a {
+    display: block;
+    text-decoration: none;
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 5px;
+}
+
+footer a:hover {
+    color: blueviolet;
+    text-decoration: none;
+}
+
+footer h5{
+    color: white;
+}
+
+footer p{
+    color: white;
+}
+
+.parte-final{
+    margin: 10px;
+    padding-top: 10px;
+    color: rgba(255, 255, 255, 0.4);
+    width: 100%;
+    border-top: 1px solid black;
+}

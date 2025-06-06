@@ -1,0 +1,60 @@
+.nav-link {
+    padding: 0px 0 !important; /* menos espacio arriba y abajo */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.sidebar {
+    background-color: #012E40;
+    color: white;
+    min-height: 100vh;
+    width: 182px; /*Ancho fijo del sidebar, por calcular*/
+    position: fixed; 
+    top: 0;
+    left: 0;
+}
+
+.parrafos{
+    color: white;
+}
+
+/* Aplica a los enlaces del sidebar */
+.sidebar .nav-link {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px;
+}
+
+.sidebar .nav-link:hover {
+  transform: scale(0.95); /* se hace más pequeño */ /* color suave al hacer hover */
+}
+
+/* Opcional: estilo para las imágenes */
+.sidebar .nav-link img {
+    width: 40px;
+    height: 40px;
+    transition: transform 0.2s ease;
+}
+
+/* Opcional: efecto separado en imagen */
+.sidebar .nav-link:hover img {
+    transform: scale(0.95);
+  
+}
+
+/* Estilo del texto (p) */
+.sidebar .nav-link p {
+  margin: 10px 0 0 0;
+  font-size: 15px;
+  transition: color 0.2s ease;
+  color: white;
+}
+
+/* Color al hacer hover */
+.sidebar .nav-link:hover p {
+  color: #007bff;
+}
