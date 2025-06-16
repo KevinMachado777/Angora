@@ -7,7 +7,7 @@ import personalIcon from "../assets/icons/personal.ico"
 import reporteIcon from "../assets/icons/reportes.ico"
 import ventasIcon from "../assets/icons/ventas.ico"
 import portafolioIcon from "../assets/icons/portafolio.ico"
-import proveedorIcon from "../assets/icons/provedores.ico" // corregida ruta
+import proveedorIcon from "../assets/icons/provedores.ico" 
 import { Link } from "react-router-dom"
 
 const SideBar = () => {
@@ -41,7 +41,7 @@ const SideBar = () => {
                 </li>
                 <li>
                     <Link to="/ventas" className="nav-link">
-                        <p>Ventans</p>
+                        <p>Ventas</p>
                         <img src={ventasIcon} alt="Ventas" />
                     </Link>
                 </li>

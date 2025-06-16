@@ -1,9 +1,8 @@
-import React from 'react';
 import "../styles/cards.css";
 
 const Home = () => {
     return (
-        <main > {/* Añadida una clase para posibles estilos específicos */}
+        <main > 
             <div className="card">
                 <h4>Ingresos</h4>
                 <p>$ 24.000</p>

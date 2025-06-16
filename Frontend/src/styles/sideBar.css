@@ -10,7 +10,7 @@
     background-color: #012E40;
     color: white;
     min-height: 100vh;
-    width: 182px; /*Ancho fijo del sidebar, por calcular*/
+    width: 182px; /*Ancho fijo del sidebar*/
     position: fixed; 
     top: 0;
     left: 0;
@@ -30,23 +30,20 @@
 }
 
 .sidebar .nav-link:hover {
-  transform: scale(0.95); /* se hace más pequeño */ /* color suave al hacer hover */
+  transform: scale(0.95); 
 }
 
-/* Opcional: estilo para las imágenes */
 .sidebar .nav-link img {
     width: 40px;
     height: 40px;
     transition: transform 0.2s ease;
 }
 
-/* Opcional: efecto separado en imagen */
 .sidebar .nav-link:hover img {
     transform: scale(0.95);
   
 }
 
-/* Estilo del texto (p) */
 .sidebar .nav-link p {
   margin: 10px 0 0 0;
   font-size: 15px;
@@ -54,7 +51,6 @@
   color: white;
 }
 
-/* Color al hacer hover */
 .sidebar .nav-link:hover p {
   color: #007bff;
 }

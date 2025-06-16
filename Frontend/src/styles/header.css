@@ -2,8 +2,8 @@ header {
     background-color: #012E40;
     color: white;
     padding: 16px;
-    float: right;
-    width: 86.5%;
+    margin-left: 182px;
+    width: calc(100% - 182px);
     
     top: 0;
     align-items: center; 

@@ -1,4 +1,3 @@
-import React from 'react';
 import "../styles/header.css"
 import user from "../assets/icons/user.png"
 import logo_angora from "../assets/icons/angora.png"

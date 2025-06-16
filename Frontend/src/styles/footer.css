@@ -3,8 +3,8 @@ footer {
     clear: both;
     text-align: center;
     padding: 10px;
-    max-width: 100%;
-    margin-left: 13.5%;
+    margin-left: 182px;
+    width: calc(100% - 182px);
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
