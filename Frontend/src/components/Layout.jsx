@@ -3,22 +3,23 @@ import SideBar from './SideBar';
 import Header from './Header';
 import Footer from './Footer';
 
+
 const Layout = ({ children }) => {
     return (
-        <>
-            {/* El Header siempre primero */}
+        <div className="d-flex flex-column min-vh-100 layout">
             <Header />
 
-            {/*  Contenedor que agrupe Sidebar + contenido */}
-            <div className="content-row">
+            <div className="d-flex flex-grow-1">
                 <SideBar />
-                {children}
+                <main className="main-content flex-grow-1">
+                    {children}
+                </main>
             </div>
 
-            {/*Finalmente, el Footer */}
             <Footer />
-        </>
+        </div>
     );
 };
 
 export default Layout;
+
