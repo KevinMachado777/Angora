@@ -1,0 +1,64 @@
+.tarjeta-perfil {
+
+    text-align: center;
+    background-color: rgb(169, 181, 183);
+    padding: 10px 20px;
+    border-radius: 50px;
+}
+
+.perfil div {
+    margin: auto;
+
+}
+
+.perfil .tarjeta-perfil button{
+    padding: 5px 20px;
+    background-color: rgb(8, 141, 207);
+    color: white;
+    margin-top: 20px;
+}
+
+.formulario {
+
+    width:  500px;
+    padding: 20px;
+    box-shadow: 1px 1px 10px rgb(112, 112, 112);
+    border-radius: 10px;
+    text-align: center;
+
+}
+
+.formulario form {
+    text-align: center;
+    padding: 0 50px;
+}
+
+.formulario label, input {
+
+    display: block;
+    color: black;  
+    width: 100%;
+    margin: 10px 0;
+    text-align: center;
+}
+
+
+.formulario button {
+
+    margin: 20px 10px;
+    padding: 5px;
+    border-radius: 10px;
+    background-color: rgb(8, 141, 207);
+    
+}
+
+.informacion {
+    margin: 0;
+    padding: 0;
+    max-width: 350px;
+    text-align: center;
+    align-items: center;
+    word-wrap: break-word;
+    
+}
+
