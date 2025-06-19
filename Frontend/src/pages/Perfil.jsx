@@ -9,7 +9,7 @@ const Perfil = () => {
   const [Girar, setGirar] = useState(false);
 
   return (
-    <main className="main perfil">
+    <main className="main-home perfil">
       <div className="renderizado">
         {Editar ? (
           <div className="formulario">
