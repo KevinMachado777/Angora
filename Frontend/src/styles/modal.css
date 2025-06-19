@@ -1,0 +1,67 @@
+.modal-fondo {
+    position: fixed; /* Fijo para cubrir toda la ventana */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5); 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Asegura que este por encima de otros elementos */
+}
+
+.modal-contenido {
+    background-color: #D5D8EF; 
+    padding: 20px; 
+    border-radius: 15px; 
+    width: 600px; 
+    max-width: 90%; 
+    overflow-y: auto; /* Permite desplazamiento vertical si el contenido es largo */
+    position: relative; /* Para posicionar el botón de cierre */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Encabezado del modal */
+.encabezado-modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.encabezado-modal h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #333;
+}
+
+/* Contenedor de los campos del formulario */
+.grupo-formulario {
+    margin-bottom: 15px; 
+}
+
+.grupo-formulario label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #444;
+}
+
+.grupo-formulario .form-control {
+    background-color: #fff; 
+    border: 1px solid #ced4da; 
+    border-radius: 5px;
+    padding: 8px;
+    width: 100%;
+    box-sizing: border-box; /* Controlar las dimensiones d ela caja*/
+    font-size: 14px;
+}
+
+/* Estilos para los botones */
+.pie-modal {
+    margin-top: 15px; 
+    display: flex;
+    justify-content: flex-end; /* Alinea los botones a la derecha */
+    gap: 10px; /* Espacio entre botones */
+}
