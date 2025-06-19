@@ -1,0 +1,121 @@
+.titulo {
+    margin-left: 75px;
+    width: calc(100% - 182px);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.titulo button {
+    margin-top: 10px;
+}
+
+.personal {
+    text-align: center;
+    margin: 50px;
+    margin-top: 0px;
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+    transition: transform 1s;
+    width: 250px;
+    height: 300px;
+    /* Altura fija de la tarjeta*/
+    position: relative;
+    perspective: 1000px;
+    /* Efecto 3D */
+    background: linear-gradient(#1b1a1a, #012E40);
+    border-radius: 30px;
+    overflow: hidden;
+    /* Evita que el contenido trasero desborde */
+}
+
+.personal img {
+    width: 150px;
+    height: 150px;
+    border-radius: 200px;
+}
+
+.personal p {
+    color: white;
+    text-shadow: 3px 3px 5px rgba(255, 255, 255, 0.8);
+    max-width: 100%;
+    /* Limita el ancho del texto */
+    word-wrap: break-word;
+    /* Permite romper palabras largas en varias líneas */
+}
+
+.card-front,
+.card-back {
+    position: absolute;
+    /* Superpone las caras */
+    width: 100%;
+    /* Ocupa todo el ancho del contenedor */
+    height: 100%;
+    /* Ocupa toda la altura del contenedor */
+    backface-visibility: hidden;
+    /* Oculta la cara no visible */
+    transition: transform 0.6s;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.card-front {
+    transform: rotateY(0deg);
+    /* Cara frontal visible por defecto */
+    z-index: 1;
+    /* Por encima por defecto */
+}
+
+.card-back {
+    transform: rotateY(180deg);
+    /* Cara trasera oculta por defecto */
+    overflow: hidden;
+    /* Evita que el texto trasero desborde */
+    z-index: 0;
+    /* Por debajo por defecto */
+}
+
+/* Regla para el efecto de giro*/
+.personal.girar .card-front {
+    transform: rotateY(-180deg);
+    /* Gira la cara frontal */
+    z-index: 0;
+    /* Pasa a estar detrás */
+}
+
+.personal.girar .card-back {
+    transform: rotateY(0deg);
+    /* Muestra la cara trasera */
+    z-index: 1;
+    /* Pasa a estar delante */
+}
+
+/* Nuevas reglas para el botón Agregar Empleado */
+.titulo .btn-custom-add {
+    background-color: #3CA6A6;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 20px;
+    font-size: 18px;
+    display: inline-block;
+}
+
+.titulo .btn-custom-add:hover {
+    background-color: #2F8C8C;
+    color: #fff;
+}
+
+/* Efecto al enfocar o cliquear*/
+.titulo .btn-custom-add:focus,
+.titulo .btn-custom-add:active {
+    background-color: #2F8C8C;
+    color: #fff;
+    box-shadow: 0 0 0 0.2rem rgba(60, 166, 166, 0.5);
+}
+
+.titulo .btn-custom-add i {
+    margin-right: 8px;
+}
