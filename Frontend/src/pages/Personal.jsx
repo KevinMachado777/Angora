@@ -10,6 +10,7 @@ import BotonEditar from "../components/BotonEditar";
 import BotonEliminar from "../components/BotonEliminar";
 import BotonCancelar from "../components/BotonCancelar"
 import BotonGuardar from "../components/BotonGuardar"
+import BotonAceptar from "../components/BotonAceptar"
 
 const Personal = () => {
     // Estado de la modal
@@ -235,18 +236,16 @@ const Personal = () => {
                     <p>¿Desea eliminar al empleado {personaEliminar?.nombre}?</p>
                     <div className="pie-modal">
                         {/* Cerrar modal si se cancela */}
-                        <button
+                        <BotonCancelar
                             type="button"
                             onClick={() => cerrarModalConfirmacion(false)}
                             className="btn btn-secondary me-2"> Cancelar
-                        </button>
+                        </BotonCancelar>
 
                         {/* Cerrar y eliminar el empleado si se da aceptar */}
-                        <button
-                            type="button"
-                            onClick={() => cerrarModalConfirmacion(true)}
-                            className="btn btn-danger"> Aceptar
-                        </button>
+                        <BotonAceptar
+                            onClick={() => cerrarModalConfirmacion(true)}>
+                        </BotonAceptar>
                     </div>
                 </Modal>
             )}

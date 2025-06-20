@@ -24,7 +24,7 @@ const Perfil = () => {
               <label htmlFor="direccion">Dirección</label>
               <input type="text" name="direccion" id="direccion" />
             </form>
-            <div style={{display: "flex" , gap: "20px"}}>
+            <div style={{ display: "flex", gap: "20px" }}>
               <BotonGuardar />
               <BotonCancelar />
             </div>
@@ -47,7 +47,7 @@ const Perfil = () => {
             <img src={logoUser} width={"150px"} alt="" />
             <h3>Rol</h3>
             <h5>Johan Rios</h5>
-           
+
           </div>
           <div className="carta-trasera">
             <h3>Nombre</h3>
@@ -57,7 +57,7 @@ const Perfil = () => {
             <h3>Direccion</h3>
           </div>
         </div>
-         <button onClick={(e) => {e.stopPropagation(); setEditar(!Editar)}}>Editar perfil</button>
+        <button onClick={(e) => { e.stopPropagation(); setEditar(!Editar) }}>Editar perfil</button>
       </div>
     </main>
   );
