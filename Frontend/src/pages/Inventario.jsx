@@ -1,8 +1,10 @@
 import { useState } from "react"
 import "../styles/inventario.css"
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import { TableProductos } from "../components/TableProductos";
+import {TableProductos} from "../components/TableProductos"
 import { TableMateria } from "../components/TableMateria";
+import BotonExportar from "../components/BotonExportar";
+import BotonAgregar from "../components/botonAgregar";
 
 // Componente de Inventario
 export const Inventario = () => {
@@ -25,15 +27,15 @@ export const Inventario = () => {
         <div className="container inventario-div-checks">
 
             {/* Boton para exportar */}
-            <button type="button" className="btn-exportar">
-                {/* Icono de agregar*/}
-                <i class="bi bi-plus-circle"></i>
+            <BotonAgregar>
+               
+                
 
                 {/* Renderizado condicional para el texto del boton de agregra dependencia del inventario seleccionado*/}
                 {
                     (opcionSeleccionada === "opcion1" ? ("Agregar Producto"): ("Agregar Materia"))
                 }
-            </button>
+            </BotonAgregar>
             
             {/* Contenedor para los checkbox*/}
             <div className= "inventario-div-checks">
@@ -59,10 +61,9 @@ export const Inventario = () => {
             </div>
 
             {/* Boton para exportar */}
-            <button type="button" className="btn-exportar">
-                <i class="bi bi-file-earmark-arrow-down-fill"></i>
-                    Exportar
-            </button>
+            <BotonExportar>
+                
+            </BotonExportar>
         </div>
         
         {/* Se renderiza una tabla segun el check del inventario */}

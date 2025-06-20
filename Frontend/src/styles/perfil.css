@@ -4,7 +4,9 @@
 
 .formulario {
     width: 500px;
-    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     text-align: center;
 }
 
@@ -15,22 +17,6 @@
     width: 100%;
     margin: 10px 0;
     text-align: center;
-}
-
-.formulario button {
-    margin: 20px;
-    border-radius: 10px;
-    background-color: rgb(8, 141, 207);
-    padding: 5px 10px;
-    border: none;
-    color: white;
-}
-
-.formulario button:hover {
-
-    background-color: rgb(8, 111, 207); ;
-    transition: transform .5s;
-    transform: scale(1.1);
 }
 
 .informacion {
@@ -44,6 +30,7 @@
 .renderizado {
 
     padding: 30px;
+
     width: max-content;
     box-shadow: 0 0 10px black;
     border-radius: 50px;

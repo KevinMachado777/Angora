@@ -3,6 +3,8 @@ import "../styles/perfil.css";
 import logoUser from "../assets/images/Logo_perfil.png";
 import { Form } from "react-router-dom";
 import productos from "../assets/images/Productos_Perfil.png";
+import BotonGuardar from "../components/BotonGuardar"
+import BotonCancelar from "../components/BotonCancelar"
 
 const Perfil = () => {
   const [Editar, setEditar] = useState(false);
@@ -22,9 +24,9 @@ const Perfil = () => {
               <label htmlFor="direccion">Dirección</label>
               <input type="text" name="direccion" id="direccion" />
             </form>
-            <div>
-              <button>Guardar</button>
-              <button>Cancelar</button>
+            <div style={{display: "flex" , gap: "20px"}}>
+              <BotonGuardar />
+              <BotonCancelar />
             </div>
           </div>
         ) : (

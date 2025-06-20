@@ -61,17 +61,6 @@
   background-color: #96BCC1;
 }
 
-/* Estilos al boton de exportar inventarios */
-.btn-exportar{
-  margin-left: 7px;
-  background-color: #024959;
-  color: white;
-  padding: 3px;
-  border-radius: 5px;
-  font-size: 15px;
-  transition: background-color .5s ease;
-}
-
 /* Efecto hover del boton de exportar */
 .inventario button.btn-exportar:hover {
   background-color: #037e8c;

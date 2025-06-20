@@ -1,0 +1,110 @@
+.btn-agregar {
+  background-color: #0DB5C6;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-agregar:hover {
+  background-color: #0aa0b0;
+}
+
+.btn-modificar {
+  background-color: #ffc107;
+  color: Black;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-modificar:hover {
+  background-color: #e0a800;
+}
+
+.btn-eliminar {
+  background-color: #dc3545;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.btn-eliminar:hover {
+  background-color: #c82333;
+}
+
+.btn-agregar:hover,
+.btn-modificar:hover,
+.btn-eliminar:hover {
+  transform: scale(1.05);
+}
+
+.btn-agregar,
+.btn-modificar,
+.btn-eliminar {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-exportar {
+  background-color: #2b82b2;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-exportar:hover {
+  background-color: #246e98;
+  transform: scale(1.05);
+}
+
+.btn-guardar {
+  background-color: #28a745;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-guardar:hover {
+  background-color: #218838;
+  transform: scale(1.05);
+}
+
+.btn-cancelar {
+  background-color: #dc3545;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-cancelar:hover {
+  background-color: #c82333;
+  transform: scale(1.05);
+}

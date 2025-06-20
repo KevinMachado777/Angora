@@ -5,6 +5,11 @@ import kevin from "../assets/images/Kevin perfil.jpg"
 import samuel from "../assets/images/Samuel perfil.jpg"
 import johan from "../assets/images/Johan perfil.jpg"
 import "../styles/personal.css"
+import BotonAgregar from "../components/botonAgregar";
+import BotonEditar from "../components/BotonEditar";
+import BotonEliminar from "../components/BotonEliminar";
+import BotonCancelar from "../components/BotonCancelar"
+import BotonGuardar from "../components/BotonGuardar"
 
 const Personal = () => {
     // Estado de la modal
@@ -97,9 +102,9 @@ const Personal = () => {
         <main className="main-home">
             <div className="titulo">
                 <h1>Personal</h1>
-                <button type="button" className="btn btn-custom-add" onClick={abrirModalAgregar}>
-                    <i class="bi bi-plus-circle-fill"></i> Agregar Empleado
-                </button>
+                <BotonAgregar onClick={abrirModalAgregar}>
+                    
+                </BotonAgregar>
             </div>
 
             {/* Mapeo de las personas para crear las tarjetas */}
@@ -117,15 +122,13 @@ const Personal = () => {
                         <p>Correo: {persona.correo}</p>
                         <p>Teléfono: {persona.telefono}</p>
                         <p>Dirección: {persona.direccion}</p>
-                        <div>
+                        <div style={{display:"flex", gap: "10px"}}>
                             {/* Boton de editar */}
-                            <button onClick={() => abrirModal(persona)} className='btn btn-warning btn-sm me-3'>
-                                <i class="bi bi-pen"></i> Editar
-                            </button>
+                            <BotonEditar onClick={() => abrirModal(persona)}>
+                            </BotonEditar>
                             {/* Boton de eliminar */}
-                            <button className='btn btn-danger btn-sm' onClick={() => abrirModalEliminacion(persona)}>
-                                <i class="bi bi-trash-fill"></i> Eliminar
-                            </button>
+                            <BotonEliminar onClick={() => abrirModalEliminacion(persona)}>
+                            </BotonEliminar>
                         </div>
                     </div>
                 </div>
@@ -214,12 +217,10 @@ const Personal = () => {
 
                         {/* Botones de cancelar y guardar al final de la modal */}
                         <div className="pie-modal">
-                            <button type="button" onClick={cerrarModal} className="btn btn-danger me-2">
-                                <i class="bi bi-x-circle-fill"></i> Cancelar
-                            </button>
-                            <button type="submit" className="btn btn-success">
-                                <i class="bi bi-floppy"></i> Guardar
-                            </button>
+                            <BotonCancelar type="button" onClick={cerrarModal} >
+                            </BotonCancelar>
+                            <BotonGuardar type="submit" >
+                            </BotonGuardar>
                         </div>
                     </form>
                 </Modal>
