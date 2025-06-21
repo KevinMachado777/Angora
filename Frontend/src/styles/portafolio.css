@@ -1,0 +1,12 @@
+.cartera-row {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    margin-top: 10px;
+}
+
+.cartera-row span {
+    margin-right: 10px;
+}
