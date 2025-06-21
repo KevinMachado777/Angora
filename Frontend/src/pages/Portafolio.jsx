@@ -40,6 +40,10 @@ const Portafolio = () => {
     const [modalCartera, setModalCartera] = useState(false);
     const [personaCartera, setPersonaCartera] = useState(null);
 
+    // Estado para la modal de carteras
+    const [modalCarterasAbierta, setModalCarterasAbierta] = useState(false); 
+
+
     // Funcion para abrir la modal de agregar, sin nadie seleccionado
     const abrirModalAgregar = () => {
         setPersonaSelect(null);
@@ -111,11 +115,24 @@ const Portafolio = () => {
         cerrarModal();
     };
 
+    // Logica para las modales de cartera
+    const mostrarModalCarteras = () => {
+        setModalCarterasAbierta(true);
+    };
+    const cerrarModalCarteras = () => {
+        setModalCarterasAbierta(false);
+    };
+
     return (
         <main className='main-home'>
             <div className="titulo">
                 <h1>Clientes</h1>
-                <BotonAgregar onClick={abrirModalAgregar} />
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <BotonAgregar onClick={abrirModalAgregar} />
+                    <button className="btn-cartera-activa" onClick={mostrarModalCarteras}>
+                        <i class="bi bi-wallet2"></i> Personas con Cartera
+                    </button>
+                </div>
             </div>
 
             {/* Componente de la tabla */}
@@ -128,16 +145,28 @@ const Portafolio = () => {
                 />
             </div>
 
-            {/* Clientes con la cartera activa en el momento */}
-            {registros.map((registro) => (
-                registro.cartera === "Activa" && (
-                    <div key={registro.id} className="cartera-row" style={{ marginTop: '10px', display: 'flex', alignItems: 'center' }}>
-                        {/* Nombre del cliente con cartera */}
-                        <span style={{ marginRight: '10px' }}>{registro.nombre} {registro.apellido}</span>
-                        <BotonCartera onClick={() => abrirModalcartera(registro)} />
+            {/* Modal listado de personas con cartera */}
+            {modalCarterasAbierta && (
+                <Modal isOpen={mostrarModalCarteras}>
+                    <div className="encabezado-modal">
+                        <h2>Clientes con cartera activa</h2>
                     </div>
-                )
-            ))}
+
+                    {/* Clientes con la cartera activa en el momento */}
+                    {registros.map((registro) => (
+                        registro.cartera === "Activa" && (
+                            <div key={registro.id} className="cartera-row" style={{ marginTop: '10px', display: 'flex', alignItems: 'center' }}>
+                                {/* Nombre del cliente con cartera */}
+                                <span style={{ marginRight: '10px' }}>{registro.nombre} {registro.apellido}</span>
+                                <BotonCartera onClick={() => abrirModalcartera(registro)} />
+                            </div>
+                        )
+                    ))}
+                    <div className="pie-modal">
+                        <BotonCancelar type="button" onClick={cerrarModalCarteras} />
+                    </div>
+                </Modal>
+            )}
 
             {/* Modal principal para editar o agregar */}
             {modalAbierta && (
@@ -212,8 +241,8 @@ const Portafolio = () => {
 
                         <div className="grupo-formulario">
                             <label>
-                                <input type="checkbox" name="credito" 
-                                defaultChecked={personaSelect?.cartera === 'Activa'} /> Credito
+                                <input type="checkbox" name="credito"
+                                    defaultChecked={personaSelect?.cartera === 'Activa'} /> Credito
                             </label>
                         </div>
 
