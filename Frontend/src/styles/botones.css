@@ -125,3 +125,37 @@
   background-color: #218838;
   transform: scale(1.05);
 }
+
+.btn-cartera {
+  background-color: #026773;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-cartera:hover {
+  background-color: #01555F;
+  transform: scale(1.05);
+}
+
+.btn-detalles {
+  background-color: #088DCF;
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-detalles:hover {
+  background-color: #077EB9;
+  transform: scale(1.05);
+}

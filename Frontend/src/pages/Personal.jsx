@@ -125,11 +125,9 @@ const Personal = () => {
                         <p>Dirección: {persona.direccion}</p>
                         <div style={{display:"flex", gap: "10px"}}>
                             {/* Boton de editar */}
-                            <BotonEditar onClick={() => abrirModal(persona)}>
-                            </BotonEditar>
+                            <BotonEditar onClick={() => abrirModal(persona)} />
                             {/* Boton de eliminar */}
-                            <BotonEliminar onClick={() => abrirModalEliminacion(persona)}>
-                            </BotonEliminar>
+                            <BotonEliminar onClick={() => abrirModalEliminacion(persona)} />
                         </div>
                     </div>
                 </div>
@@ -218,10 +216,8 @@ const Personal = () => {
 
                         {/* Botones de cancelar y guardar al final de la modal */}
                         <div className="pie-modal">
-                            <BotonCancelar type="button" onClick={cerrarModal} >
-                            </BotonCancelar>
-                            <BotonGuardar type="submit" >
-                            </BotonGuardar>
+                            <BotonCancelar type="button" onClick={cerrarModal} />
+                            <BotonGuardar type="submit" />
                         </div>
                     </form>
                 </Modal>
@@ -236,16 +232,10 @@ const Personal = () => {
                     <p>¿Desea eliminar al empleado {personaEliminar?.nombre}?</p>
                     <div className="pie-modal">
                         {/* Cerrar modal si se cancela */}
-                        <BotonCancelar
-                            type="button"
-                            onClick={() => cerrarModalConfirmacion(false)}
-                            className="btn btn-secondary me-2"> Cancelar
-                        </BotonCancelar>
+                        <BotonCancelar onClick={() => cerrarModalConfirmacion(false)} />
 
                         {/* Cerrar y eliminar el empleado si se da aceptar */}
-                        <BotonAceptar
-                            onClick={() => cerrarModalConfirmacion(true)}>
-                        </BotonAceptar>
+                        <BotonAceptar onClick={() => cerrarModalConfirmacion(true)} />
                     </div>
                 </Modal>
             )}
