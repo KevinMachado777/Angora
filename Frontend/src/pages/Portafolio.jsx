@@ -183,8 +183,7 @@ const Portafolio = () => {
         e.preventDefault();
         const form = e.target;
         const nuevoProducto = {
-            // Genera un nuevo ID basado en la longitud actual del array de productos de crédito del cliente
-            id: (creditosPorCliente[personaSelect.id]?.length || 0) + 1,
+            id: Date.now(), // Genera un ID único basado en la fecha actual
             nombre: form.nombre.value,
             cantidad: parseInt(form.cantidad.value),
             precioUnitario: parseFloat(form.precioUnitario.value),
@@ -300,21 +299,36 @@ const Portafolio = () => {
     // Funcion para procesar los abonos
     const procesarAbono = () => {
         const cantidad = parseFloat(cantidadAbonar) || 0;
-        if (cantidad <= 0 || cantidad > saldoPendiente) {
+        if (cantidad <= 100 || cantidad > saldoPendiente) {
             setModalAdvertenciaAbono(true);
             return;
         }
         if (personaCartera && creditosPorCliente[personaCartera.id]) {
-            setCreditosPorCliente(prev => ({
-                ...prev,
-                [personaCartera.id]: {
-                    ...prev[personaCartera.id],
-                    saldoPendiente: prev[personaCartera.id].saldoPendiente - cantidad
+            setCreditosPorCliente(prev => {
+                const nuevoSaldo = prev[personaCartera.id].saldoPendiente - cantidad;
+                if (nuevoSaldo <= 0) {
+                    // Si el abono cubre todo o más, limpiar los productos
+                    return {
+                        ...prev,
+                        [personaCartera.id]: {
+                            productos: [],
+                            saldoPendiente: 0
+                        }
+                    };
+                } else {
+                    // Si aún queda saldo, mantener los productos y actualizar el saldo
+                    return {
+                        ...prev,
+                        [personaCartera.id]: {
+                            ...prev[personaCartera.id],
+                            saldoPendiente: nuevoSaldo
+                        }
+                    };
                 }
-            }));
+            });
         }
         setCantidadAbonar("");
-        cerrarModalcartera(); // Cierra la modal después de procesar el abono
+        cerrarModalcartera();
     };
 
     return (
@@ -449,12 +463,16 @@ const Portafolio = () => {
                             <div>
                                 <h3>Productos por crédito</h3>
                                 <BotonAgregar onClick={modalAgregarProd} />
-                                <CreadorTabla
-                                    cabeceros={cabecerosCredito}
-                                    registros={creditosPorCliente[personaSelect?.id]?.productos || []}
-                                    onEditar={modalEditarProd}
-                                    onEliminar={eliminarProductoCredito}
-                                />
+                                {creditosPorCliente[personaSelect?.id]?.productos?.length > 0 ? (
+                                    <CreadorTabla
+                                        cabeceros={cabecerosCredito}
+                                        registros={creditosPorCliente[personaSelect?.id]?.productos}
+                                        onEditar={modalEditarProd}
+                                        onEliminar={eliminarProductoCredito}
+                                    />
+                                ) : (
+                                    <p style={{ marginTop: '20px' }}>No hay productos de crédito asociados.</p>
+                                )}
                             </div>
                         )}
 
@@ -517,7 +535,7 @@ const Portafolio = () => {
                         />
 
                         {/* Tabla de productos */}
-                        {creditosPorCliente[personaCartera.id]?.productos?.length > 0 ? (
+                        {saldoPendiente > 0 ? (
                             <div className="cartera-tabla">
                                 <TablaAbonos
                                     cabeceros={["Id", "Nombre", "Cantidad", "Precio Unitario", "Total"]}
