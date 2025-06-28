@@ -2,7 +2,8 @@ import "../styles/inventario.css";
 import BotonEditar from "../components/BotonEditar"
 import BotonEliminar from "../components/BotonEliminar"
 
-export const CreadorTabla = ({ cabeceros, registros, onEditar, onEliminar }) => {
+// Componente creador de tablas
+export const CreadorTabla = ({ cabeceros=[], registros=[], onEditar, onEliminar }) => {
     return (
         <table>
             <thead>
