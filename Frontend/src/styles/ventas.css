@@ -1,0 +1,84 @@
+.ventas {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+}
+
+.titulo {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
+.ventas-formulario {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-items: center;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+  
+}
+
+.ventas-formulario div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ventas-formulario input {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 200px;
+  font-size: 1rem;
+}
+
+.ventas-formulario label {
+  font-weight: bold;
+}
+
+@media print {
+  /* Oculta todo */
+  body * {
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Muestra solo el ticket */
+  .ticket, .ticket * {
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .ticket {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    color: black;
+    font-size: 14px;
+  }
+
+  .ticket table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  .ticket th, .ticket td {
+    border: 1px solid black;
+    padding: 6px;
+    text-align: left;
+  }
+
+  /* Oculta botones y panel derecho */
+  .acciones, .ticket-panel, .modal-flex {
+    display: none !important;
+  }
+}
+
