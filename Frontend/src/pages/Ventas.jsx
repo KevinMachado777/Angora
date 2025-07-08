@@ -1,3 +1,4 @@
+// Importaciones necesarias de React y componentes personalizados
 import React, { useState } from "react";
 import "../styles/ventas.css";
 import "../styles/inventario.css";
@@ -5,12 +6,22 @@ import Modal from "../components/Modal";
 import BotonAgregar from "../components/botonAgregar";
 import BotonGuardar from "../components/BotonGuardar";
 import { CreadorTabla } from "../components/CreadorTabla";
-import "../styles/ticket.css";
-import BotonAceptar from "../components/BotonAceptar"
+import BotonAceptar from "../components/BotonAceptar";
+import { NumericFormat } from "react-number-format";
+import "../styles/botones.css";
 
 const Ventas = () => {
+  // Encabezados para la tabla de productos
   const cabeceros = ["ID", "Nombre", "Cantidad", "Precio unitario", "Total"];
 
+  // Lista de productos disponibles para facturar
+  const productosDisponibles = [
+    { id: "1", nombre: "Lava manos x500", precio: 25000 },
+    { id: "2", nombre: "Lava loza x500", precio: 30000 },
+    { id: "3", nombre: "Multiusos x500", precio: 18000 },
+  ];
+
+  // Estado para controlar el formulario de producto
   const [formulario, setFormulario] = useState({
     id: "",
     nombre: "",
@@ -18,32 +29,57 @@ const Ventas = () => {
     precio: "",
   });
 
+  // Lista de productos ya agregados a la venta
   const [registros, setRegistros] = useState([]);
+
+  // Datos de cliente, notas y método de pago
   const [cliente, setCliente] = useState("");
   const [pagoCon, setPagoCon] = useState("");
   const [notas, setNotas] = useState("");
-  const [metodoPago, setMetodoPago] = useState({
-    efectivo: false,
-    credito: false,
-  });
+  const [metodoPago, setMetodoPago] = useState("");
 
+  // Control del modal y edición
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [idEditando, setIdEditando] = useState(null);
 
+  // Manejo de cambio de inputs del formulario
   const handleChange = (e) => {
     const { id, value } = e.target;
-    setFormulario((prev) => ({ ...prev, [id]: value }));
+
+    // Si cambia el ID, autocompletamos nombre y precio
+    if (id === "id") {
+      const producto = productosDisponibles.find((p) => p.id === value);
+      if (producto) {
+        setFormulario((prev) => ({
+          ...prev,
+          id: value,
+          nombre: producto.nombre,
+          precio: producto.precio,
+        }));
+      } else {
+        setFormulario((prev) => ({
+          ...prev,
+          id: value,
+          nombre: "",
+          precio: "",
+        }));
+      }
+    } else {
+      setFormulario((prev) => ({ ...prev, [id]: value }));
+    }
   };
 
+  // Agrega producto o actualiza si está en modo edición
   const handleAgregar = () => {
-    if (
-      !formulario.id ||
-      !formulario.nombre ||
-      !formulario.cantidad ||
-      !formulario.precio
-    ) {
-      alert("Por favor completa todos los campos");
+    if (!formulario.id || !formulario.cantidad) {
+      alert("Por favor ingresa el ID y la cantidad");
+      return;
+    }
+
+    const producto = productosDisponibles.find((p) => p.id === formulario.id);
+    if (!producto) {
+      alert("El ID ingresado no corresponde a un producto existente");
       return;
     }
 
@@ -59,9 +95,11 @@ const Ventas = () => {
         precio,
         total,
       };
+
       setRegistros((prev) =>
         prev.map((item) => (item.id === idEditando ? actualizado : item))
       );
+
       setModoEdicion(false);
       setIdEditando(null);
     } else {
@@ -69,9 +107,11 @@ const Ventas = () => {
       setRegistros((prev) => [...prev, nuevoRegistro]);
     }
 
+    // Reiniciar formulario
     setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
   };
 
+  // Carga los datos de un producto al formulario para edición
   const handleEditar = (dato) => {
     setFormulario({
       id: dato.id,
@@ -83,6 +123,7 @@ const Ventas = () => {
     setIdEditando(dato.id);
   };
 
+  // Elimina producto de la tabla
   const handleEliminar = (dato) => {
     setRegistros(registros.filter((item) => item.id !== dato.id));
     if (modoEdicion && dato.id === idEditando) {
@@ -92,22 +133,21 @@ const Ventas = () => {
     }
   };
 
-  const total = registros.reduce((acc, item) => acc + item.total, 0);
+  // Calcula el total y el cambio
+  const total = registros.reduce((acu, item) => acu + item.total, 0);
   const cambio = pagoCon - total;
 
+  // Abre el modal de confirmación
   const handleGuardar = () => {
-    if (!cliente) {
-      alert("Por favor ingresa el nombre del cliente.");
-      return;
-    }
     setMostrarModal(true);
   };
 
+  // Render del componente
   return (
     <main className="main-home ventas inventario">
       <h1 className="titulo">Facturación</h1>
 
-      {/* Formulario superior */}
+      {/* Formulario de producto */}
       <form className="ventas-formulario" onSubmit={(e) => e.preventDefault()}>
         <div>
           <label htmlFor="id">ID</label>
@@ -118,15 +158,7 @@ const Ventas = () => {
             onChange={handleChange}
           />
         </div>
-        <div>
-          <label htmlFor="nombre">Nombre</label>
-          <input
-            type="text"
-            id="nombre"
-            value={formulario.nombre}
-            onChange={handleChange}
-          />
-        </div>
+
         <div>
           <label htmlFor="cantidad">Cantidad</label>
           <input
@@ -136,25 +168,14 @@ const Ventas = () => {
             onChange={handleChange}
           />
         </div>
-        <div>
-          <label htmlFor="precio">Precio unitario</label>
-          <input
-            type="number"
-            id="precio"
-            value={formulario.precio}
-            onChange={handleChange}
-          />
-        </div>
+
+        {/* Botón para agregar o aceptar edición */}
         <div onClick={handleAgregar}>
-          {modoEdicion ? (
-            <BotonAceptar />
-          ) : (
-            <BotonAgregar />
-          )}
+          {modoEdicion ? <BotonAceptar /> : <BotonAgregar />}
         </div>
       </form>
 
-      {/* Tabla de productos */}
+      {/* Tabla de productos añadidos */}
       <CreadorTabla
         cabeceros={cabeceros}
         registros={registros}
@@ -162,7 +183,7 @@ const Ventas = () => {
         onEliminar={handleEliminar}
       />
 
-      {/* Formulario inferior sin campo de pago */}
+      {/* Formulario inferior con cliente y total */}
       <form
         className="ventas-formulario ventas-inferior"
         onSubmit={(e) => e.preventDefault()}
@@ -178,105 +199,184 @@ const Ventas = () => {
         </div>
         <div>
           <label htmlFor="total">Total</label>
-          <input type="text" id="total" value={total} readOnly />
+          <NumericFormat
+            id="total"
+            value={total}
+            displayType="text"
+            thousandSeparator="."
+            decimalSeparator=","
+            prefix="$"
+            className="input-readonly" // Usa esta clase para mantener el estilo del input
+          />
         </div>
+
         <div onClick={handleGuardar}>
           <BotonGuardar />
         </div>
       </form>
 
-      {/* Modal con el resumen y pago */}
+      {/* Modal de confirmación de venta */}
       <Modal isOpen={mostrarModal} onClose={() => setMostrarModal(false)}>
-  <div className="modal-flex">
-    {/* TICKET - SOLO ESTO SE IMPRIME */}
-    <div className="ticket">
-      <h2 style={{ textAlign: "center" }}>Fragancey´s</h2>
-      <p><strong>Ticket #1</strong></p>
-      <p>Fecha: {new Date().toLocaleDateString()}</p>
-      <p>Cajero: Kevin Machado</p>
-      <p>Cliente: {cliente}</p>
-      <hr />
+        <div className="modal-flex">
+          {/* Ticket de venta */}
+          <div className="ticket">
+            <h2 style={{ textAlign: "center" }}>Fragancey´s</h2>
+            <p>
+              <strong>Ticket #1</strong>
+            </p>
+            <p>Fecha: {new Date().toLocaleDateString()}</p>
+            <p>Cajero: Kevin Machado</p>
+            <p>Cliente: {cliente}</p>
+            <p>Método de pago: {metodoPago}</p>
+            <hr />
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Cant.</th>
+                  <th>Precio</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registros.map((item, i) => (
+                  <tr key={i}>
+                    <td>{item.id}</td>
+                    <td>{item.nombre}</td>
+                    <td>{item.cantidad}</td>
+                    <td>
+                      <NumericFormat
+                        value={item.precio}
+                        displayType={"text"}
+                        thousandSeparator={true}
+                        prefix={"$"}
+                      />
+                    </td>
+                    <td>
+                      <NumericFormat
+                        value={item.total}
+                        displayType={"text"}
+                        thousandSeparator={true}
+                        prefix={"$"}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <hr />
+            <p>
+              <strong>Total a pagar: </strong>
+              <NumericFormat
+                value={total}
+                displayType={"text"}
+                thousandSeparator={true}
+                prefix={"$"}
+              />
+            </p>
+            {pagoCon && (
+              <p>
+                <strong>Pago con: </strong>
+                <NumericFormat
+                  value={pagoCon}
+                  displayType={"text"}
+                  thousandSeparator={true}
+                  prefix={"$"}
+                />
+              </p>
+            )}
+            {pagoCon && (
+              <p>
+                <strong>Cambio: </strong>
+                <NumericFormat
+                  value={cambio}
+                  displayType={"text"}
+                  thousandSeparator={true}
+                  prefix={"$"}
+                />
+              </p>
+            )}
+            {notas && (
+              <p>
+                <strong>Notas:</strong> {notas}
+              </p>
+            )}
+            <p style={{ textAlign: "center", marginTop: "1em" }}>
+              ¡Gracias por tu compra!
+            </p>
+          </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Nombre</th>
-            <th>Cant.</th>
-            <th>Precio</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {registros.map((item, i) => (
-            <tr key={i}>
-              <td>{item.id}</td>
-              <td>{item.nombre}</td>
-              <td>{item.cantidad}</td>
-              <td>${item.precio}</td>
-              <td>${item.total}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          {/* Panel derecho: controles de pago */}
+          <div className="ticket-panel">
+            <h3>Método de pago</h3>
+            <label>
+              <input
+                type="radio"
+                name="metodoPago"
+                checked={metodoPago === "efectivo"}
+                onChange={() => setMetodoPago("efectivo")}
+              />
+              Efectivo
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="metodoPago"
+                checked={metodoPago === "credito"}
+                onChange={() => setMetodoPago("credito")}
+                disabled={cliente.trim() === ""}
+              />
+              Crédito
+            </label>
 
-      <hr />
-      <p><strong>Total a pagar:</strong> ${total}</p>
-      {pagoCon && <p><strong>Pago con:</strong> ${pagoCon}</p>}
-      {pagoCon && <p><strong>Cambio:</strong> ${cambio}</p>}
-      {notas && <p><strong>Notas:</strong> {notas}</p>}
-      <p style={{ textAlign: "center", marginTop: "1em" }}>¡Gracias por tu compra!</p>
+            <h4>Pagó con</h4>
+            <NumericFormat
+              disabled={metodoPago === "credito"}
+              value={pagoCon}
+              onValueChange={(val) => {
+                setPagoCon(val.floatValue || "");
+              }}
+              thousandSeparator={true}
+              prefix="$"
+              allowNegative={false}
+              placeholder="Ingrese el valor"
+            />
 
-      {/* BOTONES PARA PANTALLA (NO SE IMPRIMEN) */}
-      <div className="acciones">
-        <button onClick={() => setTimeout(() => window.print(), 100)}>Confirmar e imprimir</button>
-        <button onClick={() => setMostrarModal(false)}>Confirmar y no imprimir</button>
-      </div>
-    </div>
+            <h4>Agregar notas</h4>
+            <textarea
+              rows="4"
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder="Escribe una nota aquí..."
+            ></textarea>
 
-    {/* PANEL DERECHO - NO SE IMPRIME */}
-    <div className="ticket-panel">
-      <h3>Método de pago</h3>
-      <label>
-        <input
-          type="checkbox"
-          checked={metodoPago.efectivo}
-          onChange={(e) =>
-            setMetodoPago(prev => ({ ...prev, efectivo: e.target.checked }))
-          }
-        />
-        Efectivo
-      </label>
-      <label>
-        <input
-          type="checkbox"
-          checked={metodoPago.credito}
-          onChange={(e) =>
-            setMetodoPago(prev => ({ ...prev, credito: e.target.checked }))
-          }
-        />
-        Crédito
-      </label>
+            <div className="acciones">
+              <button
+                className="btn-agregar"
+                onClick={() => {
+                  setTimeout(() => window.print());
+                  setPagoCon("");
+                  setNotas("");
+                }}
+              >
+                Confirmar e imprimir
+              </button>
 
-      <h4>Pagó con</h4>
-      <input
-        type="number"
-        value={pagoCon}
-        onChange={(e) => setPagoCon(Number(e.target.value))}
-        placeholder="Ingrese el valor"
-      />
-
-      <h4>Agregar notas</h4>
-      <textarea
-        rows="4"
-        value={notas}
-        onChange={(e) => setNotas(e.target.value)}
-        placeholder="Escribe una nota aquí..."
-      ></textarea>
-    </div>
-  </div>
-</Modal>
-
+              <button
+                className="btn-agregar"
+                onClick={() => {
+                  setMostrarModal(false);
+                  setPagoCon("");
+                  setNotas("");
+                }}
+              >
+                Confirmar y no imprimir
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </main>
   );
 };
