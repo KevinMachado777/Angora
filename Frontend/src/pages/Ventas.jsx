@@ -1,27 +1,33 @@
-// Importaciones necesarias de React y componentes personalizados
+// Importamos React y useState para manejar estados
 import React, { useState } from "react";
+
+// Importamos estilos CSS para esta vista
 import "../styles/ventas.css";
 import "../styles/inventario.css";
+
+// Importamos componentes personalizados reutilizables
 import Modal from "../components/Modal";
 import BotonAgregar from "../components/botonAgregar";
 import BotonGuardar from "../components/BotonGuardar";
 import { CreadorTabla } from "../components/CreadorTabla";
 import BotonAceptar from "../components/BotonAceptar";
+
+// Importamos una librería para formatear números (como valores monetarios)
 import { NumericFormat } from "react-number-format";
 import "../styles/botones.css";
 
 const Ventas = () => {
-  // Encabezados para la tabla de productos
+  // Nombres de las columnas para la tabla de productos
   const cabeceros = ["ID", "Nombre", "Cantidad", "Precio unitario", "Total"];
 
-  // Lista de productos disponibles para facturar
+  // Lista de productos disponibles para seleccionar
   const productosDisponibles = [
     { id: "1", nombre: "Lava manos x500", precio: 25000 },
     { id: "2", nombre: "Lava loza x500", precio: 30000 },
     { id: "3", nombre: "Multiusos x500", precio: 18000 },
   ];
 
-  // Estado para controlar el formulario de producto
+  // Estado para controlar los datos del formulario (producto a ingresar)
   const [formulario, setFormulario] = useState({
     id: "",
     nombre: "",
@@ -29,25 +35,25 @@ const Ventas = () => {
     precio: "",
   });
 
-  // Lista de productos ya agregados a la venta
+  // Lista de productos que ya han sido agregados a la factura
   const [registros, setRegistros] = useState([]);
 
-  // Datos de cliente, notas y método de pago
-  const [cliente, setCliente] = useState("");
-  const [pagoCon, setPagoCon] = useState("");
-  const [notas, setNotas] = useState("");
-  const [metodoPago, setMetodoPago] = useState("");
+  // Estados para datos adicionales de la venta
+  const [cliente, setCliente] = useState(""); // Nombre del cliente
+  const [pagoCon, setPagoCon] = useState(""); // Valor con el que paga
+  const [notas, setNotas] = useState(""); // Notas opcionales
+  const [metodoPago, setMetodoPago] = useState(""); // Método de pago: efectivo o crédito
 
-  // Control del modal y edición
+  // Estados para controlar el modal y si se está editando un producto
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
-  const [idEditando, setIdEditando] = useState(null);
+  const [idEditando, setIdEditando] = useState(null); // ID del producto que se está editando
 
-  // Manejo de cambio de inputs del formulario
+  // Maneja los cambios en los inputs del formulario
   const handleChange = (e) => {
     const { id, value } = e.target;
 
-    // Si cambia el ID, autocompletamos nombre y precio
+    // Si cambia el ID, autocompleta nombre y precio
     if (id === "id") {
       const producto = productosDisponibles.find((p) => p.id === value);
       if (producto) {
@@ -58,6 +64,7 @@ const Ventas = () => {
           precio: producto.precio,
         }));
       } else {
+        // Si el ID no existe, se limpia el formulario
         setFormulario((prev) => ({
           ...prev,
           id: value,
@@ -66,27 +73,32 @@ const Ventas = () => {
         }));
       }
     } else {
+      // Para los demás campos solo actualiza el valor
       setFormulario((prev) => ({ ...prev, [id]: value }));
     }
   };
 
-  // Agrega producto o actualiza si está en modo edición
+  // Función para agregar o actualizar un producto
   const handleAgregar = () => {
+    // Validación: ID y cantidad son obligatorios
     if (!formulario.id || !formulario.cantidad) {
       alert("Por favor ingresa el ID y la cantidad");
       return;
     }
 
+    // Verificamos que el ID exista en la lista de productos
     const producto = productosDisponibles.find((p) => p.id === formulario.id);
     if (!producto) {
       alert("El ID ingresado no corresponde a un producto existente");
       return;
     }
 
+    // Convertimos los valores numéricos
     const cantidad = parseInt(formulario.cantidad);
     const precio = parseInt(formulario.precio);
     const total = cantidad * precio;
 
+    // Si estamos editando, reemplazamos el producto en la lista
     if (modoEdicion) {
       const actualizado = {
         id: formulario.id,
@@ -103,15 +115,16 @@ const Ventas = () => {
       setModoEdicion(false);
       setIdEditando(null);
     } else {
+      // Si no estamos editando, simplemente lo agregamos a la lista
       const nuevoRegistro = { ...formulario, cantidad, precio, total };
       setRegistros((prev) => [...prev, nuevoRegistro]);
     }
 
-    // Reiniciar formulario
+    // Limpiamos el formulario
     setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
   };
 
-  // Carga los datos de un producto al formulario para edición
+  // Cargar un producto en el formulario para editarlo
   const handleEditar = (dato) => {
     setFormulario({
       id: dato.id,
@@ -123,9 +136,10 @@ const Ventas = () => {
     setIdEditando(dato.id);
   };
 
-  // Elimina producto de la tabla
+  // Eliminar un producto de la lista
   const handleEliminar = (dato) => {
     setRegistros(registros.filter((item) => item.id !== dato.id));
+    // Si estaba editando ese producto, cancelamos edición
     if (modoEdicion && dato.id === idEditando) {
       setModoEdicion(false);
       setIdEditando(null);
@@ -133,11 +147,11 @@ const Ventas = () => {
     }
   };
 
-  // Calcula el total y el cambio
+  // Calcular el total y el cambio (si pagó con efectivo)
   const total = registros.reduce((acu, item) => acu + item.total, 0);
   const cambio = pagoCon - total;
 
-  // Abre el modal de confirmación
+  // Muestra el modal de confirmación
   const handleGuardar = () => {
     setMostrarModal(true);
   };
@@ -147,7 +161,7 @@ const Ventas = () => {
     <main className="main-home ventas inventario">
       <h1 className="titulo">Facturación</h1>
 
-      {/* Formulario de producto */}
+      {/* Formulario para agregar productos */}
       <form className="ventas-formulario" onSubmit={(e) => e.preventDefault()}>
         <div>
           <label htmlFor="id">ID</label>
@@ -169,13 +183,13 @@ const Ventas = () => {
           />
         </div>
 
-        {/* Botón para agregar o aceptar edición */}
+        {/* Botón que cambia si estás en modo edición */}
         <div onClick={handleAgregar}>
           {modoEdicion ? <BotonAceptar /> : <BotonAgregar />}
         </div>
       </form>
 
-      {/* Tabla de productos añadidos */}
+      {/* Tabla que muestra los productos agregados */}
       <CreadorTabla
         cabeceros={cabeceros}
         registros={registros}
@@ -183,7 +197,7 @@ const Ventas = () => {
         onEliminar={handleEliminar}
       />
 
-      {/* Formulario inferior con cliente y total */}
+      {/* Formulario inferior con datos del cliente y total */}
       <form
         className="ventas-formulario ventas-inferior"
         onSubmit={(e) => e.preventDefault()}
@@ -206,19 +220,20 @@ const Ventas = () => {
             thousandSeparator="."
             decimalSeparator=","
             prefix="$"
-            className="input-readonly" // Usa esta clase para mantener el estilo del input
+            className="input-readonly"
           />
         </div>
 
+        {/* Botón para guardar y mostrar modal */}
         <div onClick={handleGuardar}>
           <BotonGuardar />
         </div>
       </form>
 
-      {/* Modal de confirmación de venta */}
+      {/* Modal con resumen de venta y opciones de pago */}
       <Modal isOpen={mostrarModal} onClose={() => setMostrarModal(false)}>
         <div className="modal-flex">
-          {/* Ticket de venta */}
+          {/* Ticket de venta (lado izquierdo del modal) */}
           <div className="ticket">
             <h2 style={{ textAlign: "center" }}>Fragancey´s</h2>
             <p>
@@ -240,6 +255,7 @@ const Ventas = () => {
                 </tr>
               </thead>
               <tbody>
+                {/* Lista de productos en el ticket */}
                 {registros.map((item, i) => (
                   <tr key={i}>
                     <td>{item.id}</td>
@@ -270,9 +286,9 @@ const Ventas = () => {
               <strong>Total a pagar: </strong>
               <NumericFormat
                 value={total}
-                displayType={"text"}
-                thousandSeparator={true}
-                prefix={"$"}
+                displayType="text"
+                thousandSeparator
+                prefix="$"
               />
             </p>
             {pagoCon && (
@@ -280,9 +296,9 @@ const Ventas = () => {
                 <strong>Pago con: </strong>
                 <NumericFormat
                   value={pagoCon}
-                  displayType={"text"}
-                  thousandSeparator={true}
-                  prefix={"$"}
+                  displayType="text"
+                  thousandSeparator
+                  prefix="$"
                 />
               </p>
             )}
@@ -291,9 +307,9 @@ const Ventas = () => {
                 <strong>Cambio: </strong>
                 <NumericFormat
                   value={cambio}
-                  displayType={"text"}
-                  thousandSeparator={true}
-                  prefix={"$"}
+                  displayType="text"
+                  thousandSeparator
+                  prefix="$"
                 />
               </p>
             )}
@@ -307,7 +323,7 @@ const Ventas = () => {
             </p>
           </div>
 
-          {/* Panel derecho: controles de pago */}
+          {/* Controles del lado derecho del modal */}
           <div className="ticket-panel">
             <h3>Método de pago</h3>
             <label>
@@ -330,9 +346,10 @@ const Ventas = () => {
               Crédito
             </label>
 
+            {/* Campo para registrar con cuánto pagó el cliente */}
             <h4>Pagó con</h4>
             <NumericFormat
-              disabled={metodoPago === "credito"}
+              disabled={metodoPago === "credito"} // Desactivado si es a crédito
               value={pagoCon}
               onValueChange={(val) => {
                 setPagoCon(val.floatValue || "");
@@ -343,6 +360,7 @@ const Ventas = () => {
               placeholder="Ingrese el valor"
             />
 
+            {/* Notas adicionales */}
             <h4>Agregar notas</h4>
             <textarea
               rows="4"
@@ -351,6 +369,7 @@ const Ventas = () => {
               placeholder="Escribe una nota aquí..."
             ></textarea>
 
+            {/* Botones de acción finales */}
             <div className="acciones">
               <button
                 className="btn-agregar"
