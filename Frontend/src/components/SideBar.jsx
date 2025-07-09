@@ -15,7 +15,7 @@ const SideBar = () => {
         <div className="sidebar py-3">
             <ul className="nav flex-column">
                 <li>
-                    <Link to="/" className="nav-link">
+                    <Link to="/home" className="nav-link">
                     <p>Home</p>
                         <img src={homoIcon} alt="Inicio" />
                         
