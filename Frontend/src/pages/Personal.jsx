@@ -13,15 +13,14 @@ import BotonGuardar from "../components/BotonGuardar"
 import BotonAceptar from "../components/BotonAceptar"
 
 const Personal = () => {
-    // Estado de la modal
-    const [modalAbierta, setModalAbierta] = useState(false);
-
-    // Estado de la persona seleccionada (edicion)
-    const [personaSelect, setPersonaSelect] = useState(null);
-
-    // Estado para la modal de eliminacion
-    const[confirmarEliminacion, setConfirmarEliminacion] = useState(false);
-    const[personaEliminar, setPersonaEliminar] = useState(null);
+    // Permisos que tienen los empleados por defecto
+    const permisos = [
+        "Ventas",
+        "Inventario",
+        "Clientes",
+        "Pedidos",
+        "Perfil"
+    ];
 
     // Arreglo de persona, luego se le da funcionalidad con Backend
     const [personas, setPersonas] = useState([
@@ -32,6 +31,7 @@ const Personal = () => {
             telefono: "3196392919",
             direccion: "Urrao - Antioquia",
             imagen: kevin,
+            permisos: ["Ventas", "Inventario", "Clientes", "Pedidos", "Perfil"]
         },
         {
             id: 2,
@@ -40,6 +40,7 @@ const Personal = () => {
             telefono: "3004568745",
             direccion: "Tamesis - Antioquia",
             imagen: samuel,
+            permisos: ["Ventas", "Inventario", "Clientes", "Pedidos", "Perfil"]
         },
         {
             id: 3,
@@ -48,19 +49,66 @@ const Personal = () => {
             telefono: "3117143533",
             direccion: "Santa Barbara - Antioquia",
             imagen: johan,
+            permisos: ["Ventas", "Inventario", "Clientes", "Pedidos", "Perfil"]
         },
-    ])
+    ]);
+
+    // Estado de la modal
+    const [modalAbierta, setModalAbierta] = useState(false);
+
+    // Estado de la modal para saber si esta editando
+    const [ModalEdicion, setModalEdicion] = useState(false);
+
+    // Estado del formulario
+    const [formulario, setFormulario] = useState({
+        id: "",
+        nombre: "",
+        correo: "",
+        telefono: "",
+        direccion: "",
+        permisos: [...permisos], // Por defecto los permisos son los del arreglo
+    });
+
+    // Estado de la persona seleccionada (edicion)
+    const [personaSelect, setPersonaSelect] = useState(null);
+
+    // Estado para la modal de eliminacion
+    const [confirmarEliminacion, setConfirmarEliminacion] = useState(false);
+
+    // Estado de la persona a eliminar
+    const [personaEliminar, setPersonaEliminar] = useState(null);
 
     // Funcion para abrir la modal de agregar, sin nadie seleccionado
     const abrirModalAgregar = () => {
+        setFormulario({
+            id: "",
+            nombre: "",
+            correo: "",
+            telefono: "",
+            direccion: "",
+            permisos: permisos,
+        });
+
         setPersonaSelect(null);
+        setModalEdicion(false);
         setModalAbierta(true)
     }
 
     // Funcion para abrir la modal de edicion
-    const abrirModal = (persona) => {
+    const abrirModalEditar = (persona) => {
+        setFormulario({
+            id: persona.id,
+            nombre: persona.nombre,
+            correo: persona.correo,
+            telefono: persona.telefono,
+            direccion: persona.direccion,
+            permisos: persona.permisos || [...permisos],
+            imagen: persona.imagen || "",
+        });
+
         setPersonaSelect(persona);
         setModalAbierta(true)
+        setModalEdicion(true);
     }
 
     // Funcion para abrir la modal de eliminacion
@@ -87,6 +135,48 @@ const Personal = () => {
         setPersonaEliminar(null);
     };
 
+    // Funcion para manejar los cambios en el formulario
+    const manejarCambioFormulario = (evento) => {
+        const { name, value, type, checked, files } = evento.target;
+
+        // Si el tipo es file, se obtiene el archivo y se lee como DataURL
+        if (type === "file") {
+            const archivo = files[0];
+            if (archivo) {
+                // Crear un lector de archivos para leer la imagen seleccionada
+                const lector = new FileReader();
+                lector.onloadend = () => {
+                    setFormulario({ ...formulario, imagen: lector.result });
+                };
+                lector.readAsDataURL(archivo);
+            }
+        }
+        else if (type === "checkbox") {
+            let nuevosPermisos = [...formulario.permisos];
+            if (checked) {
+                nuevosPermisos.push(value);
+            } else {
+                nuevosPermisos = nuevosPermisos.filter((p) => p !== value);
+            }
+            setFormulario({ ...formulario, permisos: nuevosPermisos });
+        }
+        else {
+            setFormulario({ ...formulario, [name]: value });
+        }
+    };
+
+    // Funcion para guardar un empleado
+    const guardarEmpleado = (evento) => {
+        evento.preventDefault();
+        if (ModalEdicion && personaSelect) {
+            setPersonas(personas.map(p => p.id === personaSelect.id ? { ...formulario } : p))
+        }
+        else {
+            setPersonas([...personas, { ...formulario, id: Date.now() }])
+        }
+        cerrarModal();
+    }
+
     // Clic de la tarjeta
     const clicTarjeta = (evento) => {
         // Obtener el evento dentro de la tarjeta cliqueada
@@ -104,7 +194,7 @@ const Personal = () => {
             <div className="titulo">
                 <h1>Personal</h1>
                 <BotonAgregar onClick={abrirModalAgregar}>
-                    
+
                 </BotonAgregar>
             </div>
 
@@ -115,7 +205,18 @@ const Personal = () => {
                     {/* Datos de enfrente de la tarjeta */}
                     <div className="card-front">
                         <img src={persona.imagen} alt="imagen_perfil" />
-                        <p>Nombre: {persona.nombre}</p>
+                        <p>{persona.nombre}</p>
+
+                        {/* Permisos debajo del nombre */}
+                        {persona.permisos && persona.permisos.length > 0 && (
+                            <div className="permisos-lista mt-2">
+                                {persona.permisos.map((permiso, i) => (
+                                    <span key={i} className="badge bg-secondary me-1">
+                                        {permiso}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Datos por detras de la tarjeta */}
@@ -123,9 +224,9 @@ const Personal = () => {
                         <p>Correo: {persona.correo}</p>
                         <p>Teléfono: {persona.telefono}</p>
                         <p>Dirección: {persona.direccion}</p>
-                        <div style={{display:"flex", gap: "10px"}}>
+                        <div style={{ display: "flex", gap: "10px" }}>
                             {/* Boton de editar */}
-                            <BotonEditar onClick={() => abrirModal(persona)} />
+                            <BotonEditar onClick={() => abrirModalEditar(persona)} />
                             {/* Boton de eliminar */}
                             <BotonEliminar onClick={() => abrirModalEliminacion(persona)} />
                         </div>
@@ -140,17 +241,32 @@ const Personal = () => {
 
                         {/* Renderizado condicional para saber si vamos a actualizar o agregar */}
                         <h2>
-                            {personaSelect ? "Modificar Personal": "Agregar Personal"}
+                            {personaSelect ? "Modificar Personal" : "Agregar Personal"}
                         </h2>
                     </div>
 
-                    <form>
+                    <form onSubmit={guardarEmpleado}>
+                        {!ModalEdicion && (
+                            <div className="grupo-formulario">
+                                <label>Id:</label>
+                                <input
+                                    type="text"
+                                    defaultValue={personaSelect ? personaSelect.id : ""}
+                                    className="form-control mb-2"
+                                    required
+                                />
+                            </div>
+                        )}
+
                         <div className="grupo-formulario">
                             <label>Nombre:</label>
                             <input
                                 type="text"
-                                defaultValue={personaSelect ? personaSelect.nombre : ""}
+                                name="nombre"
+                                value={formulario.nombre}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
+                                required
                             />
                         </div>
 
@@ -158,8 +274,11 @@ const Personal = () => {
                             <label>Correo:</label>
                             <input
                                 type="email"
-                                defaultValue={personaSelect ? personaSelect.correo : ""}
+                                name="correo"
+                                value={formulario.correo}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
+                                required
                             />
                         </div>
 
@@ -167,8 +286,11 @@ const Personal = () => {
                             <label>Teléfono:</label>
                             <input
                                 type="text"
-                                defaultValue={personaSelect ? personaSelect.telefono : ""}
+                                name="telefono"
+                                value={formulario.telefono}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
+                                required
                             />
                         </div>
 
@@ -176,41 +298,57 @@ const Personal = () => {
                             <label>Dirección:</label>
                             <input
                                 type="text"
-                                defaultValue={personaSelect ? personaSelect.direccion : ""}
+                                name="direccion"
+                                value={formulario.direccion}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
+                                required
                             />
                         </div>
 
                         <div className="grupo-formulario">
-                            <label>Rol:</label>
-                            <div className="d-flex">
-                                <label className="me-3">
-                                    <input type="radio" name="roles" value="cajero" /> Cajero
-                                </label>
-                                <label className="me-3">
-                                    <input type="radio" name="roles" value="vendedor" /> Vendedor
-                                </label>
-                            </div>
+                            <label>Foto de perfil:</label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => manejarCambioFormulario(e)}
+                                className="form-control mb-2"
+                                required
+                            />
                         </div>
+
+                        {/* Vista previa de imagen */}
+                        {formulario.imagen && (
+                            <div className="grupo-formulario text-center">
+                                <img
+                                    src={formulario.imagen}
+                                    alt="Vista previa"
+                                    style={{
+                                        width: "100px",
+                                        height: "100px",
+                                        objectFit: "cover",
+                                        borderRadius: "50%",
+                                        border: "2px solid #ccc",
+                                        marginBottom: "10px"
+                                    }}
+                                />
+                            </div>
+                        )}
 
                         <div className="grupo-formulario">
                             <label>Permisos:</label>
                             <div className="d-flex justify-content-between mb-2">
-                                <label className="me-3">
-                                    <input type="checkbox" name="permisos" value="Ventas" /> Ventas
-                                </label>
-                                <label className="me-3">
-                                    <input type="checkbox" name="permisos" value="Inventario" /> Inventario
-                                </label>
-                                <label className="me-3">
-                                    <input type="checkbox" name="permisos" value="Reportes" /> Reportes
-                                </label>
-                                <label className="me-3">
-                                    <input type="checkbox" name="permisos" value="Tickets" /> Tickets
-                                </label>
-                                <label>
-                                    <input type="checkbox" name="permisos" value="OrdDeCompra" /> Ord. de Compra
-                                </label>
+                                {["Ventas", "Inventario", "Reportes", "Pedidos", "Tickets", "Clientes", "Perfil", "Ord. de Compra"].map(permiso => (
+                                    <label key={permiso} className="me-3">
+                                        <input
+                                            type="checkbox"
+                                            name="permisos"
+                                            value={permiso}
+                                            checked={formulario.permisos.includes(permiso)}
+                                            onChange={manejarCambioFormulario}
+                                        /> {permiso}
+                                    </label>
+                                ))}
                             </div>
                         </div>
 
