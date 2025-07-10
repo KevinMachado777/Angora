@@ -313,7 +313,6 @@ const Personal = () => {
                                 accept="image/*"
                                 onChange={(e) => manejarCambioFormulario(e)}
                                 className="form-control mb-2"
-                                required
                             />
                         </div>
 
