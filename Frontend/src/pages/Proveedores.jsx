@@ -7,6 +7,7 @@ import Modal from "../components/Modal";
 import BotonCancelar from "../components/BotonCancelar";
 import BotonAceptar from "../components/BotonAceptar";
 import "../styles/proveedores.css"
+import BotonOrdenes from "../components/BotonOrdenes"
 
 const Proveedores = () => {
   const [modalAbierta, setModalAbierta] = useState(false);
@@ -126,7 +127,7 @@ const Proveedores = () => {
 
       <div className="proveedores opciones">
         <BotonAgregar onClick={abrirModalAgregar} />
-        <button className="btn-agregar"><a href="/ordenes">Ordenes de compra</a></button>
+        <BotonOrdenes />
       </div>
 
       <CreadorTabla
