@@ -1,9 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import Home from '../pages/Home'
 import Layout from '../components/Layout'
+import Login from '../pages/Login'
+import Home from '../pages/Home'
 import Perfil from '../pages/Perfil'
 import Personal from '../pages/Personal'
-import Login from '../pages/Login'
+import {Inventario} from '../pages/Inventario'
+import Ventas from '../pages/Ventas'
+import Portafolio from '../pages/Portafolio'
+
 
 // Definicion de las rutas de la aplicacion
 const AppRoutes = () => {
@@ -18,6 +22,9 @@ const AppRoutes = () => {
                 <Route exact path="/home" element={<Layout><Home /></Layout>} />
                 <Route exact path="/perfil" element={<Layout><Perfil /></Layout>} />
                 <Route exact path="/personal" element={<Layout><Personal /></Layout>} />
+                <Route exact path="/inventarios" element={<Layout><Inventario /></Layout>} />
+                <Route exact path="/ventas" element={<Layout><Ventas /></Layout>} />
+                <Route exact path="/clientes" element={<Layout><Portafolio /></Layout>} />
             </Routes>
         </BrowserRouter>
     )
