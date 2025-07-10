@@ -1,0 +1,44 @@
+/* Contenedor principal */
+.tabla-productos {
+  padding: 20px;
+}
+
+/* Título centrado */
+.tabla-productos h3 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* Estilo para la tabla */
+.tabla-productos table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+/* Estilo para las celdas del encabezado */
+.tabla-productos th {
+  background-color: #154046;
+  color: white;
+  padding: 10px;
+  border: 2px solid black;
+  text-align: center;
+}
+
+/* Estilo para las celdas del cuerpo */
+.tabla-productos td {
+  background-color: #96BCC1;
+  padding: 8px;
+  border: 2px solid black;
+  text-align: center;
+}
+
+/* Botones de opciones */
+.tabla-productos button {
+  margin-right: 5px;
+}
+
+/* Hover personalizado para botones */
+.tabla-productos button:hover {
+  opacity: 0.8;
+}
