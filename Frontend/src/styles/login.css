@@ -1,4 +1,12 @@
-/* Contenedor principal */
+/* Variables para colores neón, definidas globalmente para usar en toda la aplicación */
+:root {
+    --hue1: 200;
+    /* Tono inicial para el efecto neón */
+    --hue2: 240;
+    /* Segundo tono para el efecto neón */
+}
+
+/* Contenedor principal que centra el login y maneja el fondo animado */
 .login-container {
     position: relative;
     height: 100vh;
@@ -11,200 +19,29 @@
     overflow: hidden;
 }
 
-/* Formulario */
+/* Formulario principal con animación inicial, borde neón y estructura */
 .login-form {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
     border-radius: 30px;
     box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
     text-align: center;
     z-index: 2;
-    width: 500px;
+    width: 650px;
+    /* Aumentado de 600px a 650px para dar más espacio a los inputs */
     height: 400px;
-    /* Ajuste aproximado basado en el diseño, pero respetamos tu instrucción de no modificar tamaños */
     position: relative;
     perspective: 1000px;
     animation: fadeInUp 1s ease forwards;
     opacity: 0;
     transform: translateY(30px);
     overflow: hidden;
+    --border: 2px;
+    --radius: 30px;
+    --ease: cubic-bezier(0.5, 1, 0.89, 1);
 }
 
-/* Tarjeta frontal y trasera */
-.card-front-login,
-.card-back-login {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden;
-    transition: transform 0.6s;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-.card-front-login {
-    transform: rotateY(0deg);
-    z-index: 1;
-}
-
-.card-back-login {
-    transform: rotateY(180deg);
-    background: linear-gradient(-45deg, #014D5A, #012E40);
-    /* Nuevo gradiente */
-    z-index: 0;
-}
-
-/* Regla para el efecto de giro */
-.login-form.girar .card-front-login {
-    transform: rotateY(-180deg);
-    z-index: 0;
-}
-
-.login-form.girar .card-back-login {
-    transform: rotateY(0deg);
-    z-index: 1;
-}
-
-/* Título */
-.login-title {
-    color: #fff;
-    margin-bottom: 20px;
-    font-size: 26px;
-    font-weight: bold;
-}
-
-/* Grupos de entrada */
-.input-group {
-    margin-bottom: 20px;
-    text-align: left;
-    display: flex;
-    flex-direction: column;
-}
-
-.input-group label {
-    display: block;
-    color: #fff;
-    margin-bottom: 5px;
-    font-size: 14px;
-}
-
-.input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    width: 100%;
-}
-
-.input-with-icon {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-}
-
-.icon-left {
-    color: #fff;
-    font-size: 16px;
-    stroke: #FFFFFF;
-}
-
-.input-icon {
-    position: absolute;
-    left: 10px;
-    color: #fff;
-    font-size: 16px;
-    z-index: 1;
-}
-
-.eye-icon {
-    position: absolute;
-    right: 10px;
-    cursor: pointer;
-    z-index: 1;
-}
-
-.input-group input {
-    width: 400px;
-    padding: 10px 40px 10px 50px;
-    border: 1px solid #3A5573;
-    border-radius: 5px;
-    background: #3A5573;
-    color: #fff;
-    outline: none;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-
-.input-group input:focus {
-    border-color: #088DCF;
-}
-
-.input-group input:focus+.input-icon {
-    color: #088DCF;
-}
-
-input::placeholder {
-    color: white;
-}
-
-/* Botón */
-.login-button {
-    width: 100%;
-    padding: 12px;
-    background-color: #088DCF;
-    color: #fff;
-    border: none;
-    border-radius: 25px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
-}
-
-.login-button:hover {
-    background-color: #4169E1;
-}
-
-/* Enlace de recuperación */
-.recover-link {
-    margin-top: 15px;
-}
-
-.recover-text {
-    color: #A0B0C0;
-    font-size: 12px;
-    text-decoration: none;
-    transition: color 0.3s ease;
-}
-
-.recover-text:hover {
-    color: #088DCF;
-    text-decoration: underline;
-}
-
-/* Animaciones */
-@keyframes fadeInUp {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes gradientBG {
-    0% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-/* Burbujas flotando */
+/* Burbujas flotantes que decoran el fondo */
 .bubbles {
     position: absolute;
     top: 0;
@@ -360,5 +197,428 @@ input::placeholder {
     100% {
         transform: translateY(-120vh) scale(1.1) rotate(360deg);
         opacity: 0;
+    }
+}
+
+/* Contenedores de los formularios (inicio de sesión y recuperación) */
+.form-container {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 50%;
+    transition: all 0.6s ease-in-out;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sign-in-container {
+    left: 0;
+    z-index: 2;
+}
+
+.login-form.right-panel-active .sign-in-container {
+    transform: translateX(100%);
+    opacity: 0;
+    /* Oculta la mitad inactiva */
+}
+
+.sign-up-container {
+    left: 0;
+    opacity: 0;
+    z-index: 1;
+}
+
+.login-form.right-panel-active .sign-up-container {
+    transform: translateX(100%);
+    opacity: 1;
+    z-index: 5;
+    animation: show 0.6s;
+}
+
+@keyframes show {
+
+    0%,
+    49.99% {
+        opacity: 0;
+        z-index: 1;
+    }
+
+    50%,
+    100% {
+        opacity: 1;
+        z-index: 5;
+    }
+}
+
+/* Contenedor del overlay que muestra mensajes durante la transición */
+.overlay-container {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+    transition: transform 0.6s ease-in-out;
+    z-index: 100;
+}
+
+.login-form.right-panel-active .overlay-container {
+    transform: translateX(-100%);
+}
+
+.overlay {
+    background: linear-gradient(to right, #026773, #012E40);
+    position: relative;
+    left: -100%;
+    height: 100%;
+    width: 200%;
+    transform: translateX(0);
+    transition: transform 0.6s ease-in-out;
+}
+
+.login-form.right-panel-active .overlay {
+    transform: translateX(50%);
+}
+
+.overlay-panel {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 0 20px;
+    text-align: center;
+    top: 0;
+    height: 100%;
+    width: 50%;
+    transform: translateX(0);
+    transition: transform 0.6s ease-in-out;
+    color: #fff;
+}
+
+.overlay-left {
+    transform: translateX(-20%);
+}
+
+.login-form.right-panel-active .overlay-left {
+    transform: translateX(0);
+}
+
+.overlay-right {
+    right: 0;
+    transform: translateX(0);
+}
+
+.login-form.right-panel-active .overlay-right {
+    transform: translateX(20%);
+}
+
+/* Tarjetas frontal y trasera para los formularios */
+.card-front-login,
+.card-back-login {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.card-front-login {
+    z-index: 1;
+}
+
+.card-back-login {
+    z-index: 0;
+}
+
+/* Estilo del título dentro del formulario */
+.login-title {
+    color: #fff;
+    margin-bottom: 20px;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+/* Grupos de entrada para los campos de texto */
+.input-group {
+    margin-bottom: 15px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.input-group label {
+    display: block;
+    color: #fff;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.input-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.icon-left {
+    color: #fff;
+    font-size: 16px;
+    stroke: #FFFFFF;
+}
+
+.input-icon {
+    position: absolute;
+    left: 10px;
+    color: #fff;
+    font-size: 16px;
+    z-index: 1;
+}
+
+.eye-icon {
+    position: absolute;
+    right: 10px;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px 40px 10px 50px;
+    border: 1px solid #3A5573;
+    border-radius: 5px;
+    background: #3A5573;
+    color: #fff;
+    outline: none;
+    font-size: 14px;
+    box-sizing: border-box;
+    max-width: 450px;
+    /* Ajustado para que quepa más texto con el nuevo ancho */
+}
+
+.input-group input:focus {
+    border-color: #088DCF;
+}
+
+.input-group input:focus+.input-icon {
+    color: #088DCF;
+}
+
+input::placeholder {
+    color: white;
+}
+
+/* Estilo del botón de inicio de sesión con efecto neón */
+.login-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #088DCF;
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    max-width: 450px;
+    /* Ajustado para que quepa más texto */
+}
+
+.login-button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, hsl(var(--hue1) 90% 70% / 0.5) 50%, transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.login-button:hover::before {
+    transform: translateX(100%);
+}
+
+.login-button:hover {
+    background-color: #4169E1;
+    box-shadow: 0 0 15px hsl(var(--hue1) 70% 60% / 0.5);
+}
+
+/* Botón ghost para el overlay */
+.ghost {
+    border-radius: 20px;
+    border: 1px solid #fff;
+    background-color: transparent;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 10px 30px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: transform 80ms ease-in;
+    cursor: pointer;
+}
+
+.ghost:active {
+    transform: scale(0.95);
+}
+
+/* Enlace de recuperación de contraseña */
+.recover-link {
+    margin-top: 15px;
+}
+
+.recover-text {
+    color: #A0B0C0;
+    font-size: 12px;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.recover-text:hover {
+    color: #088DCF;
+    text-decoration: underline;
+}
+
+/* Efecto neón en los bordes de la tarjeta */
+.login-form .shine,
+.login-form .glow {
+    --hue: var(--hue1);
+    pointer-events: none;
+    border-radius: 0;
+    border-top-right-radius: inherit;
+    border-bottom-left-radius: inherit;
+    border: var(--border) solid transparent;
+    width: 75%;
+    height: auto;
+    min-height: 0px;
+    aspect-ratio: 1;
+    display: block;
+    position: absolute;
+    right: calc(var(--border) * -1);
+    top: calc(var(--border) * -1);
+    left: auto;
+    z-index: -1;
+    /* Detrás del contenido */
+    --start: 12%;
+    background: conic-gradient(from -45deg at center in oklch,
+            transparent var(--start, 0%),
+            hsl(var(--hue), 80%, 60%),
+            transparent 50%) border-box;
+    mask: linear-gradient(transparent), linear-gradient(black);
+    mask-repeat: no-repeat;
+    mask-clip: padding-box, border-box;
+    mask-composite: subtract;
+}
+
+.login-form .shine::before,
+.login-form .shine::after {
+    content: "";
+    width: auto;
+    inset: -2px;
+    mask: none;
+}
+
+.login-form .shine::after {
+    z-index: 2;
+    --start: 17%;
+    --end: 33%;
+    background: conic-gradient(from -45deg at center in oklch,
+            transparent var(--start, 0%),
+            hsl(var(--hue), 80%, 85%),
+            transparent var(--end, 50%));
+}
+
+.login-form .shine-bottom,
+.login-form .glow-bottom {
+    --hue: var(--hue2);
+    --conic: 135deg;
+    top: auto;
+    bottom: calc(var(--border) * -1);
+    left: calc(var(--border) * -1);
+    right: auto;
+}
+
+.login-form .glow {
+    border-top-right-radius: calc(var(--radius) * 2.5);
+    border-bottom-left-radius: calc(var(--radius) * 2.5);
+    border: calc(var(--radius) * 1.25) solid transparent;
+    inset: calc(var(--radius) * -2);
+    mask: url("https://assets.codepen.io/13471/noise-base.png");
+    mask-mode: luminance;
+    mask-size: 29%;
+    opacity: 1;
+    filter: blur(12px) saturate(1.5) brightness(0.75);
+    /* Ajustado para mayor visibilidad */
+    mix-blend-mode: plus-lighter;
+    z-index: -1;
+}
+
+.login-form .glow::before,
+.login-form .glow::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: inherit;
+    border-radius: inherit;
+    background: conic-gradient(from var(--conic, -45deg) at center in oklch,
+            transparent var(--start, 0%),
+            hsl(var(--hue), 95%, 60%),
+            transparent var(--end, 50%)) border-box;
+    mask: linear-gradient(transparent), linear-gradient(black);
+    mask-repeat: no-repeat;
+    mask-clip: padding-box, border-box;
+    mask-composite: subtract;
+    filter: saturate(2) brightness(1.25);
+    /* Ajustado para mayor brillo */
+}
+
+.login-form .glow::after {
+    --lit: 70%;
+    --sat: 100%;
+    --start: 15%;
+    --end: 35%;
+    border-width: calc(var(--radius) * 1.75);
+    border-radius: calc(var(--radius) * 2.75);
+    inset: calc(var(--radius) * -0.25);
+    z-index: 4;
+    opacity: 0.85;
+    /* Aumentado para mayor visibilidad */
+}
+
+/* Animaciones para el fondo y la entrada del formulario */
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes gradientBG {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
     }
 }
