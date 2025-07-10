@@ -32,7 +32,7 @@ const Header = () => {
                     </div>
 
                     {/*Boton para cerra la sesion */}
-                    <Link to={"/inicio-sesion"}>
+                    <Link to={"/login"}>
                         <img src={logout} alt="logout" width="30px" />
                     </Link>
                 </div>
