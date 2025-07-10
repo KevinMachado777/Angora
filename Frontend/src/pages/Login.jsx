@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/login.css';
+import Angora from '../assets/images/angora.png';
 
 const Login = () => {
     const navegacion = useNavigate(); // Hook para navegar entre rutas, usado para redirigir a /home
@@ -84,7 +85,7 @@ const Login = () => {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div className="input-group">
                                 <label htmlFor="password">Contraseña</label>
                                 <div className="input-with-icon">
@@ -153,6 +154,7 @@ const Login = () => {
                         </div>
                         <div className="overlay-panel overlay-right">
                             <h1>¡Hola, Amigo!</h1>
+                            <img src={Angora} className="logo-angora" alt="Logo Angora" />
                             <p>¿Necesitas recuperar tu contraseña? Haz clic abajo</p>
                             <button className="ghost" onClick={manejarClicRecuperar}>¿Olvidaste tu contraseña?</button>
                         </div>
