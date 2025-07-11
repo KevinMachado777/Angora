@@ -1,40 +1,61 @@
+
 footer {
     background-color: rgb(1, 46, 64);
-    clear: both;
-    text-align: center;
-    padding: 10px;
-    margin-left: 182px;
-    width: calc(100% - 182px);
+    padding: 20px;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 2rem;
+    width: 100%;
+    margin-top: auto;
+}
+
+footer > div {
+    flex: 1;
+    min-width: 200px;
+    max-width: 300px;
+    margin-bottom: 1rem;
+    text-align: center;
 }
 
 footer a {
     display: block;
     text-decoration: none;
-    font-size: 20px;
+    font-size: 16px;
     color: rgba(255, 255, 255, 0.4);
     margin: 5px;
+    transition: color 0.3s ease;
 }
 
 footer a:hover {
     color: blueviolet;
-    text-decoration: none;
 }
 
-footer h5{
+footer h5 {
+    color: white;
+    margin-bottom: 1rem;
+}
+
+footer p {
     color: white;
 }
 
-footer p{
-    color: white;
-}
-
-.parte-final{
-    margin: 10px;
+.parte-final {
+    flex: 0 0 100%;
+    margin: 10px 0;
     padding-top: 10px;
     color: rgba(255, 255, 255, 0.4);
-    width: 100%;
-    border-top: 1px solid black;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    footer {
+        padding: 15px;
+    }
+
+    footer > div {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
 }

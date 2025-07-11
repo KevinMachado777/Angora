@@ -1,22 +1,29 @@
-// src/components/Layout.jsx
+
+import { useState } from 'react';
 import SideBar from './SideBar';
 import Header from './Header';
 import Footer from './Footer';
-
+import '../styles/layout.css';
 
 const Layout = ({ children }) => {
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+    const toggleSidebar = () => {
+        setSidebarOpen(!isSidebarOpen);
+    };
+
     return (
-        <div className="d-flex flex-column min-vh-100 layout">
-            <Header />
-
-            <div className="d-flex flex-grow-1">
-                <SideBar />
-                <main className="main-content flex-grow-1">
-                    {children}
-                </main>
+        <div className="layout">
+            <Header onToggleSidebar={toggleSidebar} />
+            <SideBar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
+            <div className={`layout-content ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+                <div className="page-content">
+                    <div className="content-wrapper">
+                        {children}
+                    </div>
+                </div>
+                <Footer />
             </div>
-
-            <Footer />
         </div>
     );
 };
