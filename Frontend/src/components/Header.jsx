@@ -1,39 +1,33 @@
-import "../styles/header.css"
-import user from "../assets/icons/user.png"
-import logo_angora from "../assets/icons/angora.png"
-import logout from "../assets/icons/logout.png"
-import fraganceys from "../assets/images/Logo_de_la_empresa.png"
+import "../styles/header.css";
+import user from "../assets/icons/user.png";
+import logo_angora from "../assets/icons/angora.png";
+import logout from "../assets/icons/logout.png";
+import fraganceys from "../assets/images/Logo_de_la_empresa.png";
 import { Link } from 'react-router-dom';
 
-const Header = () => {
-
+const Header = ({ onToggleSidebar }) => {
     return (
-        // Contenedor del header, fijo al hacer scroll
-        <header className="d-flex flex-wrap align-items-center justify-content-center 
-        justify-content-md-between py-3 mb-4 border-bottom">
-
+        <header>
             <div className='div-header'>
+                <button className="menu-toggle" onClick={onToggleSidebar}>
+                    <i className="bi bi-list"></i>
+                </button>
                 
-                <img src={fraganceys} alt='fraganceys' width={"380"} className='fraganceys'></img>
+                <img src={fraganceys} alt='fraganceys' className='fraganceys' />
                 
-
-                {/*Logo de angora */}
-                <div>
-                    <img src={logo_angora} alt="logo_angora" width={"90 px"}/>
+                <div className="d-none d-md-block">
+                    <img src={logo_angora} alt="logo_angora" width="90" />
                 </div>
 
-                {/*Nombre e icono para ir al perfil del usuario */}
-                <div className="d-flex align-items-center gap-5">
-                    <div className="d-flex align-items-center gap-1">
-                        <p className="mb-0 text-white">Kevin Andrés Machado Rueda</p>
+                <div className="user-section">
+                    <div className="user-info">
+                        <p className="mb-0 text-white d-none d-sm-block">Kevin Andrés Machado Rueda</p>
                         <Link to={"/perfil"}>
-                            <img src={user} alt="user" width="35px" />
+                            <img src={user} alt="user" width="35" />
                         </Link>
                     </div>
-
-                    {/*Boton para cerra la sesion */}
                     <Link to={"/login"}>
-                        <img src={logout} alt="logout" width="30px" />
+                        <img src={logout} alt="logout" width="30" />
                     </Link>
                 </div>
             </div>
@@ -41,5 +35,4 @@ const Header = () => {
     );
 };
 
-// Retorna el header
 export default Header;

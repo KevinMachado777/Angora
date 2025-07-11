@@ -1,0 +1,30 @@
+.layout {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.layout-content {
+    margin-left: 182px;
+    min-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    transition: margin-left 0.3s ease;
+}
+
+.page-content {
+    flex: 1;
+    padding: 20px;
+    overflow-x: auto;
+    min-height: calc(100vh - 80px - 300px); /* Ajusta según la altura de tu footer */
+}
+
+@media (max-width: 768px) {
+    .layout-content {
+        margin-left: 0;
+    }
+
+    .page-content {
+        padding: 10px;
+    }
+}
