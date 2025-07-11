@@ -1,34 +1,60 @@
+
 * {
     padding: 0;
     margin: 0;
 }
 
-.main-home {
-    display: flex; 
-    flex-wrap: wrap;
-    gap: 20px;
-    padding: 20px;
-    margin-left: 182px;
-    width: calc(100% - 182px);
+/* Ajuste para las tarjetas de personal */
+.titulo {
+    grid-column: 1 / -1;
 }
 
+/* Contenedor grid común para ambos tipos de tarjetas */
+.cards-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Media queries para el grid */
+@media (min-width: 1200px) {
+    .cards-grid-container {
+        grid-template-columns: repeat(3, 1fr);
+        justify-items: center;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .cards-grid-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 767px) {
+    .cards-grid-container {
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
+}
+
+/* Estilos para las tarjetas de Home */
 .card {
     text-align: center;
-    margin: 50px;
-    margin-top: 0px;
     box-shadow: 3px 3px 10px rgba(0, 0, 0, .5);
     transition: transform 1s;
     width: 250px;
-    /*Color de la tarjeta*/
     background-color: rgba(217, 217, 217, 100);
-
 }
 
 .card:hover {
     transform: scale(1.1);
 }
 
-.card, .card p, h4{
+.card, .card p, h4 {
     border-radius: 10px;
 }
 
@@ -36,13 +62,13 @@
     font-size: 35px;
     font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
     padding: 20px;
-    text-shadow: 3px 3px 5px rgba(0, 0, 0, .5);;    
+    text-shadow: 3px 3px 5px rgba(0, 0, 0, .5);    
 }
 
-.card h4{
+.card h4 {
     background-color: rgba(1, 46, 64, 100);    
     color: white;
     padding: 20px;
     font-size: 20px;
-    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
 }

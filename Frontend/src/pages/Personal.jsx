@@ -190,7 +190,7 @@ const Personal = () => {
     }
 
     return (
-        <main className="main-home">
+        <main className="cards-grid-container">
             <div className="titulo">
                 <h1>Personal</h1>
                 <BotonAgregar onClick={abrirModalAgregar}>

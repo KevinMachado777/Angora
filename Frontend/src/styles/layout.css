@@ -2,6 +2,7 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .layout-content {
@@ -16,12 +17,31 @@
     flex: 1;
     padding: 20px;
     overflow-x: auto;
-    min-height: calc(100vh - 80px - 300px); /* Ajusta según la altura de tu footer */
+    min-height: calc(100vh - 80px - 300px);
+}
+
+.content-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    left: 0;
+}
+
+@media (min-width: 769px) and (max-width: 852px) {
+    .layout {
+        width: 100%;
+        overflow-x: hidden;
+    }
+    
+    .layout-content {
+        width: calc(100% - 182px);
+    }
 }
 
 @media (max-width: 768px) {
     .layout-content {
         margin-left: 0;
+        width: 100%;
     }
 
     .page-content {

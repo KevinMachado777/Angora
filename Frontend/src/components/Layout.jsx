@@ -18,7 +18,9 @@ const Layout = ({ children }) => {
             <SideBar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className={`layout-content ${isSidebarOpen ? 'sidebar-open' : ''}`}>
                 <div className="page-content">
-                    {children}
+                    <div className="content-wrapper">
+                        {children}
+                    </div>
                 </div>
                 <Footer />
             </div>
