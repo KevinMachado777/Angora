@@ -40,7 +40,7 @@ const Perfil = () => {
   };
 
   return (
-    <main className="main-home perfil">
+    <main className="main-perfil perfil">
       {/* Contenedor de contenido principal del perfil */}
       <div className="renderizado">
         {Editar ? (
