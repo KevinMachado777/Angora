@@ -1,0 +1,58 @@
+.container-tablas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.card-cliente {
+  background-color: #f0fdfb;
+  border-left: 4px solid #012E40;
+  font-size: 0.75rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: auto;
+  min-height: 80px;
+
+  /* Animación sutil al pasar el mouse */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-cliente:hover {
+  transform: scale(1.03); /* Aumento leve del tamaño */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra suave */
+}
+
+.card-cliente .card-body {
+  padding: 0.25rem 0.5rem; /* Ligero padding para no pegar texto al borde */
+  margin: 0;
+}
+
+.card-cliente p {
+  margin: 0.15rem 0;
+  line-height: 1.2;
+  font-size: 0.75rem;
+}
+
+.card-cliente i {
+  font-size: 0.8rem;
+  margin-right: 0.25rem;
+}
+
+/* Diseño responsivo sin solapamiento */
+.row.tarjetas-ajuste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.row.tarjetas-ajuste > div {
+  flex: 1 1 calc(33.333% - 8px);
+  min-width: 150px;
+  max-width: 100%;
+}
