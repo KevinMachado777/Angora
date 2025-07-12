@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreadorTabla } from '../components/CreadorTabla';
-import { TablaAbonos } from '../components/TablaAbonos';
+// Nuevo componente importado para mostrar facturas
+import TablaFacturas from "../components/TablaFacturas";
 import Modal from "../components/Modal";
 import "../styles/portafolio.css";
 import BotonAgregar from '../components/botonAgregar';
@@ -8,6 +9,7 @@ import BotonCancelar from "../components/BotonCancelar";
 import BotonGuardar from "../components/BotonGuardar";
 import BotonAceptar from "../components/BotonAceptar";
 import BotonCartera from '../components/BotonCartera';
+import { NumericFormat } from "react-number-format";
 
 const Portafolio = () => {
     // Cabeceros de la tabla principal
@@ -23,10 +25,7 @@ const Portafolio = () => {
         cartera: credito ? "Activa" : "Desactivada"
     }));
 
-    // Cabeceros de la tabla de crédito
-    const cabecerosCredito = ["Id", "Nombre", "Cantidad", "Precio Unitario", "Total"];
-
-    // Estado para almacenar los productos de crédito por cada cliente
+    // Estado para almacenar las facturas de crédito por cada cliente
     const [creditosPorCliente, setCreditosPorCliente] = useState(() => {
         const storedCreditos = localStorage.getItem("creditosPorCliente");
         return storedCreditos ? JSON.parse(storedCreditos) : {};
@@ -35,7 +34,6 @@ const Portafolio = () => {
     // Estado para almacenar los registros de clientes
     const [registros, setRegistros] = useState(() => {
         const storedClientes = localStorage.getItem("clientes");
-        // Solo usa los datos de localStorage si son un array no vacío
         return storedClientes && JSON.parse(storedClientes).length > 0
             ? JSON.parse(storedClientes)
             : datosIniciales;
@@ -76,6 +74,12 @@ const Portafolio = () => {
     // Estado para el botón de guardar en abonos
     const [botonDesactivado, setBotonDesactivado] = useState(false);
 
+    // Estado para controlar la modal de detalles de la factura
+    const [modalDetallesAbierta, setModalDetallesAbierta] = useState(false);
+
+    // Estado para almacenar la factura seleccionada
+    const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+
     // Sincronizar registros con localStorage cuando cambien
     useEffect(() => {
         localStorage.setItem("clientes", JSON.stringify(registros));
@@ -85,14 +89,14 @@ const Portafolio = () => {
     useEffect(() => {
         localStorage.setItem("creditosPorCliente", JSON.stringify(creditosPorCliente));
     }, [creditosPorCliente]);
-    
+
     // Efecto para actualizar el estado de crédito activo según la persona seleccionada
     useEffect(() => {
         if (personaSelect) {
             setCreditoActivo(personaSelect.cartera === "Activa");
             setCreditosPorCliente((prev) => ({
                 ...prev,
-                [personaSelect.id]: prev[personaSelect.id] || { productos: [], saldoPendiente: 0 }
+                [personaSelect.id]: prev[personaSelect.id] || { facturas: [], saldoPendiente: 0 }
             }));
         } else {
             setCreditoActivo(false);
@@ -102,10 +106,10 @@ const Portafolio = () => {
     // Efecto para calcular el saldo pendiente de cada cliente
     useEffect(() => {
         if (personaCartera) {
-            const dataCliente = creditosPorCliente[personaCartera.id] || { productos: [], saldoPendiente: 0 };
+            const dataCliente = creditosPorCliente[personaCartera.id] || { facturas: [], saldoPendiente: 0 };
             const totalPendiente = dataCliente.saldoPendiente !== undefined
                 ? dataCliente.saldoPendiente
-                : dataCliente.productos.reduce((sum, prod) => sum + (prod.total || 0), 0) || 0;
+                : dataCliente.facturas.reduce((sum, factura) => sum + (factura.total || 0), 0) || 0;
             setSaldoPendiente(totalPendiente);
             const cantidad = parseFloat(cantidadAbonar) || 0;
             setBotonDesactivado(cantidad > totalPendiente || cantidad <= 0);
@@ -217,7 +221,7 @@ const Portafolio = () => {
                     return {
                         ...prev,
                         [personaCartera.id]: {
-                            productos: [],
+                            facturas: [],
                             saldoPendiente: 0
                         }
                     };
@@ -234,6 +238,18 @@ const Portafolio = () => {
         }
         setCantidadAbonar("");
         cerrarModalcartera();
+    };
+
+    // Función para abrir la modal de detalles de la factura
+    const abrirModalDetalles = (factura) => {
+        setFacturaSeleccionada(factura);
+        setModalDetallesAbierta(true);
+    };
+
+    // Nueva función para cerrar la modal de detalles
+    const cerrarModalDetalles = () => {
+        setModalDetallesAbierta(false);
+        setFacturaSeleccionada(null);
     };
 
     return (
@@ -346,26 +362,33 @@ const Portafolio = () => {
                                     type="checkbox"
                                     checked={creditoActivo}
                                     onChange={(e) => {
-                                        const nuevosProductos = creditosPorCliente[personaSelect?.id]?.productos.length || [];
-                                        if (e.target.checked || nuevosProductos.length === 0) {
+                                        const nuevasFacturas = creditosPorCliente[personaSelect?.id]?.facturas?.length || 0;
+                                        if (e.target.checked || nuevasFacturas === 0) {
                                             setCreditoActivo(e.target.checked);
                                         }
                                     }}
-                                    disabled={creditoActivo && (creditosPorCliente[personaSelect?.id]?.productos?.length || 0) > 0}
+                                    disabled={creditoActivo && (creditosPorCliente[personaSelect?.id]?.facturas?.length || 0) > 0}
                                 /> Crédito
                             </label>
                         </div>
 
+                        {/* Uso de TablaFacturas para mostrar facturas en formato de array */}
                         {creditoActivo && (
                             <div>
-                                <h3>Productos por crédito</h3>
-                                {creditosPorCliente[personaSelect?.id]?.productos?.length > 0 ? (
-                                    <TablaAbonos
-                                        cabeceros={cabecerosCredito}
-                                        registros={creditosPorCliente[personaSelect?.id]?.productos}
+                                <h3>Facturas por crédito</h3>
+                                {creditosPorCliente[personaSelect?.id]?.facturas?.length > 0 ? (
+                                    <TablaFacturas
+                                        encabezados={["Id Factura", "Fecha", "Total"]}
+                                        registros={creditosPorCliente[personaSelect.id].facturas.map(factura => [
+                                            factura.idFactura,
+                                            factura.fecha,
+                                            `$${factura.total.toLocaleString('es-CO')}`,
+                                            { _factura: factura }
+                                        ])}
+                                        onIconClick={abrirModalDetalles}
                                     />
                                 ) : (
-                                    <p style={{ marginTop: '20px' }}>No hay productos de crédito asociados.</p>
+                                    <p style={{ marginTop: '20px' }}>No hay facturas de crédito asociadas.</p>
                                 )}
                             </div>
                         )}
@@ -423,16 +446,22 @@ const Portafolio = () => {
                             onChange={(e) => setCantidadAbonar(e.target.value)}
                         />
 
-                        {/* Tabla de productos */}
-                        {saldoPendiente > 0 && creditosPorCliente[personaCartera.id]?.productos?.length > 0 ? (
+                        {/* Uso de TablaFacturas para mostrar facturas en formato de array */}
+                        {saldoPendiente > 0 && creditosPorCliente[personaCartera.id]?.facturas?.length > 0 ? (
                             <div className="cartera-tabla">
-                                <TablaAbonos
-                                    cabeceros={["Id", "Nombre", "Cantidad", "Precio Unitario", "Total"]}
-                                    registros={creditosPorCliente[personaCartera.id].productos}
+                                <TablaFacturas
+                                    encabezados={["Id Factura", "Fecha", "Total"]}
+                                    registros={creditosPorCliente[personaCartera.id].facturas.map(factura => [
+                                        factura.idFactura,
+                                        factura.fecha,
+                                        `$${factura.total.toLocaleString('es-CO')}`,
+                                        { _factura: factura }
+                                    ])}
+                                    onIconClick={abrirModalDetalles}
                                 />
                             </div>
                         ) : (
-                            <p style={{ marginTop: '20px' }}>No hay productos de crédito asociados.</p>
+                            <p style={{ marginTop: '20px' }}>No hay facturas de crédito asociadas.</p>
                         )}
                     </div>
                 )}
@@ -442,6 +471,82 @@ const Portafolio = () => {
                     <BotonGuardar type="submit" onClick={procesarAbono} disabled={botonDesactivado} />
                 </div>
             </Modal>
+
+            {/* Modal para mostrar los detalles de la factura */}
+            {modalDetallesAbierta && (
+                <Modal isOpen={modalDetallesAbierta} onClose={cerrarModalDetalles}>
+                    <div className="encabezado-modal">
+                        <h2>Detalles de la Factura</h2>
+                    </div>
+                    {facturaSeleccionada && (
+                        <div className="ticket">
+                            <h2 style={{ textAlign: "center" }}>Fragancey´s</h2>
+                            <p><strong>Ticket #{facturaSeleccionada.idFactura}</strong></p>
+                            <p>Fecha: {facturaSeleccionada.fecha}</p>
+                            <p>Cliente: {personaCartera?.nombre} {personaCartera?.apellido}</p>
+                            <hr />
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nombre</th>
+                                        <th>Cant.</th>
+                                        <th>Precio</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {facturaSeleccionada.productos && facturaSeleccionada.productos.length > 0 ? (
+                                        facturaSeleccionada.productos.map((item, i) => (
+                                            <tr key={i}>
+                                                <td>{item.id}</td>
+                                                <td>{item.nombre}</td>
+                                                <td>{item.cantidad}</td>
+                                                <td>
+                                                    <NumericFormat
+                                                        value={item.precioUnitario}
+                                                        displayType={"text"}
+                                                        thousandSeparator={true}
+                                                        prefix={"$"}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <NumericFormat
+                                                        value={item.total}
+                                                        displayType={"text"}
+                                                        thousandSeparator={true}
+                                                        prefix={"$"}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="5">No hay productos en esta factura.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                            <hr />
+                            <p>
+                                <strong>Total a pagar: </strong>
+                                <NumericFormat
+                                    value={facturaSeleccionada.total}
+                                    displayType="text"
+                                    thousandSeparator
+                                    prefix="$"
+                                />
+                            </p>
+                            <p style={{ textAlign: "center", marginTop: "1em" }}>
+                                ¡Gracias por tu compra!
+                            </p>
+                        </div>
+                    )}
+                    <div className="pie-modal">
+                        <BotonAceptar type="button" onClick={cerrarModalDetalles} />
+                    </div>
+                </Modal>
+            )}
 
             {/* Modal de advertencia para eliminar un cliente con cartera activa */}
             {modalAdvertenciaEliminacion && (
