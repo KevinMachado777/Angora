@@ -29,6 +29,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
 .btn-modificar:hover {
   background-color: #e0a800;
@@ -46,6 +47,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
 .btn-eliminar:hover {
   background-color: #c82333;
@@ -80,6 +82,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
 .btn-guardar:hover {
   background-color: #218838;
@@ -97,6 +100,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
 .btn-cancelar:hover {
   background-color: #c82333;
