@@ -126,6 +126,15 @@ const Login = () => {
         }
     };
 
+    // Funcion para evitar errores con la tabulacion
+    const manejarFoco = (e) => {
+        // Prevenir el comportamiento por defecto del foco
+        e.preventDefault();
+        // Si el foco viene del tabulador, no permitir el cambio de panel
+        if (e.relatedTarget) {
+            establecerPanelDerechoActivo(false);
+        }
+    };
 
     // Efecto para la animación de colores del fondo
     useEffect(() => {
@@ -323,13 +332,13 @@ const Login = () => {
                         <div className="overlay-panel overlay-left">
                             <h1>¡Bienvenido de vuelta a Angora!</h1>
                             <p>Para ingresar al sistema, por favor inicia sesión con tu información personal correcta</p>
-                            <button className="ghost" onClick={manejarClicVolver}>Volver al inicio</button>
+                            <button className="ghost" onClick={manejarClicVolver} onFocus={manejarFoco}>Volver al inicio</button>
                         </div>
                         <div className="overlay-panel overlay-right">
                             <h1>¡Hola, Amigo!</h1>
                             <img src={Angora} className="logo-angora" alt="Logo Angora" />
                             <p>¿Necesitas recuperar tu contraseña? Haz clic abajo</p>
-                            <button className="ghost" onClick={manejarClicRecuperar}>¿Olvidaste tu contraseña?</button>
+                            <button className="ghost" onClick={manejarClicRecuperar} onFocus={manejarFoco}>¿Olvidaste tu contraseña?</button>
                         </div>
                     </div>
                 </div>
