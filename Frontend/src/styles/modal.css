@@ -1,45 +1,38 @@
 .modal-fondo {
-    position: fixed;             /* Hace que el fondo del modal se quede fijo sobre toda la pantalla, sin moverse al hacer scroll */
+    position: fixed; /* Hace que el fondo del modal se quede fijo sobre toda la pantalla, sin moverse al hacer scroll */
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-
     background-color: rgba(0, 0, 0, 0.5); /* Fondo semi-transparente oscuro para crear un efecto de "bloqueo" del fondo */
-
     display: flex;              /* Flexbox para centrar el contenido del modal */
     justify-content: center;    /* Centrado horizontal */
-    align-items: center;        /* Centrado vertical */
-
+    align-items: center;        
     overflow-y: auto;           /* Habilita el scroll vertical si el modal completo es más grande que la pantalla */
     padding: 40px 20px;         /* Espacio alrededor del modal para que no quede pegado al borde si hace scroll */
-    
     z-index: 1000;              /* Asegura que esté por encima de casi todos los elementos del DOM */
+
 }
 
-
 .modal-contenido {
-    background-color: #D5D8EF;  /* Color de fondo del modal */
-    padding: 20px;              /* Espacio interno para que el contenido no toque los bordes */
-    border-radius: 15px;        /* Bordes redondeados */
-    
-    width: 600px;               /* Ancho fijo del modal */
-    max-width: 90%;             /* Para que se adapte mejor en pantallas pequeñas */
-
-    max-height: 90vh;           /* Altura máxima: 90% del alto de la ventana (viewport) */
-    overflow-y: auto;           /* Si el contenido es más alto que el modal, permite scroll interno */
-
-    position: relative;         /* Necesario si se colocan elementos posicionados dentro, como un botón de cerrar */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);  /* Sombra para dar efecto de profundidad/flotante */
+    background-color: #D5D8EF;
+    padding: 20px;
+    border-radius: 15px;
+    width: 750px; /* Aumentado a 750px para hacerlo más ancho en tamaño normal */
+    max-width: 90%; /* Se adapta en pantallas pequeñas */
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .modal-contenido::-webkit-scrollbar {
-    width: 8px; /* Grosor del scroll vertical dentro del modal */
+    width: 8px;
 }
 
 .modal-contenido::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2); /* Color del "pulgar" del scroll */
-    border-radius: 4px;                   /* Bordes redondeados del scroll */
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
 }
 
 /* Encabezado del modal */
@@ -58,7 +51,7 @@
 
 /* Contenedor de los campos del formulario */
 .grupo-formulario {
-    margin-bottom: 15px; 
+    margin-bottom: 15px;
 }
 
 .grupo-formulario label {
@@ -69,19 +62,57 @@
 }
 
 .grupo-formulario .form-control {
-    background-color: #fff; 
-    border: 1px solid #ced4da; 
+    background-color: #fff;
+    border: 1px solid #ced4da;
     border-radius: 5px;
     padding: 8px;
     width: 100%;
-    box-sizing: border-box; /* Controlar las dimensiones d ela caja*/
+    box-sizing: border-box;
     font-size: 14px;
 }
 
 /* Estilos para los botones */
 .pie-modal {
-    margin-top: 15px; 
+    margin-top: 15px;
     display: flex;
-    justify-content: flex-end; /* Alinea los botones a la derecha */
-    gap: 10px; /* Espacio entre botones */
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Media queries para responsividad en pantallas pequeñas */
+@media (max-width: 768px) {
+    .modal-contenido {
+        width: 100%; /* Ocupa todo el ancho disponible en pantallas pequeñas */
+        padding: 15px; /* Reduce el padding interno */
+    }
+
+    .encabezado-modal h2 {
+        font-size: 20px; /* Reduce el tamaño del título */
+    }
+
+    .grupo-formulario .form-control {
+        font-size: 12px; /* Reduce el tamaño de fuente de los inputs */
+        padding: 6px; /* Ajusta el padding de los inputs */
+    }
+
+    .pie-modal {
+        flex-direction: column; /* Apila los botones verticalmente */
+        align-items: flex-end;
+        gap: 8px; /* Reduce el espacio entre botones */
+    }
+
+    .pie-modal button {
+        width: 100%; /* Hace que los botones ocupen todo el ancho */
+    }
+}
+
+@media (max-width: 480px) {
+    .encabezado-modal h2 {
+        font-size: 18px; /* Más reducción en pantallas muy pequeñas */
+    }
+
+    .grupo-formulario .form-control {
+        font-size: 10px; /* Ajuste adicional en pantallas muy pequeñas */
+        padding: 4px; /* Reduce aún más el padding */
+    }
 }

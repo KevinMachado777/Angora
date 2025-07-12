@@ -7,6 +7,7 @@ import Personal from '../pages/Personal'
 import {Inventario} from '../pages/Inventario'
 import Ventas from '../pages/Ventas'
 import Portafolio from '../pages/Portafolio'
+import Pedidos from '../pages/Pedidos'
 
 
 // Definicion de las rutas de la aplicacion
@@ -25,6 +26,7 @@ const AppRoutes = () => {
                 <Route exact path="/inventarios" element={<Layout><Inventario /></Layout>} />
                 <Route exact path="/ventas" element={<Layout><Ventas /></Layout>} />
                 <Route exact path="/clientes" element={<Layout><Portafolio /></Layout>} />
+                <Route exact path="/pedidos" element={<Layout><Pedidos /></Layout>} />                
             </Routes>
         </BrowserRouter>
     )

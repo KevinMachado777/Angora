@@ -7,7 +7,7 @@ const Modal = ({ isOpen, onClose, children }) => {
 
     return (
         // Fondo oscuro al fondo del modal, cierra el modal al hacer clic fuera
-        <div className="modal-fondo" onClick={onClose}>
+        <div className="modal-fondo">
 
             {/* Contenedor del contenido del modal, el onClick 
             evita que se cierre la ventana al dar click en ella */}

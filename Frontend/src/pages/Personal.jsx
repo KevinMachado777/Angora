@@ -190,193 +190,194 @@ const Personal = () => {
     }
 
     return (
-        <main className="cards-grid-container">
+        <>
             <div className="titulo">
                 <h1>Personal</h1>
                 <BotonAgregar onClick={abrirModalAgregar}>
-
                 </BotonAgregar>
             </div>
 
-            {/* Mapeo de las personas para crear las tarjetas */}
-            {personas.map((persona) => (
-                <div key={persona.id} className="personal" onClick={clicTarjeta}>
+            <main className="cards-grid-container">
+                {/* Mapeo de las personas para crear las tarjetas */}
+                {personas.map((persona) => (
+                    <div key={persona.id} className="personal" onClick={clicTarjeta}>
 
-                    {/* Datos de enfrente de la tarjeta */}
-                    <div className="card-front">
-                        <img src={persona.imagen} alt="imagen_perfil" />
-                        <p>{persona.nombre}</p>
+                        {/* Datos de enfrente de la tarjeta */}
+                        <div className="card-front">
+                            <img src={persona.imagen} alt="imagen_perfil" />
+                            <p>{persona.nombre}</p>
 
-                        {/* Permisos debajo del nombre */}
-                        {persona.permisos && persona.permisos.length > 0 && (
-                            <div className="permisos-lista mt-2">
-                                {persona.permisos.map((permiso, i) => (
-                                    <span key={i} className="badge bg-secondary me-1">
-                                        {permiso}
-                                    </span>
-                                ))}
+                            {/* Permisos debajo del nombre */}
+                            {persona.permisos && persona.permisos.length > 0 && (
+                                <div className="permisos-lista mt-2">
+                                    {persona.permisos.map((permiso, i) => (
+                                        <span key={i} className="badge bg-secondary me-1">
+                                            {permiso}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Datos por detras de la tarjeta */}
+                        <div className="card-back">
+                            <p>Correo: {persona.correo}</p>
+                            <p>Teléfono: {persona.telefono}</p>
+                            <p>Dirección: {persona.direccion}</p>
+                            <div style={{ display: "flex", gap: "10px" }}>
+                                {/* Boton de editar */}
+                                <BotonEditar onClick={() => abrirModalEditar(persona)} />
+                                {/* Boton de eliminar */}
+                                <BotonEliminar onClick={() => abrirModalEliminacion(persona)} />
                             </div>
-                        )}
-                    </div>
-
-                    {/* Datos por detras de la tarjeta */}
-                    <div className="card-back">
-                        <p>Correo: {persona.correo}</p>
-                        <p>Teléfono: {persona.telefono}</p>
-                        <p>Dirección: {persona.direccion}</p>
-                        <div style={{ display: "flex", gap: "10px" }}>
-                            {/* Boton de editar */}
-                            <BotonEditar onClick={() => abrirModalEditar(persona)} />
-                            {/* Boton de eliminar */}
-                            <BotonEliminar onClick={() => abrirModalEliminacion(persona)} />
                         </div>
                     </div>
-                </div>
-            ))}
+                ))}
 
-            {/* Rendirizar la modal si se da en un boton de eliminar o editar */}
-            {modalAbierta && (
-                <Modal isOpen={modalAbierta} onClose={cerrarModal}>
-                    <div className="encabezado-modal">
+                {/* Rendirizar la modal si se da en un boton de eliminar o editar */}
+                {modalAbierta && (
+                    <Modal isOpen={modalAbierta} onClose={cerrarModal}>
+                        <div className="encabezado-modal">
 
-                        {/* Renderizado condicional para saber si vamos a actualizar o agregar */}
-                        <h2>
-                            {personaSelect ? "Modificar Personal" : "Agregar Personal"}
-                        </h2>
-                    </div>
+                            {/* Renderizado condicional para saber si vamos a actualizar o agregar */}
+                            <h2>
+                                {personaSelect ? "Modificar Personal" : "Agregar Personal"}
+                            </h2>
+                        </div>
 
-                    <form onSubmit={guardarEmpleado}>
-                        {!ModalEdicion && (
+                        <form onSubmit={guardarEmpleado}>
+                            {!ModalEdicion && (
+                                <div className="grupo-formulario">
+                                    <label>Id:</label>
+                                    <input
+                                        type="text"
+                                        defaultValue={personaSelect ? personaSelect.id : ""}
+                                        className="form-control mb-2"
+                                        required
+                                    />
+                                </div>
+                            )}
+
                             <div className="grupo-formulario">
-                                <label>Id:</label>
+                                <label>Nombre:</label>
                                 <input
                                     type="text"
-                                    defaultValue={personaSelect ? personaSelect.id : ""}
+                                    name="nombre"
+                                    value={formulario.nombre}
+                                    onChange={manejarCambioFormulario}
                                     className="form-control mb-2"
                                     required
                                 />
                             </div>
-                        )}
 
-                        <div className="grupo-formulario">
-                            <label>Nombre:</label>
-                            <input
-                                type="text"
-                                name="nombre"
-                                value={formulario.nombre}
-                                onChange={manejarCambioFormulario}
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-
-                        <div className="grupo-formulario">
-                            <label>Correo:</label>
-                            <input
-                                type="email"
-                                name="correo"
-                                value={formulario.correo}
-                                onChange={manejarCambioFormulario}
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-
-                        <div className="grupo-formulario">
-                            <label>Teléfono:</label>
-                            <input
-                                type="text"
-                                name="telefono"
-                                value={formulario.telefono}
-                                onChange={manejarCambioFormulario}
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-
-                        <div className="grupo-formulario">
-                            <label>Dirección:</label>
-                            <input
-                                type="text"
-                                name="direccion"
-                                value={formulario.direccion}
-                                onChange={manejarCambioFormulario}
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-
-                        <div className="grupo-formulario">
-                            <label>Foto de perfil:</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => manejarCambioFormulario(e)}
-                                className="form-control mb-2"
-                            />
-                        </div>
-
-                        {/* Vista previa de imagen */}
-                        {formulario.imagen && (
-                            <div className="grupo-formulario text-center">
-                                <img
-                                    src={formulario.imagen}
-                                    alt="Vista previa"
-                                    style={{
-                                        width: "100px",
-                                        height: "100px",
-                                        objectFit: "cover",
-                                        borderRadius: "50%",
-                                        border: "2px solid #ccc",
-                                        marginBottom: "10px"
-                                    }}
+                            <div className="grupo-formulario">
+                                <label>Correo:</label>
+                                <input
+                                    type="email"
+                                    name="correo"
+                                    value={formulario.correo}
+                                    onChange={manejarCambioFormulario}
+                                    className="form-control mb-2"
+                                    required
                                 />
                             </div>
-                        )}
 
-                        <div className="grupo-formulario">
-                            <label>Permisos:</label>
-                            <div className="d-flex justify-content-between mb-2">
-                                {["Ventas", "Inventario", "Reportes", "Pedidos", "Tickets", "Clientes", "Perfil", "Ord. de Compra"].map(permiso => (
-                                    <label key={permiso} className="me-3">
-                                        <input
-                                            type="checkbox"
-                                            name="permisos"
-                                            value={permiso}
-                                            checked={formulario.permisos.includes(permiso)}
-                                            onChange={manejarCambioFormulario}
-                                        /> {permiso}
-                                    </label>
-                                ))}
+                            <div className="grupo-formulario">
+                                <label>Teléfono:</label>
+                                <input
+                                    type="text"
+                                    name="telefono"
+                                    value={formulario.telefono}
+                                    onChange={manejarCambioFormulario}
+                                    className="form-control mb-2"
+                                    required
+                                />
                             </div>
-                        </div>
 
-                        {/* Botones de cancelar y guardar al final de la modal */}
+                            <div className="grupo-formulario">
+                                <label>Dirección:</label>
+                                <input
+                                    type="text"
+                                    name="direccion"
+                                    value={formulario.direccion}
+                                    onChange={manejarCambioFormulario}
+                                    className="form-control mb-2"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grupo-formulario">
+                                <label>Foto de perfil:</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => manejarCambioFormulario(e)}
+                                    className="form-control mb-2"
+                                />
+                            </div>
+
+                            {/* Vista previa de imagen */}
+                            {formulario.imagen && (
+                                <div className="grupo-formulario text-center">
+                                    <img
+                                        src={formulario.imagen}
+                                        alt="Vista previa"
+                                        style={{
+                                            width: "100px",
+                                            height: "100px",
+                                            objectFit: "cover",
+                                            borderRadius: "50%",
+                                            border: "2px solid #ccc",
+                                            marginBottom: "10px"
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="grupo-formulario">
+                                <label>Permisos:</label>
+                                <div className="d-flex justify-content-between mb-2">
+                                    {["Ventas", "Inventario", "Reportes", "Pedidos", "Tickets", "Clientes", "Perfil", "Ord. de Compra"].map(permiso => (
+                                        <label key={permiso} className="me-3">
+                                            <input
+                                                type="checkbox"
+                                                name="permisos"
+                                                value={permiso}
+                                                checked={formulario.permisos.includes(permiso)}
+                                                onChange={manejarCambioFormulario}
+                                            /> {permiso}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Botones de cancelar y guardar al final de la modal */}
+                            <div className="pie-modal">
+                                <BotonCancelar type="button" onClick={cerrarModal} />
+                                <BotonGuardar type="submit" />
+                            </div>
+                        </form>
+                    </Modal>
+                )}
+
+                {/* Modal de confirmacion para eliminar */}
+                {confirmarEliminacion && (
+                    <Modal isOpen={confirmarEliminacion} onClose={cerrarModalConfirmacion}>
+                        <div className="encabezado-modal">
+                            <h2>Confirmar Eliminación</h2>
+                        </div>
+                        <p>¿Desea eliminar al empleado {personaEliminar?.nombre}?</p>
                         <div className="pie-modal">
-                            <BotonCancelar type="button" onClick={cerrarModal} />
-                            <BotonGuardar type="submit" />
+                            {/* Cerrar modal si se cancela */}
+                            <BotonCancelar onClick={() => cerrarModalConfirmacion(false)} />
+
+                            {/* Cerrar y eliminar el empleado si se da aceptar */}
+                            <BotonAceptar onClick={() => cerrarModalConfirmacion(true)} />
                         </div>
-                    </form>
-                </Modal>
-            )}
-
-            {/* Modal de confirmacion para eliminar */}
-            {confirmarEliminacion && (
-                <Modal isOpen={confirmarEliminacion} onClose={cerrarModalConfirmacion}>
-                    <div className="encabezado-modal">
-                        <h2>Confirmar Eliminación</h2>
-                    </div>
-                    <p>¿Desea eliminar al empleado {personaEliminar?.nombre}?</p>
-                    <div className="pie-modal">
-                        {/* Cerrar modal si se cancela */}
-                        <BotonCancelar onClick={() => cerrarModalConfirmacion(false)} />
-
-                        {/* Cerrar y eliminar el empleado si se da aceptar */}
-                        <BotonAceptar onClick={() => cerrarModalConfirmacion(true)} />
-                    </div>
-                </Modal>
-            )}
-        </main>
+                    </Modal>
+                )}
+            </main>
+        </>
     )
 }
 
