@@ -3,7 +3,7 @@
 }
 
 .formulario {
-    width: 500px;
+    width: 430px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -20,7 +20,6 @@
 }
 
 .informacion {
-   
     max-width: 350px;
     text-align: center;
     align-items: center;
@@ -28,23 +27,23 @@
 }
 
 .renderizado {
-
     padding: 30px;
-
     width: max-content;
     box-shadow: 0 0 10px black;
     border-radius: 50px;
-    background: radial-gradient(circle, rgb(255, 255, 255) , rgb(187, 226, 255)) ; /* Fondo gris fijo */
-    
+    background: radial-gradient(circle, rgb(255, 255, 255), rgb(187, 226, 255));
+    /* Fondo gris fijo */
 }
+
 .tarjeta-perfil {
     text-align: center;
-    background: radial-gradient(circle, rgb(255, 255, 255) , rgb(187, 226, 255)) ; /* Fondo gris fijo */
+    background: radial-gradient(circle, rgb(255, 255, 255), rgb(187, 226, 255));
+    /* Fondo gris fijo */
     border-radius: 50px;
     cursor: pointer;
     perspective: 1000px;
     padding: 0 100px;
-    box-shadow: 0 0 15px ;
+    box-shadow: 0 0 15px;
 }
 
 .tarjeta-perfil button {
@@ -54,11 +53,10 @@
     border-radius: 10px;
     border: none;
     margin-bottom: 10px;
-    transition: transform  .5s ease;
+    transition: transform .5s ease;
 }
 
 .tarjeta-perfil button:hover {
-
     background-color: rgb(8, 111, 207);
     transform: scale(1.1);
 }
@@ -70,7 +68,8 @@
 .carta-general {
     position: relative;
     width: 100%;
-    height: 400px; /* Ajusta según el tamaño necesario */
+    height: 400px;
+    /* Ajusta según el tamaño necesario */
     transition: transform 0.6s;
     transform-style: preserve-3d;
 }
@@ -92,14 +91,26 @@
 }
 
 .carta-frontal * {
-
     margin: 20px 0;
-    
 }
 
 h3 {
-  font-size: clamp(14px, 2vw, 24px);
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+    font-size: clamp(14px, 2vw, 24px);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
+/* Media query para hacer el formulario responsivo */
+@media (max-width: 767px) {
+    .formulario {
+        width: 100%; /* Ajusta el ancho al 100% en pantallas pequeñas */
+        max-width: 300px; /* Limita el ancho máximo al tamaño de las columnas de .main-perfil */
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .formulario {
+        width: 100%; /* Ajusta el ancho al 100% en pantallas medianas */
+        max-width: 400px; /* Limita el ancho máximo para pantallas medianas */
+    }
+}

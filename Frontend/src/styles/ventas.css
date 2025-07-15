@@ -1,143 +1,153 @@
+/* Contenedor principal de ventas */
 .ventas {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 20px;
+    display: flex;
+    flex-direction: column; /* Organiza los elementos en columna */
+    gap: 20px; /* Espacio entre elementos */
+    padding: 20px; 
 }
 
+/* Título de la sección */
 .titulo {
-  font-size: 2.5rem;
-  margin-bottom: 20px;
+    font-size: 2.5rem; 
+    margin-bottom: 20px; 
 }
 
+/* Formulario de ventas */
 .ventas-formulario {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: space-evenly;
-  align-items: center;
-  margin-bottom: 20px;
-  box-sizing: border-box;
-  
+    display: flex; /* Usa Flexbox para layout */
+    gap: 10px; /* Espacio entre elementos */
+    flex-wrap: wrap; /* Permite que los elementos se envuelvan */
+    justify-content: space-evenly; /* Distribuye el espacio uniformemente */
+    align-items: center; 
+    margin-bottom: 20px; 
+    box-sizing: border-box; /* Incluye bordes y padding en el cálculo del tamaño */
 }
 
+/* Contenedor de cada elemento del formulario */
 .ventas-formulario div {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+    display: flex;
+    flex-direction: column; /* Organiza los hijos en columna */
+    align-items: center; 
 }
 
+/* Inputs dentro del formulario */
 .ventas-formulario input {
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  width: 200px;
-  font-size: 1rem;
+    padding: 8px 12px; 
+    border: 1px solid #ccc; 
+    width: 200px; 
+    font-size: 1rem; 
 }
 
+/* Etiquetas dentro del formulario */
 .ventas-formulario label {
-  font-weight: bold;
+    font-weight: bold; 
 }
 
+/* Contenedor flexible del modal */
 .modal-flex {
-  display: flex;
-  gap: 1rem;
+    display: flex; /* Usa Flexbox para layout */
+    gap: 1rem; /* Espacio entre elementos */
 }
 
 /* Ticket visual */
 .ticket {
-  background: white;
-  color: black;
-  padding: 20px;
-  flex: 2;
-  border-radius: 10px;
+    background: white;
+    color: black;
+    padding: 20px; 
+    flex: 2; /* Ocupa el 66% del espacio disponible */
 }
 
+/* Tabla dentro del ticket */
 .ticket table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 10px 0;
+    width: 100%; 
+    border-collapse: collapse;
+    margin: 10px 0; 
 }
 
 .ticket th,
 .ticket td {
-  border: 1px solid #ccc;
-  padding: 5px 10px;
-  text-align: center;
+    border: 1px solid #ccc; 
+    padding: 5px 10px; 
+    text-align: center; 
 }
 
 /* Panel derecho no imprimible */
 .ticket-panel {
-  background-color: #002f3d;
-  color: white;
-  padding: 20px;
-  border-radius: 10px;
-  flex: 1;
+    background-color: #002f3d;
+    color: white;
+    padding: 20px; 
+    flex: 1; /* Ocupa el 33% del espacio disponible */
 }
 
+/* Inputs y textarea dentro del panel derecho */
 .ticket-panel input[type="number"],
 .ticket-panel textarea {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  margin-top: 5px;
-  border: none;
-  font-size: 1rem;
+    width: 100%; 
+    padding: 10px; 
+    margin-top: 5px; 
+    border: none; 
+    font-size: 1rem; 
 }
 
 .ticket-panel h3 {
-  background-color: #00bcd4;
-  padding: 10px;
-  border-radius: 8px;
-  text-align: center;
+    background-color: #00bcd4;
+    padding: 10px; 
+    text-align: center; 
 }
 
 .ticket-panel label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  font-size: 1rem;
+    display: flex; /* Usa Flexbox para layout */
+    align-items: center; 
+    gap: 10px; /* Espacio entre elementos */
+    margin-top: 10px; 
+    font-size: 1rem; 
 }
 
 /* Botones de acción */
 .acciones,
 .acciones-no-print {
-  display: flex;
-  justify-content: space-around;
-  margin-top: 20px;
+    display: flex; /* Usa Flexbox para layout */
+    justify-content: space-around; /* Distribuye botones con espacio */
+    margin-top: 20px; 
 }
 
-/* ------------------------------- */
-/*         ESTILOS DE IMPRESIÓN   */
+/* Media queries para responsividad */
+@media (max-width: 768px) {
+    .modal-flex {
+        flex-direction: column; /* Cambia a diseño vertical en pantallas pequeñas */
+    }
 
+    .ticket,
+    .ticket-panel {
+        flex: none; /* Elimina el comportamiento flexible */
+        width: 100%; /* Ocupa todo el ancho */
+    }
+}
+
+/* ESTILOS DE IMPRESIÓN */
 @media print {
-  body * {
-    visibility: hidden;
-  }
+    body * {
+        visibility: hidden; /* Oculta todo excepto lo especificado */
+    }
 
-  .ticket, .ticket * {
-    visibility: visible;
-  }
+    .ticket,
+    .ticket * {
+        visibility: visible; /* Muestra solo el ticket */
+    }
 
-  .ticket {
-    width: 80mm; 
-    padding: 10px;
-    font-size: 12px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    background: white;
-    color: black;
-  }
+    .ticket {
+        width: 80mm; /* Ancho fijo para impresión */
+        padding: 10px; /* Relleno interno */
+        font-size: 12px; /* Tamaño de fuente pequeño */
+        position: fixed; /* Fija la posición */
+        top: 0;
+        left: 0;
+        background: white;
+        color: black;
+    }
 
-  @page {
-    size: 80mm auto; 
-    margin: 0;
-  }
+    @page {
+        size: 80mm auto; /* Tamaño de página personalizado */
+        margin: 0; /* Sin márgenes */
+    }
 }
-
-
-
-
-

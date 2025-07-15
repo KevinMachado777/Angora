@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreadorTabla } from '../components/CreadorTabla';
-import { TablaAbonos } from '../components/TablaAbonos';
+// Nuevo componente importado para mostrar facturas
+import TablaFacturas from "../components/TablaFacturas";
 import Modal from "../components/Modal";
 import "../styles/portafolio.css";
 import BotonAgregar from '../components/botonAgregar';
@@ -8,12 +9,13 @@ import BotonCancelar from "../components/BotonCancelar";
 import BotonGuardar from "../components/BotonGuardar";
 import BotonAceptar from "../components/BotonAceptar";
 import BotonCartera from '../components/BotonCartera';
+import { NumericFormat } from "react-number-format";
 
 const Portafolio = () => {
     // Cabeceros de la tabla principal
     const cabeceros = ["Id", "Nombre", "Apellido", "Correo", "Teléfono", "Dirección", "Cartera"];
 
-    // Datos para simular cliente 
+    // Datos iniciales para simular clientes
     const datosIniciales = [
         { id: 1, nombre: "Kevin", apellido: "Machado", correo: "kevin@example.com", telefono: "3196382919", direccion: "Urrao", credito: false },
         { id: 2, nombre: "Samuel", apellido: "Rios", correo: "samuel@example.com", telefono: "3109876543", direccion: "Tamesis", credito: false },
@@ -23,16 +25,21 @@ const Portafolio = () => {
         cartera: credito ? "Activa" : "Desactivada"
     }));
 
-    // Cabeceros de la tabla de credito
-    const cabecerosCredito = ["Id", "Nombre", "Cantidad", "Precio Unitario", "Total"];
-
-    // Estado para almacenar los productos de credito por cada cliente
-    const [creditosPorCliente, setCreditosPorCliente] = useState({});
+    // Estado para almacenar las facturas de crédito por cada cliente
+    const [creditosPorCliente, setCreditosPorCliente] = useState(() => {
+        const storedCreditos = localStorage.getItem("creditosPorCliente");
+        return storedCreditos ? JSON.parse(storedCreditos) : {};
+    });
 
     // Estado para almacenar los registros de clientes
-    const [registros, setRegistros] = useState(datosIniciales);
+    const [registros, setRegistros] = useState(() => {
+        const storedClientes = localStorage.getItem("clientes");
+        return storedClientes && JSON.parse(storedClientes).length > 0
+            ? JSON.parse(storedClientes)
+            : datosIniciales;
+    });
 
-    // Estado para controlar si la modal principal esta abierta
+    // Estado para controlar si la modal principal está abierta
     const [modalAbierta, setModalAbierta] = useState(false);
 
     // Estado para almacenar la persona seleccionada
@@ -44,7 +51,7 @@ const Portafolio = () => {
     // Estado para almacenar la persona a eliminar
     const [personaEliminar, setPersonaEliminar] = useState(null);
 
-    // Estado para controlar si la modal de cartera esta abierta
+    // Estado para controlar si la modal de cartera está abierta
     const [modalCartera, setModalCartera] = useState(false);
 
     // Estado para almacenar la persona de la cartera seleccionada
@@ -56,15 +63,6 @@ const Portafolio = () => {
     // Estado para controlar si el crédito está activo
     const [creditoActivo, setCreditoActivo] = useState(false);
 
-    // Estado para controlar si la modal de edición de productos está abierta
-    const [modalProductosEditar, setModalProductosEditar] = useState(false);
-
-    // Estado para almacenar el producto a editar
-    const [productoEditar, setProductoEditar] = useState(null);
-
-    // Estado para controlar si la modal de agregar productos está abierta
-    const [modalProductosAgregar, setModalProductosAgregar] = useState(false);
-
     // Estado para controlar la modal de advertencia de eliminación
     const [modalAdvertenciaEliminacion, setModalAdvertenciaEliminacion] = useState(false);
 
@@ -73,19 +71,33 @@ const Portafolio = () => {
     const [cantidadAbonar, setCantidadAbonar] = useState("");
     const [modalAdvertenciaAbono, setModalAdvertenciaAbono] = useState(false);
 
-    // Estado para el boton de guardar en abonos
+    // Estado para el botón de guardar en abonos
     const [botonDesactivado, setBotonDesactivado] = useState(false);
+
+    // Estado para controlar la modal de detalles de la factura
+    const [modalDetallesAbierta, setModalDetallesAbierta] = useState(false);
+
+    // Estado para almacenar la factura seleccionada
+    const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+
+    // Sincronizar registros con localStorage cuando cambien
+    useEffect(() => {
+        localStorage.setItem("clientes", JSON.stringify(registros));
+    }, [registros]);
+
+    // Sincronizar creditosPorCliente con localStorage cuando cambien
+    useEffect(() => {
+        localStorage.setItem("creditosPorCliente", JSON.stringify(creditosPorCliente));
+    }, [creditosPorCliente]);
 
     // Efecto para actualizar el estado de crédito activo según la persona seleccionada
     useEffect(() => {
         if (personaSelect) {
             setCreditoActivo(personaSelect.cartera === "Activa");
-            // Si la persona seleccionada tiene productos de crédito, los asignamos
             setCreditosPorCliente((prev) => ({
                 ...prev,
-                [personaSelect.id]: prev[personaSelect.id] || { productos: [], saldoPendiente: 0 }
+                [personaSelect.id]: prev[personaSelect.id] || { facturas: [], saldoPendiente: 0 }
             }));
-            // Actualizamos los productos de crédito para la persona seleccionada
         } else {
             setCreditoActivo(false);
         }
@@ -94,17 +106,17 @@ const Portafolio = () => {
     // Efecto para calcular el saldo pendiente de cada cliente
     useEffect(() => {
         if (personaCartera) {
-            const dataCliente = creditosPorCliente[personaCartera.id] || { productos: [], saldoPendiente: 0 };
+            const dataCliente = creditosPorCliente[personaCartera.id] || { facturas: [], saldoPendiente: 0 };
             const totalPendiente = dataCliente.saldoPendiente !== undefined
                 ? dataCliente.saldoPendiente
-                : dataCliente.productos.reduce((sum, prod) => sum + (prod.total || 0), 0) || 0;
+                : dataCliente.facturas.reduce((sum, factura) => sum + (factura.total || 0), 0) || 0;
             setSaldoPendiente(totalPendiente);
             const cantidad = parseFloat(cantidadAbonar) || 0;
             setBotonDesactivado(cantidad > totalPendiente || cantidad <= 0);
         } else {
             setBotonDesactivado(true);
         }
-    }, [personaCartera, creditosPorCliente]);
+    }, [personaCartera, creditosPorCliente, cantidadAbonar]);
 
     // Función para abrir la modal de agregar cliente
     const abrirModalAgregar = () => {
@@ -155,6 +167,7 @@ const Portafolio = () => {
     const cerrarModalcartera = () => {
         setModalCartera(false);
         setPersonaCartera(null);
+        setCantidadAbonar("");
     };
 
     // Función para mostrar la modal de carteras activas
@@ -167,108 +180,10 @@ const Portafolio = () => {
         setModalCarterasAbierta(false);
     };
 
-    // Función para abrir la modal de agregar producto de crédito
-    const modalAgregarProd = () => {
-        setModalProductosAgregar(true);
-    };
-
-    // Función para cerrar la modal de advertencia de eliminacion
+    // Función para cerrar la modal de advertencia de eliminación
     const cerrarModalAdvertencia = () => {
         setModalAdvertenciaEliminacion(false);
         setPersonaEliminar(null);
-    };
-
-    // Función para guardar un nuevo producto de crédito
-    const guardarProductoNuevo = (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const nuevoProducto = {
-            id: Date.now(), // Genera un ID único basado en la fecha actual
-            nombre: form.nombre.value,
-            cantidad: parseInt(form.cantidad.value),
-            precioUnitario: parseFloat(form.precioUnitario.value),
-            total: parseInt(form.cantidad.value) * parseFloat(form.precioUnitario.value)
-        };
-        // Actualiza el estado de los productos de crédito
-        setCreditosPorCliente((prev) => {
-            const dataCliente = prev[personaSelect.id] || { productos: [], saldoPendiente: 0 };
-            const nuevoSaldoPendiente = dataCliente.saldoPendiente + nuevoProducto.total;
-            return {
-                ...prev,
-                [personaSelect.id]: {
-                    productos: [...dataCliente.productos, nuevoProducto],
-                    saldoPendiente: nuevoSaldoPendiente
-                }
-            };
-        });
-        setModalProductosAgregar(false);
-    };
-
-    // Función para abrir la modal de edición de un producto de crédito
-    const modalEditarProd = (producto) => {
-        setProductoEditar(producto);
-        setModalProductosEditar(true);
-    };
-
-    // Función para eliminar un producto de crédito
-    const eliminarProductoCredito = (producto) => {
-        setCreditosPorCliente((prev) => {
-            if (personaSelect && prev[personaSelect.id]) {
-                const nuevosProductos = prev[personaSelect.id].productos.filter((p) => p.id != producto.id);
-                const nuevoSaldoPendiente = nuevosProductos.reduce((sum, prod) => sum + (prod.total || 0), 0);
-                return {
-                    ...prev,
-                    [personaSelect.id]: {
-                        productos: nuevosProductos,
-                        saldoPendiente: nuevoSaldoPendiente
-                    }
-                };
-            }
-            return prev;
-        });
-    };
-
-    // Función para guardar los cambios en un producto de crédito
-    const guardarProductoCredito = (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const productoActualizado = {
-            id: productoEditar.id,
-            nombre: form.nombre.value,
-            cantidad: parseInt(form.cantidad.value),
-            precioUnitario: parseFloat(form.precioUnitario.value),
-            total: parseInt(form.cantidad.value) * parseFloat(form.precioUnitario.value)
-        };
-        // Actualiza el producto en el estado de productos de crédito
-        setCreditosPorCliente((prev) => {
-            if (personaSelect && prev[personaSelect.id]) {
-                const nuevosProductos = prev[personaSelect.id].productos.map((p) =>
-                    p.id === productoEditar.id ? productoActualizado : p
-                );
-                const nuevoSaldo = nuevosProductos.reduce((sum, prod) => sum + (prod.total || 0), 0);
-                return {
-                    ...prev,
-                    [personaSelect.id]: {
-                        productos: nuevosProductos,
-                        saldoPendiente: nuevoSaldo
-                    }
-                };
-            }
-            return prev;
-        });
-        setModalProductosEditar(false); // Cierra la modal de edición
-        setProductoEditar(null);
-    };
-
-    // Función para cerrar la modal de edición de productos
-    const cerrarModalProductosEditar = () => {
-        setModalProductosEditar(false);
-        setProductoEditar(null);
-    };
-
-    // Función para cerrar la modal de agregar productos
-    const cerrarModalProductosAgregar = () => {
-        setModalProductosAgregar(false);
     };
 
     // Función para guardar un cliente
@@ -289,17 +204,13 @@ const Portafolio = () => {
         } else {
             setRegistros([...registros, nuevoRegistro]);
         }
-
-        // Si las ventanas modales de productos no están abiertas, podemos cerrar la modal principal
-        if (!modalProductosEditar && !modalProductosAgregar) {
-            cerrarModalPrincipal();
-        }
+        cerrarModalPrincipal();
     };
 
-    // Funcion para procesar los abonos
+    // Función para procesar los abonos
     const procesarAbono = () => {
         const cantidad = parseFloat(cantidadAbonar) || 0;
-        if (cantidad <= 100 || cantidad > saldoPendiente) {
+        if (cantidad <= 0 || cantidad > saldoPendiente) {
             setModalAdvertenciaAbono(true);
             return;
         }
@@ -307,16 +218,14 @@ const Portafolio = () => {
             setCreditosPorCliente(prev => {
                 const nuevoSaldo = prev[personaCartera.id].saldoPendiente - cantidad;
                 if (nuevoSaldo <= 0) {
-                    // Si el abono cubre todo o más, limpiar los productos
                     return {
                         ...prev,
                         [personaCartera.id]: {
-                            productos: [],
+                            facturas: [],
                             saldoPendiente: 0
                         }
                     };
                 } else {
-                    // Si aún queda saldo, mantener los productos y actualizar el saldo
                     return {
                         ...prev,
                         [personaCartera.id]: {
@@ -331,13 +240,23 @@ const Portafolio = () => {
         cerrarModalcartera();
     };
 
+    // Función para abrir la modal de detalles de la factura
+    const abrirModalDetalles = (factura) => {
+        setFacturaSeleccionada(factura);
+        setModalDetallesAbierta(true);
+    };
+
+    // Nueva función para cerrar la modal de detalles
+    const cerrarModalDetalles = () => {
+        setModalDetallesAbierta(false);
+        setFacturaSeleccionada(null);
+    };
+
     return (
         <main className='main-home inventario'>
             {/* Contenedor principal para el título y botones de acción */}
             <div className="titulo">
-                {/* Título de la sección de clientes */}
                 <h1>Clientes</h1>
-                {/* Contenedor de botones para agregar cliente y ver carteras activas */}
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <BotonAgregar onClick={abrirModalAgregar} />
                     <button className="btn-cartera-activa" onClick={mostrarModalCarteras}>
@@ -357,11 +276,9 @@ const Portafolio = () => {
             {/* Modal para mostrar clientes con carteras activas */}
             {modalCarterasAbierta && (
                 <Modal isOpen={modalCarterasAbierta} onClose={cerrarModalCarteras}>
-                    {/* Encabezado de la modal de carteras */}
                     <div className="encabezado-modal">
                         <h2>Clientes con cartera activa</h2>
                     </div>
-                    {/* Lista de clientes con carteras activas */}
                     {registros.map((registro) => (
                         registro.cartera === "Activa" && (
                             <div key={registro.id} className="cartera-row" style={{ marginTop: '10px', display: 'flex', alignItems: 'center' }}>
@@ -370,7 +287,6 @@ const Portafolio = () => {
                             </div>
                         )
                     ))}
-                    {/* Pie de la modal con botón de cancelar */}
                     <div className="pie-modal">
                         <BotonCancelar type="button" onClick={cerrarModalCarteras} />
                     </div>
@@ -380,11 +296,9 @@ const Portafolio = () => {
             {/* Modal principal para agregar o modificar clientes */}
             {modalAbierta && (
                 <Modal isOpen={modalAbierta} onClose={cerrarModalPrincipal}>
-                    {/* Encabezado de la modal principal */}
                     <div className="encabezado-modal">
                         <h2>{personaSelect ? "Modificar Cliente" : "Agregar Cliente"}</h2>
                     </div>
-                    {/* Formulario para los datos del cliente */}
                     <form onSubmit={guardarCliente}>
                         {!personaSelect && (
                             <div className="grupo-formulario">
@@ -448,35 +362,37 @@ const Portafolio = () => {
                                     type="checkbox"
                                     checked={creditoActivo}
                                     onChange={(e) => {
-                                        const nuevosProductos = creditosPorCliente[personaSelect?.id]?.productos.length || [];
-                                        if (e.target.checked || nuevosProductos.length === 0) {
+                                        const nuevasFacturas = creditosPorCliente[personaSelect?.id]?.facturas?.length || 0;
+                                        if (e.target.checked || nuevasFacturas === 0) {
                                             setCreditoActivo(e.target.checked);
                                         }
                                     }}
-                                    disabled={creditoActivo && (creditosPorCliente[personaSelect?.id]?.length || 0) > 0}
+                                    disabled={creditoActivo && (creditosPorCliente[personaSelect?.id]?.facturas?.length || 0) > 0}
                                 /> Crédito
                             </label>
                         </div>
 
-                        {/* Sección de productos de crédito si el crédito está activo */}
+                        {/* Uso de TablaFacturas para mostrar facturas en formato de array */}
                         {creditoActivo && (
                             <div>
-                                <h3>Productos por crédito</h3>
-                                <BotonAgregar onClick={modalAgregarProd} />
-                                {creditosPorCliente[personaSelect?.id]?.productos?.length > 0 ? (
-                                    <CreadorTabla
-                                        cabeceros={cabecerosCredito}
-                                        registros={creditosPorCliente[personaSelect?.id]?.productos}
-                                        onEditar={modalEditarProd}
-                                        onEliminar={eliminarProductoCredito}
+                                <h3>Facturas por crédito</h3>
+                                {creditosPorCliente[personaSelect?.id]?.facturas?.length > 0 ? (
+                                    <TablaFacturas
+                                        encabezados={["Id Factura", "Fecha", "Total"]}
+                                        registros={creditosPorCliente[personaSelect.id].facturas.map(factura => [
+                                            factura.idFactura,
+                                            factura.fecha,
+                                            `$${factura.total.toLocaleString('es-CO')}`,
+                                            { _factura: factura }
+                                        ])}
+                                        onIconClick={abrirModalDetalles}
                                     />
                                 ) : (
-                                    <p style={{ marginTop: '20px' }}>No hay productos de crédito asociados.</p>
+                                    <p style={{ marginTop: '20px' }}>No hay facturas de crédito asociadas.</p>
                                 )}
                             </div>
                         )}
 
-                        {/* Pie de la modal con botones de cancelar y guardar */}
                         <div className="pie-modal">
                             <BotonCancelar type="button" onClick={cerrarModalPrincipal} />
                             <BotonGuardar type="submit" />
@@ -488,13 +404,10 @@ const Portafolio = () => {
             {/* Modal para confirmar eliminación de un cliente */}
             {confirmarEliminacion && (
                 <Modal isOpen={confirmarEliminacion} onClose={() => cerrarModalConfirmacion(false)}>
-                    {/* Encabezado de la modal de confirmación */}
                     <div className="encabezado-modal">
                         <h2>Confirmar Eliminación</h2>
                     </div>
-                    {/* Mensaje de confirmación */}
                     <p>¿Desea eliminar al cliente {personaEliminar?.nombre} {personaEliminar?.apellido}?</p>
-                    {/* Pie de la modal con botones de cancelar y aceptar */}
                     <div className="pie-modal">
                         <BotonCancelar type="button" onClick={() => cerrarModalConfirmacion(false)} />
                         <BotonAceptar onClick={() => cerrarModalConfirmacion(true)} />
@@ -514,7 +427,6 @@ const Portafolio = () => {
 
                 {personaCartera && (
                     <div className="cartera-container">
-
                         <label className="cartera-label">Saldo pendiente</label>
                         <input
                             type="text"
@@ -534,16 +446,22 @@ const Portafolio = () => {
                             onChange={(e) => setCantidadAbonar(e.target.value)}
                         />
 
-                        {/* Tabla de productos */}
-                        {saldoPendiente > 0 ? (
+                        {/* Uso de TablaFacturas para mostrar facturas en formato de array */}
+                        {saldoPendiente > 0 && creditosPorCliente[personaCartera.id]?.facturas?.length > 0 ? (
                             <div className="cartera-tabla">
-                                <TablaAbonos
-                                    cabeceros={["Id", "Nombre", "Cantidad", "Precio Unitario", "Total"]}
-                                    registros={creditosPorCliente[personaCartera.id].productos}
+                                <TablaFacturas
+                                    encabezados={["Id Factura", "Fecha", "Total"]}
+                                    registros={creditosPorCliente[personaCartera.id].facturas.map(factura => [
+                                        factura.idFactura,
+                                        factura.fecha,
+                                        `$${factura.total.toLocaleString('es-CO')}`,
+                                        { _factura: factura }
+                                    ])}
+                                    onIconClick={abrirModalDetalles}
                                 />
                             </div>
                         ) : (
-                            <p style={{ marginTop: '20px' }}>No hay productos de crédito asociados.</p>
+                            <p style={{ marginTop: '20px' }}>No hay facturas de crédito asociadas.</p>
                         )}
                     </div>
                 )}
@@ -554,96 +472,79 @@ const Portafolio = () => {
                 </div>
             </Modal>
 
-            {/* Modal para editar un producto de crédito */}
-            {modalProductosEditar && productoEditar && (
-                <Modal isOpen={modalProductosEditar} onClose={cerrarModalProductosEditar}>
-                    {/* Encabezado de la modal de edición */}
+            {/* Modal para mostrar los detalles de la factura */}
+            {modalDetallesAbierta && (
+                <Modal isOpen={modalDetallesAbierta} onClose={cerrarModalDetalles}>
                     <div className="encabezado-modal">
-                        <h2>Editar Producto de Crédito</h2>
+                        <h2>Detalles de la Factura</h2>
                     </div>
-                    {/* Formulario para editar el producto */}
-                    <form onSubmit={guardarProductoCredito}>
-                        <div className="grupo-formulario">
-                            <label>Nombre:</label>
-                            <input
-                                type="text"
-                                name="nombre"
-                                defaultValue={productoEditar.nombre}
-                                className="form-control mb-2"
-                                required
-                            />
+                    {facturaSeleccionada && (
+                        <div className="ticket">
+                            <h2 style={{ textAlign: "center" }}>Fragancey´s</h2>
+                            <p><strong>Ticket #{facturaSeleccionada.idFactura}</strong></p>
+                            <p>Fecha: {facturaSeleccionada.fecha}</p>
+                            <p>Cliente: {personaCartera?.nombre} {personaCartera?.apellido}</p>
+                            <hr />
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nombre</th>
+                                        <th>Cant.</th>
+                                        <th>Precio</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {facturaSeleccionada.productos && facturaSeleccionada.productos.length > 0 ? (
+                                        facturaSeleccionada.productos.map((item, i) => (
+                                            <tr key={i}>
+                                                <td>{item.id}</td>
+                                                <td>{item.nombre}</td>
+                                                <td>{item.cantidad}</td>
+                                                <td>
+                                                    <NumericFormat
+                                                        value={item.precioUnitario}
+                                                        displayType={"text"}
+                                                        thousandSeparator={true}
+                                                        prefix={"$"}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <NumericFormat
+                                                        value={item.total}
+                                                        displayType={"text"}
+                                                        thousandSeparator={true}
+                                                        prefix={"$"}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="5">No hay productos en esta factura.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                            <hr />
+                            <p>
+                                <strong>Total a pagar: </strong>
+                                <NumericFormat
+                                    value={facturaSeleccionada.total}
+                                    displayType="text"
+                                    thousandSeparator
+                                    prefix="$"
+                                />
+                            </p>
+                            <p style={{ textAlign: "center", marginTop: "1em" }}>
+                                ¡Gracias por tu compra!
+                            </p>
                         </div>
-                        <div className="grupo-formulario">
-                            <label>Cantidad:</label>
-                            <input
-                                type="number"
-                                name="cantidad"
-                                defaultValue={productoEditar.cantidad}
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-                        <div className="grupo-formulario">
-                            <label>Precio Unitario:</label>
-                            <input
-                                type="number"
-                                name="precioUnitario"
-                                defaultValue={productoEditar.precioUnitario}
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-                        {/* Pie de la modal con botones de cancelar y guardar */}
-                        <div className="pie-modal">
-                            <BotonCancelar type="button" onClick={cerrarModalProductosEditar} />
-                            <BotonGuardar type="submit" />
-                        </div>
-                    </form>
-                </Modal>
-            )}
-
-            {/* Modal para agregar un nuevo producto de crédito */}
-            {modalProductosAgregar && (
-                <Modal isOpen={modalProductosAgregar} onClose={cerrarModalProductosAgregar}>
-                    {/* Encabezado de la modal de agregar */}
-                    <div className="encabezado-modal">
-                        <h2>Agregar Nuevo Producto de Crédito</h2>
+                    )}
+                    <div className="pie-modal">
+                        <BotonAceptar type="button" onClick={cerrarModalDetalles} />
                     </div>
-                    {/* Formulario para agregar el producto */}
-                    <form onSubmit={guardarProductoNuevo}>
-                        <div className="grupo-formulario">
-                            <label>Nombre:</label>
-                            <input
-                                type="text"
-                                name="nombre"
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-                        <div className="grupo-formulario">
-                            <label>Cantidad:</label>
-                            <input
-                                type="number"
-                                name="cantidad"
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-                        <div className="grupo-formulario">
-                            <label>Precio Unitario:</label>
-                            <input
-                                type="number"
-                                name="precioUnitario"
-                                className="form-control mb-2"
-                                required
-                            />
-                        </div>
-                        {/* Pie de la modal con botones de cancelar y guardar */}
-                        <div className="pie-modal">
-                            <BotonCancelar type="button" onClick={cerrarModalProductosAgregar} />
-                            <BotonGuardar type="submit" />
-                        </div>
-                    </form>
                 </Modal>
             )}
 
@@ -653,21 +554,20 @@ const Portafolio = () => {
                     <div className="encabezado-modal">
                         <h2>Advertencia</h2>
                     </div>
-                    <p>Este cliente no se puede eliminar ya que tiene el credito activado.</p>
-                    {/* Pie de la modal con botones de cancelar y aceptar */}
+                    <p>Este cliente no se puede eliminar ya que tiene el crédito activado.</p>
                     <div className="pie-modal">
                         <BotonCancelar type="button" onClick={cerrarModalAdvertencia} />
                     </div>
                 </Modal>
             )}
 
-            {/* Modal de advertencia para abonos mayores a lo debido */}
+            {/* Modal de advertencia para abonos inválidos */}
             {modalAdvertenciaAbono && (
                 <Modal isOpen={modalAdvertenciaAbono} onClose={() => setModalAdvertenciaAbono(false)}>
                     <div className="encabezado-modal">
                         <h2>Advertencia</h2>
                     </div>
-                    <p>El abono no puede ser mayor al saldo pendiente o menor a 0. Por favor, ingrese un valor válido.</p>
+                    <p>El abono no puede ser mayor al saldo pendiente ni menor o igual a 0. Por favor, ingrese un valor válido.</p>
                     <div className="pie-modal">
                         <BotonCancelar type="button" onClick={() => setModalAdvertenciaAbono(false)} />
                     </div>

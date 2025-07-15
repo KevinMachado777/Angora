@@ -2,7 +2,7 @@ import "../styles/cards.css";
 
 const Home = () => {
     return (
-        <main className="main-home"> 
+        <main className="cards-grid-container"> 
             <div className="card">
                 <h4>Ingresos</h4>
                 <p>$ 24.000</p>

@@ -1,121 +1,155 @@
+/* Contenedor del título */
 .titulo {
-    margin-left: 75px;
-    width: calc(100% - 182px);
+    margin-left: 75px; /* Margen izquierdo específico para alinear el título */
+    width: calc(100% - 182px); /* Ancho calculado para dejar espacio a un lado */
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
+/* Estilos para el botón dentro del título */
 .titulo button {
     margin-top: 10px;
 }
 
+/* Contenedor de la tarjeta personal */
 .personal {
     text-align: center;
     margin: 50px;
     margin-top: 0px;
-    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
-    transition: transform 1s;
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5); /* Sombra para efecto 3D */
+    transition: transform 1s; /* Transición suave para animaciones */
     width: 250px;
     height: 300px;
-    /* Altura fija de la tarjeta*/
-    position: relative;
-    perspective: 1000px;
-    /* Efecto 3D */
+    position: relative; /* Base para efectos 3D con posicionamiento */
+    perspective: 1000px; /* Profundidad para efecto 3D */
     background: linear-gradient(#1b1a1a, #012E40);
-    border-radius: 30px;
-    overflow: hidden;
-    /* Evita que el contenido trasero desborde */
+    border-radius: 30px; 
+    overflow: hidden; /* Contiene el contenido sin desbordar */
 }
 
+/* Estilos para las imágenes dentro de .personal */
 .personal img {
     width: 150px;
     height: 150px;
-    border-radius: 200px;
+    border-radius: 200px; 
 }
 
+/* Estilos para los párrafos dentro de .personal */
 .personal p {
     color: white;
-    text-shadow: 3px 3px 5px rgba(255, 255, 255, 0.8);
+    text-shadow: 3px 3px 5px rgba(255, 255, 255, 0.8); 
     max-width: 100%;
-    /* Limita el ancho del texto */
-    word-wrap: break-word;
-    /* Permite romper palabras largas en varias líneas */
+    word-wrap: break-word; /* Permite romper palabras largas */
 }
 
+/* Estilos para las caras frontal y trasera de la tarjeta */
 .card-front,
 .card-back {
-    position: absolute;
-    /* Superpone las caras */
+    position: absolute; /* Superposición de las caras */
     width: 100%;
-    /* Ocupa todo el ancho del contenedor */
     height: 100%;
-    /* Ocupa toda la altura del contenedor */
-    backface-visibility: hidden;
-    /* Oculta la cara no visible */
-    transition: transform 0.6s;
+    backface-visibility: hidden; /* Oculta la cara no visible en 3D */
+    transition: transform 0.6s; /* Transición suave para el giro */
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
 }
 
+/* Estilos específicos para la cara frontal */
 .card-front {
-    transform: rotateY(0deg);
-    /* Cara frontal visible por defecto */
-    z-index: 1;
-    /* Por encima por defecto */
+    transform: rotateY(0deg); /* Posición inicial */
+    z-index: 1; /* Por encima por defecto */
 }
 
+/* Estilos específicos para la cara trasera */
 .card-back {
-    transform: rotateY(180deg);
-    /* Cara trasera oculta por defecto */
-    overflow: hidden;
-    /* Evita que el texto trasero desborde */
-    z-index: 0;
-    /* Por debajo por defecto */
+    transform: rotateY(180deg); /* Posición inicial invertida */
+    overflow: hidden; /* Contiene el contenido trasero */
+    z-index: 0; /* Por detrás por defecto */
 }
 
-/* Regla para el efecto de giro*/
+/* Regla para el efecto de giro en la cara frontal */
 .personal.girar .card-front {
-    transform: rotateY(-180deg);
-    /* Gira la cara frontal */
-    z-index: 0;
-    /* Pasa a estar detrás */
+    transform: rotateY(-180deg); /* Giro completo al activar */
+    z-index: 0; /* Pasa atrás */
 }
 
+/* Regla para el efecto de giro en la cara trasera */
 .personal.girar .card-back {
-    transform: rotateY(0deg);
-    /* Muestra la cara trasera */
-    z-index: 1;
-    /* Pasa a estar delante */
+    transform: rotateY(0deg); /* Vuelve a posición frontal */
+    z-index: 1; /* Pasa adelante */
 }
 
-/* Nuevas reglas para el botón Agregar Empleado */
+/* Estilos para el botón personalizado "Agregar Empleado" */
 .titulo .btn-custom-add {
-    background-color: #3CA6A6;
+    background-color: #3CA6A6; 
     color: #fff;
     border: none;
-    border-radius: 5px;
+    border-radius: 5px; 
     padding: 8px 20px;
     font-size: 18px;
     display: inline-block;
 }
 
+/* Estilos al pasar el mouse sobre el botón */
 .titulo .btn-custom-add:hover {
-    background-color: #2F8C8C;
+    background-color: #2F8C8C; /* Cambio de tono al pasar el mouse */
     color: #fff;
 }
 
-/* Efecto al enfocar o cliquear*/
+/* Estilos al enfocar o hacer clic en el botón */
 .titulo .btn-custom-add:focus,
 .titulo .btn-custom-add:active {
-    background-color: #2F8C8C;
+    background-color: #2F8C8C; /* Mantiene el tono al interactuar */
     color: #fff;
-    box-shadow: 0 0 0 0.2rem rgba(60, 166, 166, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(60, 166, 166, 0.5); /* Sombra al enfocar */
 }
 
+/* Estilos para los íconos dentro del botón */
 .titulo .btn-custom-add i {
-    margin-right: 8px;
+    margin-right: 8px; /* Espacio entre ícono y texto */
+}
+
+/* [Nota: Los siguientes estilos son nuevos, no estaban en tu versión original] */
+/* Nuevos estilos para el modal */
+.grupo-formulario .d-flex {
+    display: flex;
+    justify-content: space-between; /* Distribuye elementos con espacio entre ellos */
+    margin-bottom: 10px;
+}
+
+.grupo-formulario label {
+    margin-right: 10px;
+}
+
+/* Media queries para responsividad en pantallas pequeñas */
+@media (max-width: 768px) {
+    .grupo-formulario .d-flex {
+        flex-direction: column; /* Cambia a diseño vertical */
+        align-items: flex-start; /* Alinea al inicio */
+        gap: 10px; /* Espacio entre elementos */
+    }
+
+    .grupo-formulario label {
+        margin-right: 0; /* Elimina margen en diseño vertical */
+    }
+
+    .modal-contenido {
+        padding: 15px; /* Reduce padding en pantallas pequeñas */
+    }
+
+    .grupo-formulario .form-control {
+        font-size: 12px; /* Reduce tamaño de fuente */
+        padding: 6px; /* Reduce padding interno */
+    }
+}
+
+@media (max-width: 480px) {
+    .grupo-formulario .form-control {
+        font-size: 10px; /* Más reducción de fuente */
+        padding: 4px; /* Más reducción de padding */
+    }
 }

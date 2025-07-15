@@ -35,7 +35,6 @@ const Footer = () => {
                 © Todos los derechos reservados 2025 Kase
             </div>
         </footer>
-
     )
 }
 

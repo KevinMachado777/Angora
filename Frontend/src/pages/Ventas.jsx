@@ -11,6 +11,7 @@ import BotonAgregar from "../components/botonAgregar";
 import BotonGuardar from "../components/BotonGuardar";
 import { CreadorTabla } from "../components/CreadorTabla";
 import BotonAceptar from "../components/BotonAceptar";
+import BotonCancelar from "../components/BotonCancelar";
 
 // Importamos una librería para formatear números (como valores monetarios)
 import { NumericFormat } from "react-number-format";
@@ -374,24 +375,16 @@ const Ventas = () => {
               <button
                 className="btn-agregar"
                 onClick={() => {
-                  setTimeout(() => window.print());
-                  setPagoCon("");
-                  setNotas("");
-                }}
-              >
-                Confirmar e imprimir
-              </button>
-
-              <button
-                className="btn-agregar"
-                onClick={() => {
                   setMostrarModal(false);
                   setPagoCon("");
                   setNotas("");
                 }}
               >
-                Confirmar y no imprimir
+                Confirmar
               </button>
+
+              <BotonCancelar onClick={() => setMostrarModal(false)}>
+              </BotonCancelar>
             </div>
           </div>
         </div>
