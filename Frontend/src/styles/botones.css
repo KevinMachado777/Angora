@@ -1,35 +1,42 @@
+/* ----- Botones ----- */
+
+/* Agregar */
 .btn-agregar {
   background-color: #0DB5C6;
   color: white;
-  padding: 10px 22px;
+  padding: 8px 18px;       /* un poco más pequeño */
   border: none;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 0.9rem;        /* ligeramente reducido */
   font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
-
 .btn-agregar:hover {
   background-color: #0aa0b0;
+  transform: scale(1.05);
 }
 
+/* Modificar */
 .btn-modificar {
   background-color: #ffc107;
-  color: Black;
+  color: black;
   padding: 5px 10px;
   border: none;
   border-radius: 10px;
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
-
 .btn-modificar:hover {
   background-color: #e0a800;
+  transform: scale(1.05);
 }
 
+/* Eliminar */
 .btn-eliminar {
   background-color: #dc3545;
   color: white;
@@ -39,42 +46,32 @@
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
-
 .btn-eliminar:hover {
   background-color: #c82333;
-}
-
-.btn-agregar:hover,
-.btn-modificar:hover,
-.btn-eliminar:hover {
   transform: scale(1.05);
 }
 
-.btn-agregar,
-.btn-modificar,
-.btn-eliminar {
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
-
+/* Exportar */
 .btn-exportar {
   background-color: #2b82b2;
   color: white;
-  padding: 10px 22px;
+  padding: 8px 18px;       /* un poco más pequeño */
   border: none;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 0.9rem;        /* ligeramente reducido */
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
 .btn-exportar:hover {
   background-color: #246e98;
   transform: scale(1.05);
 }
 
+/* Guardar */
 .btn-guardar {
   background-color: #28a745;
   color: white;
@@ -85,13 +82,14 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
-
 .btn-guardar:hover {
   background-color: #218838;
   transform: scale(1.05);
 }
 
+/* Cancelar */
 .btn-cancelar {
   background-color: #dc3545;
   color: white;
@@ -102,13 +100,14 @@
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
+  margin: 5px;
 }
-
 .btn-cancelar:hover {
   background-color: #c82333;
   transform: scale(1.05);
 }
 
+/* Aceptar */
 .btn-aceptar {
   background-color: #28a745;
   color: white;
@@ -120,12 +119,12 @@
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
 .btn-aceptar:hover {
   background-color: #218838;
   transform: scale(1.05);
 }
 
+/* Cartera */
 .btn-cartera {
   background-color: #026773;
   color: white;
@@ -137,12 +136,12 @@
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
 .btn-cartera:hover {
   background-color: #01555F;
   transform: scale(1.05);
 }
 
+/* Detalles */
 .btn-detalles {
   background-color: #088DCF;
   color: white;
@@ -154,7 +153,6 @@
   cursor: pointer;
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
-
 .btn-detalles:hover {
   background-color: #077EB9;
   transform: scale(1.05);
@@ -175,4 +173,61 @@
 .btn-ordenes:hover {
   background-color: #5a35a0;
   transform: scale(1.05);
+}
+
+/* ----- Responsividad ----- */
+/* Móviles pequeños: reduce padding y fuente */
+@media (max-width: 600px) {
+  .btn-agregar,
+  .btn-exportar {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+  }
+  .btn-guardar,
+  .btn-cancelar,
+  .btn-aceptar,
+  .btn-cartera,
+  .btn-detalles,
+  .btn-ordenes {
+    padding: 8px 18px;
+    font-size: 0.9rem;
+  }
+  .btn-modificar,
+  .btn-eliminar {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Pantallas muy anchas: aumenta un poco */
+@media (min-width: 1200px) {
+  .btn-agregar,
+  .btn-exportar {
+    padding: 12px 26px;
+    font-size: 1.1rem;
+  }
+  .btn-guardar,
+  .btn-cancelar,
+  .btn-aceptar,
+  .btn-cartera,
+  .btn-detalles,
+  .btn-ordenes {
+    padding: 14px 28px;
+    font-size: 1.2rem;
+  }
+  .btn-modificar,
+  .btn-eliminar {
+    padding: 6px 12px;
+    font-size: 0.95rem;
+  }
+}
+
+
+.btn-agregar,
+.btn-exportar {
+  /* fuente entre 0.8rem y 1.1rem según el ancho */
+  font-size: clamp(0.8rem, 2.5vw, 1.1rem);
+  /* padding vertical entre 6px y 12px, horizontal entre 16px y 26px */
+  padding: clamp(6px, 1.5vw, 12px)
+          clamp(16px, 3vw, 26px);
 }
