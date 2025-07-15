@@ -158,6 +158,22 @@
   transform: scale(1.05);
 }
 
+.btn-ordenes {
+  background-color: #6f42c1; /* morado vibrante */
+  color: white;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-ordenes:hover {
+  background-color: #5a35a0;
+  transform: scale(1.05);
+}
 
 /* ----- Responsividad ----- */
 /* Móviles pequeños: reduce padding y fuente */
@@ -171,7 +187,8 @@
   .btn-cancelar,
   .btn-aceptar,
   .btn-cartera,
-  .btn-detalles {
+  .btn-detalles,
+  .btn-ordenes {
     padding: 8px 18px;
     font-size: 0.9rem;
   }
@@ -193,7 +210,8 @@
   .btn-cancelar,
   .btn-aceptar,
   .btn-cartera,
-  .btn-detalles {
+  .btn-detalles,
+  .btn-ordenes {
     padding: 14px 28px;
     font-size: 1.2rem;
   }

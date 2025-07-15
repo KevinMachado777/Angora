@@ -1,0 +1,15 @@
+.proveedores .opciones {
+
+    display: flex;
+    justify-content: space-evenly;
+    width: 100%;
+}
+
+h3 {
+    font-size: 16px;
+    text-align: center;
+}
+
+.proveedores input {
+    margin: 10px 0;
+}
