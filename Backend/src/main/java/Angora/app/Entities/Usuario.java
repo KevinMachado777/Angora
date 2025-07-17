@@ -7,7 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -19,11 +21,17 @@ public class Usuario {
 
     @Id
     private Long id;
+
     private String nombre;
+
     private String apellido;
+
     @Column(unique = true)
     @Email
     private String correo;
+
+    private String contraseña;
+
     @Column(name = "is_enabled")
     private Boolean isEnabled;
 
@@ -39,12 +47,13 @@ public class Usuario {
     @Column(name = "credential_no_expired")
     private Boolean credentialNoExpired;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    // Permisos del usuario
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-            name = "usuario_permisos", // Nombre de la tabla intermedia
-            joinColumns = @JoinColumn(name = "Id"), // Columna que hace referencia al usuario
-            inverseJoinColumns = @JoinColumn(name = "id_permiso") // Columna que hace referencia a los permisos
+            name = "usuario_permisos",
+            joinColumns = @JoinColumn(name = "usuario_id"),
+            inverseJoinColumns = @JoinColumn(name = "permiso_id")
     )
+    private List<Permiso> permisos = new ArrayList<>();
 
-    private Set<Permiso> permiso= new HashSet<>();
 }
