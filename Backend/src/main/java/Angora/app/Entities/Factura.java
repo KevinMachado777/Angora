@@ -14,7 +14,6 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Factura {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idFactura;
@@ -25,15 +24,18 @@ public class Factura {
 
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinTable(
-            name = "factura_productos", // Nombre de la tabla intermedia
-            joinColumns = @JoinColumn(name = "id"), // Columna que hace referencia al usuario
-            inverseJoinColumns = @JoinColumn(name = "id_producto") // Columna que hace referencia a los permisos
+            name = "factura_productos",
+            joinColumns = @JoinColumn(name = "id"),
+            inverseJoinColumns = @JoinColumn(name = "id_producto")
     )
     private Set<Producto> producto = new HashSet<>();
 
     private Integer cantidad;
     private Integer subtotal;
     private Integer total;
+
+    // Atributo para manera el saldo pendiente por factura
+    private Float saldoPendiente;
     private String cajero;
     private String estado;
 
