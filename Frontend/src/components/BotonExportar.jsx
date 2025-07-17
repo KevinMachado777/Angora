@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonExportar = ({ onClick }) => {
   return (
     <button className="btn-exportar" onClick={onClick}>
-      <i class="bi bi-file-earmark-arrow-up"></i> Exportar
+      <i className="bi bi-file-earmark-arrow-up"></i> Exportar
     </button>
   );
 };
