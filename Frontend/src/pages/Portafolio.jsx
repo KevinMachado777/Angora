@@ -29,6 +29,7 @@ const Portafolio = () => {
     const [personaCartera, setPersonaCartera] = useState(null);
     const [modalCarterasAbierta, setModalCarterasAbierta] = useState(false);
     const [clientesCarteras, setClientesCarteras] = useState([]);
+    const [respuestaCarteras, setRespuestaCarteras] = useState([]);
     const [creditoActivo, setCreditoActivo] = useState(false);
     const [modalAdvertenciaEliminacion, setModalAdvertenciaEliminacion] = useState(false);
     const [saldoPendiente, setSaldoPendiente] = useState(0);
@@ -44,13 +45,17 @@ const Portafolio = () => {
     useEffect(() => {
         const cargarClientes = async () => {
             try {
-                const respuestaClientes = await axios.get(`${urlBackend}/clientes`);
-                console.log("Respuesta GET /api/clientes:", respuestaClientes.data);
+                const respuestaClientes = await axios.get(`${urlBackend}/clientes`, {
+                    headers: { 'Accept': 'application/json' }
+                });
+                console.log("Respuesta GET /api/clientes:", JSON.stringify(respuestaClientes.data, null, 2));
                 const clientes = await Promise.all(
                     (Array.isArray(respuestaClientes.data) ? respuestaClientes.data : []).map(async (cliente) => {
                         try {
-                            const respuestaCartera = await axios.get(`${urlBackend}/carteras/${cliente.idCliente}`);
-                            console.log(`Respuesta GET /api/carteras/${cliente.idCliente}:`, respuestaCartera.data);
+                            const respuestaCartera = await axios.get(`${urlBackend}/carteras/${cliente.idCliente}`, {
+                                headers: { 'Accept': 'application/json' }
+                            });
+                            console.log(`Respuesta GET /api/carteras/${cliente.idCliente}:`, JSON.stringify(respuestaCartera.data, null, 2));
                             return {
                                 id: cliente.idCliente,
                                 nombre: cliente.nombre,
@@ -61,7 +66,7 @@ const Portafolio = () => {
                                 cartera: respuestaCartera.data.estado ? "Activa" : "Desactivada"
                             };
                         } catch (error) {
-                            console.error(`Error al cargar cartera para cliente ${cliente.idCliente}:`, error);
+                            console.error(`No se encontró cartera para cliente ${cliente.idCliente}:`, error.response?.status);
                             return {
                                 id: cliente.idCliente,
                                 nombre: cliente.nombre,
@@ -89,12 +94,19 @@ const Portafolio = () => {
             const clienteId = personaCartera?.id || personaSelect?.id;
             const cargarCartera = async () => {
                 try {
-                    const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`);
-                    console.log(`Respuesta GET /api/carteras/${clienteId}:`, respuesta.data);
+                    const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`, {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    console.log(`Respuesta GET /api/carteras/${clienteId}:`, JSON.stringify(respuesta.data, null, 2));
+                    const facturas = typeof respuesta.data.facturas === 'string' 
+                        ? JSON.parse(respuesta.data.facturas) 
+                        : Array.isArray(respuesta.data.facturas) 
+                        ? respuesta.data.facturas.filter(f => f.saldoPendiente > 0) // Filtrar facturas pagadas
+                        : [];
                     setCreditosPorCliente(prev => ({
                         ...prev,
                         [clienteId]: {
-                            facturas: Array.isArray(respuesta.data.facturas) ? respuesta.data.facturas : [],
+                            facturas,
                             saldoPendiente: respuesta.data.deudas || 0
                         }
                     }));
@@ -104,8 +116,28 @@ const Portafolio = () => {
                         parseFloat(cantidadAbonar) <= 0 || !facturaSeleccionadaParaAbono
                     );
                 } catch (error) {
-                    setModalError(error.response?.data?.message || "Error al cargar la cartera del cliente.");
-                    console.error("Error al cargar la cartera del cliente:", error);
+                    if (error.response?.status === 404) {
+                        // Cliente sin cartera
+                        setCreditosPorCliente(prev => ({
+                            ...prev,
+                            [clienteId]: {
+                                facturas: [],
+                                saldoPendiente: 0
+                            }
+                        }));
+                        setSaldoPendiente(0);
+                        setCreditoActivo(false);
+                        setBotonDesactivado(true);
+                    } else {
+                        setModalError(error.response?.data?.message || "Error al cargar la cartera del cliente.");
+                        console.error(`Error al cargar cartera para cliente ${clienteId}:`, {
+                            message: error.message,
+                            response: error.response ? {
+                                status: error.response.status,
+                                data: error.response.data
+                            } : null
+                        });
+                    }
                 }
             };
             cargarCartera();
@@ -153,10 +185,15 @@ const Portafolio = () => {
     const cerrarModalConfirmacion = async (aceptar) => {
         if (aceptar && personaEliminar) {
             try {
-                await axios.delete(`${urlBackend}/clientes/${personaEliminar.id}`);
+                await axios.delete(`${urlBackend}/clientes/${personaEliminar.id}`, {
+                    headers: { 'Accept': 'application/json' }
+                });
                 setRegistros(registros.filter((r) => r.id !== personaEliminar.id));
             } catch (error) {
-                setModalError(error.response?.data?.message || "Error al eliminar el cliente.");
+                const errorMessage = error.response?.status === 401
+                    ? "No tienes autorización para eliminar este cliente."
+                    : error.response?.data?.message || "Error al eliminar el cliente.";
+                setModalError(errorMessage);
                 console.error("Error al eliminar el cliente:", error);
             }
         }
@@ -185,41 +222,82 @@ const Portafolio = () => {
     // Mostrar modal de carteras activas
     const mostrarModalCarteras = async () => {
         try {
-            const respuesta = await axios.get(`${urlBackend}/carteras?estado=true`);
-            console.log("Respuesta GET /api/carteras?estado=true:", respuesta.data);
-            const clientesCarteras = (Array.isArray(respuesta.data) ? respuesta.data : []).filter(cartera => {
-                const isValid = cartera.idCliente && typeof cartera.idCliente === 'object' && cartera.idCliente.idCliente;
-                console.log(`Validando cartera para cliente ${cartera.idCliente?.idCliente || 'desconocido'}:`, {
-                    isValid,
-                    idCliente: cartera.idCliente,
-                    estado: cartera.estado,
-                    facturas: cartera.facturas
-                });
-                return isValid;
-            }).map(cartera => {
-                console.log(`Procesando cartera para cliente ${cartera.idCliente.idCliente}:`, {
-                    idCliente: cartera.idCliente,
-                    facturas: cartera.facturas,
-                    hasFacturas: Array.isArray(cartera.facturas) && cartera.facturas.length > 0,
-                    estado: cartera.estado
-                });
-                return {
-                    id: cartera.idCliente.idCliente,
-                    nombre: cartera.idCliente.nombre || "Desconocido",
-                    apellido: cartera.idCliente.apellido || "",
-                    correo: cartera.idCliente.email || "",
-                    telefono: cartera.idCliente.telefono?.toString() || "",
-                    direccion: cartera.idCliente.direccion || "",
-                    cartera: cartera.estado ? "Activa" : "Desactivada"
-                };
+            console.log("Iniciando mostrarModalCarteras...");
+            const respuesta = await axios.get(`${urlBackend}/carteras?estado=true`, {
+                headers: { 'Accept': 'application/json' }
             });
+            console.log("Respuesta cruda GET /api/carteras?estado=true:", {
+                status: respuesta.status,
+                headers: respuesta.headers,
+                data: JSON.stringify(respuesta.data, null, 2)
+            });
+
+            // Parsear respuesta si es una cadena
+            const carteras = typeof respuesta.data === 'string' 
+                ? JSON.parse(respuesta.data) 
+                : Array.isArray(respuesta.data) 
+                ? respuesta.data 
+                : [];
+            setRespuestaCarteras(carteras);
+            console.log("Carteras recibidas (post-array check):", carteras);
+
+            // Filtrar carteras válidas
+            const clientesCarteras = carteras
+                .filter(cartera => {
+                    const isEstadoActivo = cartera.estado === true || cartera.estado === "true" || cartera.estado === 1;
+                    const hasIdCliente = cartera.idCliente !== null && cartera.idCliente !== undefined;
+                    const isValid = hasIdCliente && isEstadoActivo;
+                    console.log(`Validando cartera:`, {
+                        idCliente: cartera.idCliente,
+                        estado: cartera.estado,
+                        isEstadoActivo,
+                        hasIdCliente,
+                        isValid,
+                        facturas: cartera.facturas
+                    });
+                    return isValid;
+                })
+                .map(cartera => {
+                    const idCliente = typeof cartera.idCliente === 'object' && cartera.idCliente 
+                        ? cartera.idCliente.idCliente 
+                        : cartera.idCliente;
+                    const clienteData = typeof cartera.idCliente === 'object' && cartera.idCliente
+                        ? cartera.idCliente
+                        : registros.find(r => r.id === idCliente) || {};
+                    console.log(`Mapeando cartera para cliente ${idCliente}:`, {
+                        idCliente,
+                        clienteData,
+                        facturas: cartera.facturas,
+                        hasFacturas: Array.isArray(cartera.facturas) && cartera.facturas.length > 0,
+                        estado: cartera.estado
+                    });
+                    return {
+                        id: idCliente,
+                        nombre: clienteData.nombre || "Desconocido",
+                        apellido: clienteData.apellido || "",
+                        correo: clienteData.email || clienteData.correo || "",
+                        telefono: clienteData.telefono?.toString() || "",
+                        direccion: clienteData.direccion || "",
+                        cartera: cartera.estado ? "Activa" : "Desactivada"
+                    };
+                });
+
             console.log("Clientes con carteras activas mapeados:", clientesCarteras);
             setClientesCarteras(clientesCarteras);
+            console.log("Estado clientesCarteras después de setClientesCarteras:", clientesCarteras);
             setModalCarterasAbierta(true);
         } catch (error) {
-            console.error("Error al cargar las carteras activas:", error);
+            console.error("Error al cargar las carteras activas:", {
+                message: error.message,
+                response: error.response ? {
+                    status: error.response.status,
+                    data: error.response.data,
+                    headers: error.response.headers
+                } : null
+            });
             setClientesCarteras([]);
-            setModalError(error.response?.data?.message || "Error al cargar las carteras activas.");
+            setRespuestaCarteras([]);
+            setModalError(error.response?.data?.message || `Error al cargar las carteras activas: ${error.message}`);
         }
     };
 
@@ -227,6 +305,7 @@ const Portafolio = () => {
     const cerrarModalCarteras = () => {
         setModalCarterasAbierta(false);
         setClientesCarteras([]);
+        setRespuestaCarteras([]);
         setModalError(null);
     };
 
@@ -236,12 +315,33 @@ const Portafolio = () => {
         setPersonaEliminar(null);
     };
 
+    // Validar ID y correo en el frontend
+    const validarCliente = async (idCliente, email, isNewClient) => {
+        try {
+            const respuestaClientes = await axios.get(`${urlBackend}/clientes`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const clientes = Array.isArray(respuestaClientes.data) ? respuestaClientes.data : [];
+            if (isNewClient && clientes.find(c => c.idCliente === parseInt(idCliente))) {
+                return "El ID del cliente ya existe.";
+            }
+            if (clientes.find(c => c.email.toLowerCase() === email.toLowerCase() && (isNewClient || c.idCliente !== personaSelect?.id))) {
+                return "El correo electrónico ya está registrado.";
+            }
+            return null;
+        } catch (error) {
+            console.error("Error al validar cliente:", error);
+            return "Error al validar el ID o correo.";
+        }
+    };
+
     // Guardar cliente
     const guardarCliente = async (e) => {
         e.preventDefault();
         const form = e.target;
         const idCliente = form.idCliente?.value ? parseInt(form.idCliente.value) : personaSelect?.id;
         const telefono = form.telefono.value ? parseInt(form.telefono.value) : personaSelect?.telefono;
+        const email = form.correo.value.trim();
 
         if (!idCliente || isNaN(idCliente)) {
             setModalError("El ID del cliente debe ser un número válido.");
@@ -256,12 +356,19 @@ const Portafolio = () => {
             idCliente,
             nombre: form.nombre.value.trim(),
             apellido: form.apellido.value.trim(),
-            email: form.correo.value.trim(),
+            email,
             telefono,
             direccion: form.direccion.value.trim()
         };
 
         console.log("Datos enviados en guardarCliente:", clienteData);
+
+        // Validar ID y correo
+        const validacionError = await validarCliente(idCliente, email, !personaSelect);
+        if (validacionError) {
+            setModalError(validacionError);
+            return;
+        }
 
         try {
             if (personaSelect) {
@@ -272,8 +379,13 @@ const Portafolio = () => {
                     console.log(`Enviando PUT /api/carteras/${personaSelect.id}/estado con estado:`, creditoActivo);
                     await axios.put(`${urlBackend}/carteras/${personaSelect.id}/estado`, { estado: creditoActivo });
                 }
-                const respuestaCartera = await axios.get(`${urlBackend}/carteras/${personaSelect.id}`);
-                console.log(`Respuesta GET /api/carteras/${personaSelect.id}:`, respuestaCartera.data);
+                // Recargar cartera solo si crédito está activo
+                let carteraData = { estado: false, deudas: 0, facturas: [] };
+                if (creditoActivo) {
+                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${personaSelect.id}`);
+                    console.log(`Respuesta GET /api/carteras/${personaSelect.id}:`, respuestaCartera.data);
+                    carteraData = respuestaCartera.data;
+                }
                 setRegistros(registros.map(r => r.id === personaSelect.id ? {
                     id: respuesta.data.idCliente,
                     nombre: respuesta.data.nombre,
@@ -281,8 +393,15 @@ const Portafolio = () => {
                     correo: respuesta.data.email,
                     telefono: respuesta.data.telefono.toString(),
                     direccion: respuesta.data.direccion,
-                    cartera: respuestaCartera.data.estado ? "Activa" : "Desactivada"
+                    cartera: carteraData.estado ? "Activa" : "Desactivada"
                 } : r));
+                setCreditosPorCliente(prev => ({
+                    ...prev,
+                    [personaSelect.id]: {
+                        facturas: carteraData.facturas.filter(f => f.saldoPendiente > 0),
+                        saldoPendiente: carteraData.deudas || 0
+                    }
+                }));
             } else {
                 console.log("Enviando POST /api/clientes con datos:", clienteData);
                 const respuesta = await axios.post(`${urlBackend}/clientes`, clienteData);
@@ -291,8 +410,13 @@ const Portafolio = () => {
                     console.log(`Enviando PUT /api/carteras/${respuesta.data.idCliente}/estado con estado: true`);
                     await axios.put(`${urlBackend}/carteras/${respuesta.data.idCliente}/estado`, { estado: true });
                 }
-                const respuestaCartera = await axios.get(`${urlBackend}/carteras/${respuesta.data.idCliente}`);
-                console.log(`Respuesta GET /api/carteras/${respuesta.data.idCliente}:`, respuestaCartera.data);
+                // Solo cargar cartera si crédito está activo
+                let carteraData = { estado: false, deudas: 0, facturas: [] };
+                if (creditoActivo) {
+                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${respuesta.data.idCliente}`);
+                    console.log(`Respuesta GET /api/carteras/${respuesta.data.idCliente}:`, respuestaCartera.data);
+                    carteraData = respuestaCartera.data;
+                }
                 setRegistros([...registros, {
                     id: respuesta.data.idCliente,
                     nombre: respuesta.data.nombre,
@@ -300,13 +424,26 @@ const Portafolio = () => {
                     correo: respuesta.data.email,
                     telefono: respuesta.data.telefono.toString(),
                     direccion: respuesta.data.direccion,
-                    cartera: respuestaCartera.data.estado ? "Activa" : "Desactivada"
+                    cartera: carteraData.estado ? "Activa" : "Desactivada"
                 }]);
+                setCreditosPorCliente(prev => ({
+                    ...prev,
+                    [respuesta.data.idCliente]: {
+                        facturas: carteraData.facturas.filter(f => f.saldoPendiente > 0),
+                        saldoPendiente: carteraData.deudas || 0
+                    }
+                }));
             }
             cerrarModalPrincipal();
         } catch (error) {
-            const errorMessage = error.response?.data?.message || "Error al guardar el cliente.";
-            setModalError(errorMessage);
+            const errorMessage = error.response?.status === 400
+                ? error.response.data.message || "Error de validación al guardar el cliente."
+                : error.response?.status === 404 && !creditoActivo
+                ? null // Ignorar 404 si no se creó cartera
+                : "Error al guardar el cliente.";
+            if (errorMessage) {
+                setModalError(errorMessage);
+            }
             console.error("Error en guardarCliente:", error);
         }
     };
@@ -330,10 +467,13 @@ const Portafolio = () => {
                 idFactura: facturaSeleccionadaParaAbono.idFactura
             });
             console.log("Respuesta POST /api/carteras/", personaCartera.id, "/abonos:", respuesta.data);
+            const facturas = Array.isArray(respuesta.data.facturas) 
+                ? respuesta.data.facturas.filter(f => f.saldoPendiente > 0) // Filtrar facturas pagadas
+                : [];
             setCreditosPorCliente(prev => ({
                 ...prev,
                 [personaCartera.id]: {
-                    facturas: Array.isArray(respuesta.data.facturas) ? respuesta.data.facturas : [],
+                    facturas,
                     saldoPendiente: respuesta.data.deudas || 0
                 }
             }));
@@ -417,6 +557,21 @@ const Portafolio = () => {
                         <h2>Clientes con cartera activa</h2>
                     </div>
                     <div>
+                        <p style={{ marginBottom: '10px', color: 'red', whiteSpace: 'pre-wrap' }}>
+                            DEBUG: clientesCarteras = {JSON.stringify(clientesCarteras, null, 2)}
+                            {clientesCarteras.length === 0 && (
+                                <>
+                                    <br />
+                                    DEBUG: Respuesta API /carteras?estado=true = {JSON.stringify(respuestaCarteras, null, 2)}
+                                    {modalError && (
+                                        <>
+                                            <br />
+                                            DEBUG: Error = {modalError}
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </p>
                         {clientesCarteras.length === 0 ? (
                             <p style={{ marginTop: '20px', textAlign: 'center' }}>
                                 No hay clientes con carteras activas.

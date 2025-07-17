@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import java.util.List;
 
 @Entity
@@ -18,12 +18,12 @@ public class Cartera {
 
     @OneToOne
     @JoinColumn(name = "idCliente")
+    @JsonManagedReference
     private Cliente idCliente;
     private Float abono;
     private Float deudas;
     private Boolean estado;
 
-    // Campo transitorio para el frontend, no se verá en la BD
     @Transient
     private List<Factura> facturas;
 }

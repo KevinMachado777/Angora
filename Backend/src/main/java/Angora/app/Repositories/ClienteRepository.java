@@ -10,4 +10,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     boolean existsByEmail(String email);
     // Verifica si existe un cliente con el ID dado
     boolean existsByIdCliente(Long idCliente);
+
+    boolean existsByEmailAndIdClienteNot(String email, Long idCliente);
 }
