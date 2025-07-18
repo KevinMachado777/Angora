@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonAceptar = ({ onClick }) => {
   return (
     <button className="btn-ordenes" onClick={onClick}>
-      <i class="bi bi-cart"></i> Ordenes de compra
+      <i className="bi bi-cart"></i> Ordenes de compra
     </button>
   );
 };

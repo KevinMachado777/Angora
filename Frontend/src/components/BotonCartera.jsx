@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonCartera = ({ onClick }) => {
   return (
     <button className="btn-cartera" onClick={onClick}>
-      <i class="bi bi-cash-coin"></i> Cartera
+      <i className="bi bi-cash-coin"></i> Cartera
     </button>
   );
 };

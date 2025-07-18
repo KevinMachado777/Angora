@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonAceptar = ({ onClick }) => {
   return (
     <button className="btn-aceptar" onClick={onClick}>
-      <i class="bi bi-check-circle"></i> Aceptar
+      <i className="bi bi-check-circle"></i> Aceptar
     </button>
   );
 };

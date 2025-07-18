@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonEliminar = ({ onClick }) => {
   return (
     <button className="btn-eliminar" onClick={onClick}>
-      <i class="bi bi-trash"></i> Eliminar
+      <i className="bi bi-trash"></i> Eliminar
     </button>
   );
 };
