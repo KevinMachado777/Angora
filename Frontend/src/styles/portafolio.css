@@ -28,6 +28,23 @@
     transform: scale(1.05);
 }
 
+.btn-clientes-inactivos {
+    background-color: #026773;
+    color: white;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-clientes-inactivos:hover {
+    background-color: #01555F;
+    transform: scale(1.05);
+}
+
 .cartera-input {
     background-color: #777;
     color: white;

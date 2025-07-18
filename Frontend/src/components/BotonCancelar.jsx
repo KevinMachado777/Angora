@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonCancelar = ({ onClick }) => {
   return (
     <button className="btn-cancelar" onClick={onClick}>
-      <i class="bi bi-x-circle"></i> Cancelar
+      <i className="bi bi-x-circle"></i> Cancelar
     </button>
   );
 };

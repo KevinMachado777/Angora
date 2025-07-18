@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonAgregar = ({ onClick }) => {
   return (
     <button className="btn-agregar" onClick={onClick}>
-      <i class="bi bi-plus-circle"></i> Agregar
+      <i className="bi bi-plus-circle"></i> Agregar
     </button>
   );
 };
