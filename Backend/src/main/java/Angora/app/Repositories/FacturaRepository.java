@@ -8,12 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+// Repositorio para manejar facturas en la base de datos
 @Repository
 public interface FacturaRepository extends JpaRepository<Factura, Long> {
-    // Metodo para listar facturas por una cartera en especifico
+
+    // Busca todas las facturas de una cartera por su ID
     @Query("SELECT f FROM Factura f WHERE f.idCartera.idCartera = :idCartera")
     List<Factura> findByIdCarteraIdCartera(@Param("idCartera") Long idCartera);
 
-    // Metodo para saber si una cartera con es id existe, esto para procesar abonos por cada una
+    // Verifica si existe una factura con ese ID en la BD
     boolean existsByIdFactura(Long idFactura);
 }

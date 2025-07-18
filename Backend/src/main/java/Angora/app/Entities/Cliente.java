@@ -17,8 +17,9 @@ public class Cliente {
 
     private String nombre;
     private String apellido;
-    private Long telefono;
-    private String direccion;
     @Email
     private String email;
+    private Long telefono;
+    private String direccion;
+    private Boolean activo = true;
 }

@@ -12,17 +12,19 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+// Servicio para gestionar las operaciones de clientes
 @Service
 public class ClienteService implements IClienteService {
     private static final Logger logger = LoggerFactory.getLogger(ClienteService.class);
 
+    // Inyeccion de repositorios
     @Autowired
     private ClienteRepository clienteRepository;
 
     @Autowired
     private CarteraRepository carteraRepository;
 
-    // Obtiene todos los clientes
+    // Obtiene todos los clientes de la BD
     @Override
     public List<Cliente> obtenerTodos() {
         logger.info("Obteniendo todos los clientes");
@@ -31,32 +33,33 @@ public class ClienteService implements IClienteService {
         return clientes;
     }
 
-    // Obtiene un cliente por su ID
+    // Busca un cliente por su ID en la BD
     @Override
     public Cliente obtenerPorId(Long idCliente) {
         logger.info("Buscando cliente con ID: " + idCliente);
+        // Verifica que el cliente exista
         Cliente cliente = clienteRepository.findById(idCliente)
                 .orElseThrow(() -> {
                     logger.error("Cliente con ID " + idCliente + " no encontrado");
                     return new RecursoNoEncontrado("Cliente no encontrado con ID: " + idCliente);
                 });
-
         logger.info("Cliente encontrado: " + cliente.getNombre() + " " + cliente.getApellido());
         return cliente;
     }
 
-    // Guarda un cliente (crea o actualiza)
+    // Guarda o actualiza un cliente en la BD
     @Override
     public Cliente guardarCliente(Cliente cliente) {
         logger.info("Guardando cliente: " + cliente.getNombre() + " " + cliente.getApellido());
+        // Valida que el ID no sea nulo
         if (cliente.getIdCliente() == null) {
             logger.error("El ID del cliente no puede ser nulo");
             throw new IllegalArgumentException("El ID del cliente no puede ser nulo");
         }
 
-        // Verificar unicidad del ID (solo para creación)
+        // Si el ID no existe, crea un nuevo cliente
         if (!clienteRepository.existsByIdCliente(cliente.getIdCliente())) {
-            // Creación de nuevo cliente
+            // Verifica que el correo no esté en uso
             if (clienteRepository.existsByEmail(cliente.getEmail())) {
                 logger.error("El correo " + cliente.getEmail() + " ya está en uso");
                 throw new IllegalArgumentException("El correo ya está en uso");
@@ -65,17 +68,19 @@ public class ClienteService implements IClienteService {
             logger.info("Cliente creado con ID: " + clienteGuardado.getIdCliente());
             return clienteGuardado;
         } else {
-            // Actualización de cliente existente
+            // Si el ID existe, actualiza el cliente
             Cliente clienteExistente = clienteRepository.findById(cliente.getIdCliente())
                     .orElseThrow(() -> {
                         logger.error("Cliente con ID " + cliente.getIdCliente() + " no encontrado");
                         return new RecursoNoEncontrado("Cliente no encontrado con ID: " + cliente.getIdCliente());
                     });
+            // Verifica que el correo no esté en uso por otro cliente
             if (!clienteExistente.getEmail().equals(cliente.getEmail()) &&
                     clienteRepository.existsByEmail(cliente.getEmail())) {
                 logger.error("El correo " + cliente.getEmail() + " ya está en uso");
                 throw new IllegalArgumentException("El correo ya está en uso");
             }
+            // Actualiza los campos del cliente existente
             clienteExistente.setNombre(cliente.getNombre());
             clienteExistente.setApellido(cliente.getApellido());
             clienteExistente.setEmail(cliente.getEmail());
@@ -91,12 +96,13 @@ public class ClienteService implements IClienteService {
     @Override
     public void eliminarCliente(Long idCliente) {
         logger.info("Eliminando cliente con ID: " + idCliente);
+        // Verifica que el cliente exista
         Cliente cliente = clienteRepository.findById(idCliente)
                 .orElseThrow(() -> {
                     logger.error("Cliente con ID " + idCliente + " no encontrado");
                     return new RecursoNoEncontrado("Cliente no encontrado con ID: " + idCliente);
                 });
-
+        // Impide eliminar si tiene una cartera activa
         Cartera cartera = carteraRepository.findByIdCliente_IdCliente(idCliente);
         if (cartera != null && cartera.getEstado()) {
             logger.error("No se puede eliminar el cliente con ID " + idCliente + " porque tiene una cartera activa");
@@ -106,7 +112,7 @@ public class ClienteService implements IClienteService {
         logger.info("Cliente eliminado con ID: " + idCliente);
     }
 
-    // Verifica si existe un cliente con el correo dado
+    // Verifica si un correo ya está en uso en la BD
     @Override
     public boolean existePorEmail(String email) {
         boolean existe = clienteRepository.existsByEmail(email);
@@ -114,7 +120,7 @@ public class ClienteService implements IClienteService {
         return existe;
     }
 
-    // Verifica si existe un cliente con el ID dado
+    // Verifica si un cliente existe por su ID en la BD
     @Override
     public boolean existePorId(Long idCliente) {
         boolean existe = clienteRepository.existsByIdCliente(idCliente);
