@@ -22,11 +22,5 @@ public class Proveedor {
     private String direccion;
     @Email
     private String correo;
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinTable(
-            name = "proveedor_materia", // Nombre de la tabla intermedia
-            joinColumns = @JoinColumn(name = "Id"), // Columna que hace referencia al usuario
-            inverseJoinColumns = @JoinColumn(name = "id_permiso") // Columna que hace referencia a los permisos
-    )
-    private Set<MateriaPrima> idMateria = new HashSet<>();
+    private Integer telefono;
 }
