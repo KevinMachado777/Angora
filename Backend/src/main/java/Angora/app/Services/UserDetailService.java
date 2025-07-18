@@ -4,6 +4,7 @@ import Angora.app.Controllers.dto.AuthCreateUserRequest;
 import Angora.app.Controllers.dto.AuthLoginRequest;
 import Angora.app.Controllers.dto.AuthResponse;
 import Angora.app.Entities.Permiso;
+import Angora.app.Entities.RefreshToken;
 import Angora.app.Repositories.PermisoRepository;
 import Angora.app.Repositories.UsuarioRepository;
 import Angora.app.Entities.Usuario;
@@ -33,14 +34,21 @@ public class UserDetailService implements UserDetailsService{
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    // Repositorio del permiso
     @Autowired
     private PermisoRepository permisoRepository;
 
+    // Password Encoder
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    // Utilería JWT
     @Autowired
     private JwtUtils jwtUtils;
+
+    // Servicio del refresh token
+    @Autowired
+    private RefreshTokenService refreshTokenService;
 
     // Cargar un usuario por correo
     @Override
@@ -82,9 +90,17 @@ public class UserDetailService implements UserDetailsService{
         // Se agrega al Security Context Holder
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        String accessToken = jwtUtils.createToken(authentication);
+        String accessToken = jwtUtils.createAccessToken(authentication);
 
-        AuthResponse authResponse = new AuthResponse(correo, "Usuario Autenticado correctamente", accessToken, true);
+        // Crear refresh token
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(correo);
+
+        AuthResponse authResponse = new AuthResponse(
+                correo,
+                "Usuario Autenticado correctamente",
+                accessToken,
+                refreshToken.getToken(),
+                true);
 
         return authResponse;
     }
@@ -118,6 +134,8 @@ public class UserDetailService implements UserDetailsService{
     // Método que guarda un usuario en la bd y genera el token para ese usuario
     public AuthResponse createUser(AuthCreateUserRequest authCreateUser){
 
+        // Creación del usuario
+
         Long id = authCreateUser.id();
         String nombre = authCreateUser.nombre();
         String apellido = authCreateUser.apellido();
@@ -138,7 +156,7 @@ public class UserDetailService implements UserDetailsService{
         // Generamos la contraseña
         String password = nombre.substring(0,2) + apellido.substring(0, 2) + telefono.substring(4, 7) + direccion.substring(0, 2);
 
-        //
+        // Se construye el nuevo usuario
         Usuario usuarioAgregar = Usuario.builder()
                 .id(id)
                 .nombre(nombre)
@@ -165,13 +183,21 @@ public class UserDetailService implements UserDetailsService{
 
         SecurityContext context = SecurityContextHolder.getContext();
 
-        Authentication authentication = new UsernamePasswordAuthenticationToken(usuarioAgregar.getCorreo(), usuarioAgregar.getCorreo(),  authoritiesList);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                usuarioAgregar.getCorreo(),
+                usuarioAgregar.getCorreo(),
+                authoritiesList);
 
         // Creación del token
-        String accessToken = jwtUtils.createToken(authentication);
+        String accessToken = jwtUtils.createAccessToken(authentication);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(correo);
 
         // Generamos la respuesta a la solictud
-        AuthResponse authResponse = new AuthResponse(usuarioAgregar.getCorreo(), "Usuario creado correctamente", accessToken, true);
+        AuthResponse authResponse = new AuthResponse(
+                usuarioAgregar.getCorreo(),
+                "Usuario creado correctamente",
+                refreshToken.getToken(),
+                accessToken, true);
 
         return authResponse;
 

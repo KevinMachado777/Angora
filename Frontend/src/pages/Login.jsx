@@ -73,14 +73,14 @@ const Login = () => {
         setError('');
         try {
             // Envio de las credenciales al backend
-            const respuesta = await axios.post('http://localhost:8080/user/register', {
+            const respuesta = await axios.post('http://localhost:8080/angora/api/v1/auth/login', {
                 correo: credenciales.correo,
                 password: credenciales.password
             }, {
                 // Configuración de los headers para el tipo de contenido
                 headers: { 'Content-Type': 'application/json' }
             });
-            console.log('Respuesta POST /user/register:', respuesta.data);
+            console.log('Respuesta POST /auth/login:', respuesta.data);
             // Si el login es exitoso, redirige al home
             navegacion('/home');
         } catch (error) {

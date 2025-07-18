@@ -14,7 +14,7 @@ import { NumericFormat } from "react-number-format";
 // Componente principal para gestionar el portafolio de clientes
 const Portafolio = () => {
     // Define la URL del backend
-    const urlBackend = "http://localhost:8080/api";
+    const urlBackend = "http://localhost:8080/angora/api/v1";
 
     // Define los encabezados de la tabla principal
     const cabeceros = ["Id", "Nombre", "Apellido", "Correo", "Teléfono", "Dirección", "Cartera"];
@@ -137,6 +137,7 @@ const Portafolio = () => {
                     const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`, {
                         headers: { 'Accept': 'application/json' }
                     });
+                    
                     console.log(`Respuesta GET /api/carteras/${clienteId}:`, JSON.stringify(respuesta.data, null, 2));
                     // Filtra las facturas con saldo pendiente
                     const facturas = Array.isArray(respuesta.data.facturas)

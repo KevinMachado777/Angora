@@ -1,7 +1,8 @@
 # === Ignorar carpetas de build y empaquetado ===
-**/target/
-**/dist/
-**/build/
+/target/
+Backend/target/
+dist/
+build/
 *.log
 
 # === Archivos de empaquetado comunes ===
@@ -10,10 +11,9 @@
 *.ear
 
 # === Configuración de IDEs ===
-**/.idea/
-**/.vscode/
-*.iml
 .idea/
+.vscode/
+*.iml
 
 # === Archivos del sistema operativo ===
 .DS_Store
@@ -22,4 +22,3 @@ Thumbs.db
 # === Archivos de entorno o credenciales ===
 *.env
 .env.local
-

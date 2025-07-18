@@ -17,8 +17,7 @@ import java.util.Map;
 
 // Controlador para manejar las peticiones de carteras
 @RestController
-@RequestMapping("/api/carteras")
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping("/carteras")
 public class CarteraController {
 
     // Inyecta de servicio y repositorios

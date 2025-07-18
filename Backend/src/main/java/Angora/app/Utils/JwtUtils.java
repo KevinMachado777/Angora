@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
-
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -28,8 +27,11 @@ public class JwtUtils {
     @Value("${security.jwt.user.generator}")
     private String userGenerator;
 
-    // Método para crear el token
-    public String createToken(Authentication authentication){
+    @Value("${security.jwt.access.duration:1800000}")
+    private Long accessTokenDuration;
+
+    // Método para crear el access token
+    public String createAccessToken(Authentication authentication){
 
         // ALgoritmo de encriptación
         Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
@@ -51,10 +53,11 @@ public class JwtUtils {
                 .withSubject(correoUser)
                 // Permisos
                 .withClaim("authorities", authorities)
+                .withClaim("type", "access")
                 // Fecha de creacion (actual)
                 .withIssuedAt(new Date())
                 // Fecha de expiracion (30 minutos después de la fecha de creación)
-                .withExpiresAt(new Date(System.currentTimeMillis() + 1800000))
+                .withExpiresAt(new Date(System.currentTimeMillis() + accessTokenDuration))
                 // Id random al token
                 .withJWTId(UUID.randomUUID().toString())
                 // Valido a partir de la fecha actual o de creación
@@ -101,5 +104,11 @@ public class JwtUtils {
     public Map<String, Claim> getAllClaims(DecodedJWT decodedJWT){
         return decodedJWT.getClaims();
     }
+
+    // Método de compatibilidad (mantener para no romper código existente)
+    public String createToken(Authentication authentication) {
+        return createAccessToken(authentication);
+    }
+
 
 }

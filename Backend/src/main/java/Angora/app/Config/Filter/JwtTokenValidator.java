@@ -1,6 +1,7 @@
 package Angora.app.Config.Filter;
 
 import Angora.app.Utils.JwtUtils;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,12 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collection;
 
-// Filtro que valida si el token es válido
-// Se ejecuta en cada solicitud
+// Filtro que se ejecuta una vez por solicitud para validar el token JWT
 public class JwtTokenValidator extends OncePerRequestFilter {
 
-    // Utileria para médodos de createToken, validateToken...
-    private JwtUtils jwtUtils;
+    private final JwtUtils jwtUtils;
 
     public JwtTokenValidator(JwtUtils jwtUtils) {
         this.jwtUtils = jwtUtils;
@@ -34,39 +33,47 @@ public class JwtTokenValidator extends OncePerRequestFilter {
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain) throws ServletException, IOException {
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
 
-        // Obtener token del header Authorization de la solicitud
-        String jwtToken = request.getHeader(HttpHeaders.AUTHORIZATION);
+        // Obtener token del encabezado Authorization
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (jwtToken != null) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String jwtToken = authHeader.substring(7); // Quitar "Bearer "
 
-            jwtToken = jwtToken.substring(7);
+            try {
+                // Validar token y decodificarlo
+                DecodedJWT decodedJWT = jwtUtils.validateToken(jwtToken);
 
-            // Validar el token
-            DecodedJWT decodedJWT = jwtUtils.validateToken(jwtToken);
+                // Extraer email del usuario desde el token
+                String correoUser = jwtUtils.extractEmail(decodedJWT);
 
-            // Extraer información del usuario
-            String correoUser = jwtUtils.extractEmail(decodedJWT);
-            String stringAuthorities = jwtUtils.getSpecificClaim(decodedJWT, "authorities").asString();
+                // Extraer permisos (roles) desde el token
+                String stringAuthorities = jwtUtils.getSpecificClaim(decodedJWT, "authorities").asString();
 
-            // Convertir authorities a formato de los permisos de Spring Security
-            Collection<? extends GrantedAuthority> authorities =
-                    AuthorityUtils.commaSeparatedStringToAuthorityList(stringAuthorities);
+                // Convertir a lista de GrantedAuthority compatible con Spring Security
+                Collection<? extends GrantedAuthority> authorities =
+                        AuthorityUtils.commaSeparatedStringToAuthorityList(stringAuthorities);
 
-            // Establecer autenticacion en el contexto de seguridad
-            SecurityContext context = SecurityContextHolder.getContext();
+                // Crear el objeto de autenticación
+                Authentication authentication =
+                        new UsernamePasswordAuthenticationToken(correoUser, null, authorities);
 
-            // Objeto de autenticación
-            Authentication authentication =
-                    new UsernamePasswordAuthenticationToken(correoUser, null, authorities);
+                // Establecer la autenticación en el contexto de seguridad
+                SecurityContext context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(authentication);
+                SecurityContextHolder.setContext(context);
 
-            context.setAuthentication(authentication);
-            SecurityContextHolder.setContext(context);
+            } catch (JWTVerificationException e) {
+                // Si hay error con el token (expirado, alterado, etc.)
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Token inválido o expirado");
+                return;
+            }
         }
 
-        // Continua con los demas filtros
-        // Como no hice nada con el token, la autenticacion va a fallar o rechaza la solicitud
+        // Continuar con los demás filtros de la cadena
         filterChain.doFilter(request, response);
     }
 }

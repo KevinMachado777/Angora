@@ -1,9 +1,7 @@
 package Angora.app.Config;
 
-
-// import com.app.config.filter.JwtTokenValidator;
-// import Angora.app.Utils.JwtUtils;
 import Angora.app.Config.Filter.JwtTokenValidator;
+import Angora.app.Services.UserDetailService;
 import Angora.app.Utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -23,11 +21,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-// import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-// import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,11 +33,21 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    // Servicio de UserDetailsService
+    @Autowired
+    private UserDetailService userDetailService;
+
+    // PasswordEncoder
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    // Filtro
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, JwtUtils jwtUtils) throws Exception{
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, JwtUtils jwtUtils) throws Exception {
 
         // Falta completar el filtro
         return httpSecurity
+                .cors(Customizer.withDefaults()) // Habilitar CORS
                 // Desactiva CSRF (protección contra ataques Cross-Site Request Forgery)
                 .csrf(csrf -> csrf.disable())
                 // Usa autenticación HTTP básica (usuario y contraseña en el encabezado Authorization)
@@ -51,16 +57,46 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(http -> {
                     // Configurar endpoints públicos
-
+                    // Rutas protegidas de Auth
                     http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
+
+                    // Rutas protegidas de Portafolio
+                    http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/clientes").permitAll();
+                    http.requestMatchers(HttpMethod.PUT, "/clientes/**").permitAll();
+                    http.requestMatchers(HttpMethod.OPTIONS, "/clientes/**").permitAll();
                     // Configurar endpoints privados
 
+                    // Rutas protegidas de Personal
                     http.requestMatchers(HttpMethod.POST, "/user/**").hasAuthority("PERSONAL");
+                    http.requestMatchers(HttpMethod.GET, "/user/**").hasAuthority("PERSONAL");
+
+                    // Rutas protegidas de Cartera
+                    http.requestMatchers(HttpMethod.GET, "/carteras/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/carteras/**").permitAll();
+                    http.requestMatchers(HttpMethod.PUT, "/carteras/**").permitAll();
+                    http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").permitAll();
 
                     http.anyRequest().denyAll();
                 })
-                .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtTokenValidator(jwtUtils), UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+        org.springframework.web.cors.CorsConfiguration
+                configuration = new org.springframework.web.cors.CorsConfiguration();
+
+        // Qué orígenes permitir
+        configuration.addAllowedOrigin("http://localhost:5173");
+        configuration.setAllowCredentials(true);
+        configuration.addAllowedHeader("*"); // Permitir todos los headers
+        configuration.addAllowedMethod("*"); // Permitir todos los métodos
+
+        org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration); // Aplica a todos los endpoints
+        return source;
     }
 
     // Authentication Manager, encargado de la autenticacion
@@ -75,18 +111,11 @@ public class SecurityConfig {
 
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
 
-        provider.setPasswordEncoder(passwordEncoder());
+        provider.setPasswordEncoder(passwordEncoder);
         provider.setUserDetailsService(userDetailsService);
 
         return provider;
 
-    }
-
-    // Password Encoder
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-
-        return new BCryptPasswordEncoder();
     }
 
 }
