@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import '../styles/login.css';
 import Angora from '../assets/images/angora.png';
 
@@ -24,6 +25,8 @@ const Login = () => {
     const [inputNuevaContrasena, setInputNuevaContrasena] = useState('');
     const [emailRecuperar, setEmailRecuperar] = useState('');
 
+    // Estado para el envio de credenciales
+    const [credenciales, setCredenciales] = useState({ correo: '', password: '' });
 
     // Función para alternar la visibilidad de la contraseña
     const alternarVisibilidadContraseña = () => {
@@ -64,9 +67,28 @@ const Login = () => {
     };
 
     // Manejador para el envío del formulario de login
-    const manejarEnvio = (e) => {
+    const manejarEnvio = async (e) => {
         e.preventDefault();
-        navegacion('/home');
+        // Limpia cualquier error previo
+        setError('');
+        try {
+            // Envio de las credenciales al backend
+            const respuesta = await axios.post('http://localhost:8080/user/register', {
+                correo: credenciales.correo,
+                password: credenciales.password
+            }, {
+                // Configuración de los headers para el tipo de contenido
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log('Respuesta POST /user/register:', respuesta.data);
+            // Si el login es exitoso, redirige al home
+            navegacion('/home');
+        } catch (error) {
+            // Manejo de errores
+            const mensajeError = error.response?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.';
+            setError(mensajeError);
+            console.error('Error al iniciar sesión:', error);
+        }
     };
 
     // Manejador para iniciar el proceso de verificación
@@ -271,6 +293,7 @@ const Login = () => {
                 <div className="form-container sign-in-container">
                     <div className="card-front-login">
                         <h2 className="login-title">Fraganc'eys</h2>
+                        {error && <div className="error-mensaje">{error}</div>}
                         <form onSubmit={manejarEnvio}>
                             <div className="input-group">
                                 <label htmlFor="correo">Correo electrónico</label>
@@ -280,11 +303,18 @@ const Login = () => {
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
                                     <div className="input-wrapper">
-                                        <input type="email" id="correo" name="correo" required placeholder="Ingresa tu correo" />
+                                        <input
+                                            type="email"
+                                            id="correo"
+                                            name="correo"
+                                            value={credenciales.correo}
+                                            onChange={(e) => setCredenciales({ ...credenciales, correo: e.target.value })}
+                                            required
+                                            placeholder="Ingresa tu correo"
+                                        />
                                     </div>
                                 </div>
                             </div>
-
                             <div className="input-group">
                                 <label htmlFor="password">Contraseña</label>
                                 <div className="input-with-icon">
@@ -297,6 +327,8 @@ const Login = () => {
                                             type={mostrarContraseña ? 'text' : 'password'}
                                             id="password"
                                             name="password"
+                                            value={credenciales.password}
+                                            onChange={(e) => setCredenciales({ ...credenciales, password: e.target.value })}
                                             required
                                             placeholder="Ingresa tu contraseña"
                                         />
