@@ -17,8 +17,7 @@ import java.util.Optional;
 
 // Controlador para manejar las peticiones de clientes
 @RestController
-@RequestMapping("/api/clientes")
-@CrossOrigin(origins = "http://localhost:5173")
+@RequestMapping("/clientes")
 public class ClienteController {
 
     @Autowired

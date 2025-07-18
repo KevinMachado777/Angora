@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonDesactivar = ({ onClick }) => {
     return (
         <button className="btn-desactivar" onClick={onClick}>
-            <i class="bi bi-slash-circle"></i> Desactivar
+            <i className="bi bi-slash-circle"></i> Desactivar
         </button>
     );
 };

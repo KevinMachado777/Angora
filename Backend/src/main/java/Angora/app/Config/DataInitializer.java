@@ -33,7 +33,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         // Método que inicializa permiso
         initializePermisos();
-        // Metodo que inicializa Usuarios
+        //        // Metodo que inicializa Usuarios
         initializeUsuarios();
     }
 
@@ -104,14 +104,14 @@ public class DataInitializer implements CommandLineRunner {
     // Inicializador de Usuarios
     private void initializeUsuarios() {
 
-        createUserIfNotExists(1028140791L,"samuel@example.com", "Samuel", "Rios", "1234", getAllPermisos());
-        createUserIfNotExists(1028L, "kevin@example.com", "Kevin", "Machado", "1234", getAllPermisos());
+        createUserIfNotExists(1028140791L,"samuel@example.com", "Samuel", "Rios", "1234", "URL_FOTO_USUARIO", "3183886308", getAllPermisos());
+        createUserIfNotExists(1028L, "kevin@example.com", "Kevin", "Machado", "1234", "URL_FOTO_USUARIO","3196382919", getAllPermisos());
 
         // Se pueden seguir creando mas usuarios de prueba...
     }
 
     // Método para crear un usuario si no existe
-    private void createUserIfNotExists(Long id, String correo, String nombre, String apellido, String password, List<Permiso> permisos) {
+    private void createUserIfNotExists(Long id, String correo, String nombre, String apellido, String password, String foto, String telefono, List<Permiso> permisos) {
         if (usuarioRepository.findUsuarioByCorreo(correo).isEmpty()) {
             Usuario usuario = Usuario.builder()
                     .id(id)
@@ -119,11 +119,13 @@ public class DataInitializer implements CommandLineRunner {
                     .apellido(apellido)
                     .correo(correo)
                     .contraseña(passwordEncoder.encode(password))
+                    .telefono(telefono)
+                    .foto(foto)
+                    .permisos(permisos)
                     .isEnabled(true)
                     .accountNoExpired(true)
                     .accountNoLocked(true)
                     .credentialNoExpired(true)
-                    .permisos(permisos)
                     .build();
 
             usuarioRepository.save(usuario);
