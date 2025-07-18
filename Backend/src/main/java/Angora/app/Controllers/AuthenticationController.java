@@ -1,24 +1,32 @@
 package Angora.app.Controllers;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import Angora.app.Controllers.dto.AuthCreateUserRequest;
+import Angora.app.Controllers.dto.AuthLoginRequest;
+import Angora.app.Controllers.dto.AuthResponse;
+import Angora.app.Services.UserDetailService;
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 // Controlador para la autenticación y registro de usuarios
 @RestController
 @RequestMapping("/auth")
+@CrossOrigin("http://localhost:5173/")
 public class AuthenticationController {
 
-    // @PostMapping("/login")
-    // public AuthResponse login();
+    // Servicio del UserDetailService
+    @Autowired
+    private UserDetailService userDetailService;
 
-    // @PostMapping("/register")
-    // public AuthResponse register();
+    // Método para autenticar y autorizar un usuario
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody @Valid AuthLoginRequest authLogin){
 
-    @GetMapping("/get")
-    public String get() {
-        return "Hello World";
+        AuthResponse authResponse = userDetailService.loginUser(authLogin);
+
+        return new ResponseEntity<>(authResponse, HttpStatus.OK);
     }
 
 }

@@ -32,6 +32,8 @@ public class Usuario {
 
     private String contraseña;
 
+    private String telefono;
+
     @Column(name = "is_enabled")
     private Boolean isEnabled;
 
@@ -55,5 +57,7 @@ public class Usuario {
             inverseJoinColumns = @JoinColumn(name = "permiso_id")
     )
     private List<Permiso> permisos = new ArrayList<>();
+
+    private String foto;
 
 }

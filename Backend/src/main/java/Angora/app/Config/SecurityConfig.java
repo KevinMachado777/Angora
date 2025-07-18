@@ -3,6 +3,8 @@ package Angora.app.Config;
 
 // import com.app.config.filter.JwtTokenValidator;
 // import Angora.app.Utils.JwtUtils;
+import Angora.app.Config.Filter.JwtTokenValidator;
+import Angora.app.Utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +25,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 // import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 // import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 import java.util.ArrayList;
@@ -35,7 +38,7 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception{
+    public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity, JwtUtils jwtUtils) throws Exception{
 
         // Falta completar el filtro
         return httpSecurity
@@ -49,15 +52,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(http -> {
                     // Configurar endpoints públicos
 
-                    http.requestMatchers(HttpMethod.POST, "/auth/register").permitAll();
-
+                    http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
                     // Configurar endpoints privados
 
-                    http.requestMatchers(HttpMethod.GET, "auth/get").hasAuthority("HOME");
-                    // http.anyRequest().denyAll();
+                    http.requestMatchers(HttpMethod.POST, "/user/**").hasAuthority("PERSONAL");
 
-                    http.anyRequest().authenticated();
+                    http.anyRequest().denyAll();
                 })
+                .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
                 .build();
     }
 
@@ -86,6 +88,5 @@ public class SecurityConfig {
 
         return new BCryptPasswordEncoder();
     }
-
 
 }

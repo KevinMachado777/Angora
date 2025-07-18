@@ -13,6 +13,7 @@
 **/.idea/
 **/.vscode/
 *.iml
+.idea/
 
 # === Archivos del sistema operativo ===
 .DS_Store
@@ -21,3 +22,4 @@ Thumbs.db
 # === Archivos de entorno o credenciales ===
 *.env
 .env.local
+
