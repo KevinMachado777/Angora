@@ -17,7 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-// Controlador para la autenticación y registro de usuarios
+// Controlador para la autenticación de usuarios
 @RestController
 @RequestMapping("/auth")
 public class AuthenticationController {
@@ -26,9 +26,11 @@ public class AuthenticationController {
     @Autowired
     private UserDetailService userDetailService;
 
+    // Servicio de refresh token
     @Autowired
     private RefreshTokenService refreshTokenService;
 
+    // Utlidad
     @Autowired
     private JwtUtils jwtUtils;
 
@@ -37,6 +39,8 @@ public class AuthenticationController {
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid AuthLoginRequest authLogin){
 
         AuthResponse authResponse = userDetailService.loginUser(authLogin);
+
+        System.out.println("Respuesta Login: " + authResponse);
 
         return new ResponseEntity<>(authResponse, HttpStatus.OK);
     }
@@ -47,6 +51,8 @@ public class AuthenticationController {
         try {
 
             String requestRefreshToken = refreshTokenRequest.refreshToken();
+
+            System.out.println("Token recibido: " + requestRefreshToken + "");
 
             RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken)
                     .orElseThrow(() -> new RuntimeException("Refresh token no encontrado"));
@@ -75,6 +81,8 @@ public class AuthenticationController {
                     true
             );
 
+            System.out.println("Token renovado: " + newAccessToken + "");
+
             return new ResponseEntity<>(authResponse, HttpStatus.OK);
 
         } catch (RuntimeException e) {
@@ -94,6 +102,9 @@ public class AuthenticationController {
     public ResponseEntity<String> logout(@RequestBody RefreshTokenRequest refreshTokenRequest) {
         try {
             refreshTokenService.revokeToken(refreshTokenRequest.refreshToken());
+
+            System.out.println("Token eliminado: " + refreshTokenRequest.refreshToken());
+
             return ResponseEntity.ok("Sesión cerrada correctamente");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body("Error al cerrar sesión: " + e.getMessage());

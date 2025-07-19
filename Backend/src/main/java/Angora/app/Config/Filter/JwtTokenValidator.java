@@ -20,7 +20,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Collection;
 
-// Filtro que se ejecuta una vez por solicitud para validar el token JWT
 public class JwtTokenValidator extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
@@ -35,6 +34,13 @@ public class JwtTokenValidator extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
+
+        // Ignorar validación para endpoints bajo /auth/**
+        String path = request.getRequestURI();
+        if (path.startsWith("/angora/api/v1/auth/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // Obtener token del encabezado Authorization
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
@@ -66,7 +72,6 @@ public class JwtTokenValidator extends OncePerRequestFilter {
                 SecurityContextHolder.setContext(context);
 
             } catch (JWTVerificationException e) {
-                // Si hay error con el token (expirado, alterado, etc.)
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.getWriter().write("Token inválido o expirado");
                 return;

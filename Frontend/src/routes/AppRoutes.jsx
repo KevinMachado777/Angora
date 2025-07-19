@@ -16,7 +16,6 @@ import Proveedores from "../pages/Proveedores"
 const AppRoutes = () => {
     
     return (
-        <BrowserRouter>
             <Routes>
                 {/*Redirigir siempre al login cuando inicie la aplicacion */}
                 <Route path='/' element={<Navigate to="/login" />} />
@@ -32,7 +31,6 @@ const AppRoutes = () => {
                 <Route exact path="/reportes" element={<Layout><Reportes /></Layout>} />
                 <Route  exact path="/proveedores" element={<Layout><Proveedores /></Layout>} />    
             </Routes>
-        </BrowserRouter>
     )
 }
 
