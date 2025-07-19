@@ -8,6 +8,7 @@ import {Inventario} from '../pages/Inventario'
 import Ventas from '../pages/Ventas'
 import Portafolio from '../pages/Portafolio'
 import Pedidos from '../pages/Pedidos'
+import Reportes from '../pages/Reportes'
 import Proveedores from "../pages/Proveedores"
 
 
@@ -27,7 +28,8 @@ const AppRoutes = () => {
                 <Route exact path="/inventarios" element={<Layout><Inventario /></Layout>} />
                 <Route exact path="/ventas" element={<Layout><Ventas /></Layout>} />
                 <Route exact path="/clientes" element={<Layout><Portafolio /></Layout>} />
-                <Route exact path="/pedidos" element={<Layout><Pedidos /></Layout>} />     
+                <Route exact path="/pedidos" element={<Layout><Pedidos /></Layout>} />
+                <Route exact path="/reportes" element={<Layout><Reportes /></Layout>} />
                 <Route  exact path="/proveedores" element={<Layout><Proveedores /></Layout>} />    
             </Routes>
         </BrowserRouter>

@@ -1,0 +1,59 @@
+/* Define el contenedor principal de la tabla, permitiendo desplazamiento horizontal y ocupando todo el ancho */
+.tabla-reportes-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* Establece la leyenda de alerta de stock, alineada a la derecha con color rojo y tamaño ajustado */
+.tabla-leyenda {
+    color: #ff4444;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+    text-align: right;
+}
+
+/* Configura la tabla principal con ancho completo, diseño limpio y efectos visuales avanzados */
+.tabla-reportes {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(0, 30, 60, 0.8); 
+    border-radius: 8px; 
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); /* Sombra para dar profundidad */
+    margin-bottom: 10px;
+}
+
+/* Ajusta el estilo de encabezados (th) y celdas (td) con alineación y formato */
+.tabla-reportes th,
+.tabla-reportes td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* Personaliza los encabezados con fondo oscuro y cursor interactivo */
+.tabla-reportes th {
+    background: rgba(0, 50, 100, 0.9); 
+    cursor: pointer;
+}
+
+/* Aplica un efecto de resaltado al pasar el mouse sobre las filas */
+.tabla-reportes tr:hover {
+    background: rgba(0, 70, 120, 0.3); /* Fondo semitransparente al hacer hover */
+}
+
+/* Define el estilo para filas con alerta de stock bajo */
+.alerta-stock {
+    background-color: rgba(255, 68, 68, 0.3); 
+    color: #fff;
+}
+
+/* Ajusta los estilos para pantallas pequeñas, optimizando espacio y legibilidad */
+@media (max-width: 768px) {
+    .tabla-reportes th,
+    .tabla-reportes td {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+}
