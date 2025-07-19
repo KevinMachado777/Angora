@@ -50,6 +50,7 @@ public class Usuario {
     private Boolean credentialNoExpired;
 
     // Permisos del usuario
+    @Builder.Default // Esto evitará errores de null y permite inicialización segura incluso si olvidas pasar la lista
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "usuario_permisos",

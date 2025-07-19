@@ -27,6 +27,7 @@ public class JwtUtils {
     @Value("${security.jwt.user.generator}")
     private String userGenerator;
 
+    // Duración del accesToken
     @Value("${security.jwt.access.duration:1800000}")
     private Long accessTokenDuration;
 
