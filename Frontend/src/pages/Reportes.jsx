@@ -33,32 +33,32 @@ const Reportes = () => {
     const datosMock = {
         inventario: {
             productos: [
-                { id: 1, nombre: 'Lava Manos', cantidad: 2, precioUnitario: 41200, tipo: 'Producto', fecha: '2025-07-01' },
-                { id: 2, nombre: 'Jabón Líquido', cantidad: 5, precioUnitario: 25000, tipo: 'Producto', fecha: '2025-07-02' },
+                { id: 1, producto: 'Lava Manos', cantidad: 2, concepto: 'Salida', fechaMovimiento: '2025-07-01' },
+                { id: 2, producto: 'Jabón Líquido', cantidad: 5, concepto: 'Entrada', fechaMovimiento: '2025-07-02' },
             ],
             materiaPrima: [
-                { id: 1, nombre: 'Base Jabón', cantidad: 10, costoUnitario: 5000, tipo: 'Materia Prima', fecha: '2025-07-01' },
-                { id: 2, nombre: 'Esencia Floral', cantidad: 3, costoUnitario: 15000, tipo: 'Materia Prima', fecha: '2025-07-02' },
+                { id: 1, materia: 'Base Jabón', cantidad: 10, concepto: 'Entrada', fechaMovimiento: '2025-07-01' },
+                { id: 2, materia: 'Esencia Floral', cantidad: 3, concepto: 'Salida', fechaMovimiento: '2025-07-02' },
             ],
         },
         finanzas: {
             ingresos: [
-                { id: 1, concepto: 'Venta Lava Manos', tipo: 'Ingreso', fecha: '2025-07-01', total: 82400 },
-                { id: 2, concepto: 'Venta Jabón Líquido', tipo: 'Ingreso', fecha: '2025-07-02', total: 25000 },
+                { id: 1, cliente: 'Sin cliente', metodoPago: 'Efectivo', fecha: '2025-07-01', total: 82400 },
+                { id: 2, cliente: 'Kevin', metodoPago: 'Crédito', fecha: '2025-07-02', total: 25000 },
             ],
             egresos: [
-                { id: 1, concepto: 'Compra Base Jabón', tipo: 'Egreso', fecha: '2025-07-01', total: 25000 },
-                { id: 2, concepto: 'Compra Esencia Floral', tipo: 'Egreso', fecha: '2025-07-02', total: 15000 },
+                { id: 1, proveedor: 'Industrias S.A.S', fecha: '2025-07-01', total: 25000 },
+                { id: 2, proveedor: 'Postobon', fecha: '2025-07-02', total: 15000 },
             ],
         },
         usuarios: {
             personal: [
-                { id: 1, usuario: 'Admin', rol: 'Administrador', accion: 'Inicio de sesión', fecha: '2025-07-01T10:00' },
-                { id: 2, usuario: 'Cajero', rol: 'Cajero', accion: 'Venta realizada', fecha: '2025-07-01T12:00' },
+                { id: 1, nombre: 'John', acción: 'Inicio de sesión', fecha: '2025-07-01T10:00' },
+                { id: 2, nombre: 'Kevin', acción: 'Venta realizada', fecha: '2025-07-01T12:00' },
             ],
             clientes: [
-                { id: 1, usuario: 'Cliente A', rol: 'Cliente', accion: 'Compra realizada', fecha: '2025-07-01T14:00' },
-                { id: 2, usuario: 'Cliente B', rol: 'Cliente', accion: 'Abono realizado', fecha: '2025-07-02T09:00' },
+                { id: 1, cliente: 'Johan', estado: 'Activo', nCompras: '4'},
+                { id: 2, cliente: 'Samuel', estado: 'Inactivo', nCompras: '7'},
             ],
         },
     };
@@ -111,12 +111,16 @@ const Reportes = () => {
         switch (tipoReporte) {
             case 'inventario':
                 return filtroTipo === 'productos'
-                    ? ['ID', 'Nombre', 'Cantidad', 'Precio Unitario', 'Valor Total', 'Tipo', 'Fecha']
-                    : ['ID', 'Nombre', 'Cantidad', 'Costo Unitario', 'Tipo', 'Fecha'];
+                    ? ['Id', 'Producto', 'Cantidad', 'Concepto', 'Fecha Movimiento']
+                    : ['Id', 'Materia', 'Cantidad', 'Concepto', 'Fecha Movimiento'];
             case 'finanzas':
-                return ['ID', 'Concepto', 'Tipo', 'Fecha', 'Total'];
+                return filtroTipo === 'ingresos'
+                    ? ['Id', 'Cliente', 'Metodo Pago', 'Fecha', 'Total']
+                    : ['Id', 'Proveedor', 'Fecha', 'Total'];
             case 'usuarios':
-                return ['ID', 'Usuario', 'Rol', 'Acción', 'Fecha'];
+                return filtroTipo === 'personal'
+                    ? ['Id', 'Nombre', 'Acción', 'Fecha']
+                    : ['Id', 'Cliente', 'Estado', 'N Compras'];
             default:
                 return [];
         }

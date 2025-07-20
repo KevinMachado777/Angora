@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../styles/TablaReportes.css'; 
+import '../styles/TablaReportes.css';
 
 const TablaReportes = ({ encabezados, registros, tipoReporte }) => {
     // Inicializando estado para gestionar el campo de ordenamiento y la dirección del mismo
@@ -47,7 +47,11 @@ const TablaReportes = ({ encabezados, registros, tipoReporte }) => {
                                     <td key={i}>
                                         {encabezado === 'Valor Total' && registro.cantidad && (registro.precioUnitario || registro.costoUnitario)
                                             ? `$${(registro.cantidad * (registro.precioUnitario || registro.costoUnitario)).toLocaleString()}`
-                                            : registro[encabezado.toLowerCase().replace(' ', '_')] || '-'}
+                                            : registro[
+                                            encabezado
+                                                .replace(/\s+/g, '')                     // quita todos los espacios
+                                                .replace(/^./, c => c.toLowerCase())     // pone minúscula la primera letra
+                                            ] || '-'}
                                     </td>
                                 ))}
                             </tr>

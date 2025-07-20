@@ -5,7 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import java.util.Date;
+
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -17,10 +18,10 @@ public class Factura {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idFactura;
-    private Date fecha;
+    private LocalDateTime fecha;
 
     @ManyToOne
-    @JoinColumn(name = "id_cliente")
+    @JoinColumn(name = "id_cliente", nullable = true)
     @JsonBackReference
     private Cliente cliente;
 
@@ -36,7 +37,11 @@ public class Factura {
     private Integer subtotal;
     private Integer total;
     private Float saldoPendiente;
-    private String cajero;
+
+    @ManyToOne
+    @JoinColumn(name = "id")
+    @JsonBackReference
+    private Usuario cajero;
     private String estado;
 
     @ManyToOne
