@@ -9,6 +9,7 @@ import Ventas from '../pages/Ventas'
 import Portafolio from '../pages/Portafolio'
 import Pedidos from '../pages/Pedidos'
 import Proveedores from "../pages/Proveedores"
+import Dashboard from "../pages/Dashboard"
 
 
 // Definicion de las rutas de la aplicacion
@@ -19,9 +20,9 @@ const AppRoutes = () => {
             <Routes>
                 {/*Redirigir siempre al login cuando inicie la aplicacion */}
                 <Route path='/' element={<Navigate to="/login" />} />
-
                 <Route exact path='/login' element={<Login />} />
                 <Route exact path="/home" element={<Layout><Home /></Layout>} />
+                <Route exact path="/dashboard" element = {<Layout><Dashboard /></Layout>} />
                 <Route exact path="/perfil" element={<Layout><Perfil /></Layout>} />
                 <Route exact path="/personal" element={<Layout><Personal /></Layout>} />
                 <Route exact path="/inventarios" element={<Layout><Inventario /></Layout>} />
