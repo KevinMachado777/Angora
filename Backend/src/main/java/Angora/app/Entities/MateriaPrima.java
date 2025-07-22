@@ -1,25 +1,31 @@
 package Angora.app.Entities;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import Angora.app.Contract.Inventariable;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
+import java.time.LocalDateTime;
+
 @Entity
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
-
-public class MateriaPrima {
+public class MateriaPrima implements Inventariable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_materia")
     private Long idMateria;
+
     private String nombre;
     private Float costo;
     private Float venta;
     private Float cantidad;
+
+    @Override
+    public Long getId() {
+        return idMateria;
+    }
 }

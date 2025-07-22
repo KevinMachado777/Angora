@@ -19,7 +19,6 @@ public class OrdenSimulador {
 
     private LocalDateTime fechaOrden;
     private Float total;
-    private Long idProveedor;
 
     @ManyToOne
     @JoinColumn(name = "id_proveedor")

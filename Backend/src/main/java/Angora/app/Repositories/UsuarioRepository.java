@@ -16,6 +16,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findUsuarioByCorreo(String correo);
 
     //
-    @Query("SELECT u FROM Usuario u JOIN Factura f ON u.id = f.usuario.id WHERE f.fecha IS NOT NULL")
+    @Query("SELECT u FROM Usuario u JOIN Factura f ON u.id = f.cajero.id WHERE f.fecha IS NOT NULL")
     List<Usuario> findUsuariosConVentas();
 }

@@ -42,10 +42,11 @@ public class Factura {
     @JoinColumn(name = "id")
     @JsonBackReference
     private Usuario cajero;
+
     private String estado;
 
     @ManyToOne
-    @JoinColumn(name = "idCartera")
+    @JoinColumn(name = "id_cartera")
     @JsonBackReference
     private Cartera idCartera;
 }

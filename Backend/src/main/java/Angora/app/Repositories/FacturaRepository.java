@@ -13,14 +13,33 @@ import java.util.List;
 @Repository
 public interface FacturaRepository extends JpaRepository<Factura, Long> {
 
-    // Busca todas las facturas de una cartera por su ID
+    // Busca todas las facturas de una cartera por su ID (para portafolio)
     @Query("SELECT f FROM Factura f WHERE f.idCartera.idCartera = :idCartera")
     List<Factura> findByIdCarteraIdCartera(@Param("idCartera") Long idCartera);
 
-    //
-    @Query("SELECT f FROM Factura f WHERE (:fechaInicio IS NULL OR f.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR f.fecha <= :fechaFin)")
-    List<Factura> findByFechaRange(LocalDateTime fechaInicio, LocalDateTime fechaFin);
-
-    // Verifica si existe una factura con ese ID en la BD
+    // Verifica si existe una factura con ese ID en la BD (para portafolio)
     boolean existsByIdFactura(Long idFactura);
+
+    // Busca facturas dentro de un rango de fechas (para reportes)
+    @Query("SELECT f FROM Factura f WHERE (:fechaInicio IS NULL OR f.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR f.fecha <= :fechaFin)")
+    List<Factura> findByFechaBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);
+
+    // Busca facturas de un cajero específico dentro de un rango de fechas (para reportes de personal)
+    @Query("SELECT f FROM Factura f WHERE f.cajero.id = :idCajero AND (:fechaInicio IS NULL OR f.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR f.fecha <= :fechaFin)")
+    List<Factura> findByCajeroAndFechaBetween(@Param("idCajero") Long idCajero, LocalDateTime fechaInicio, LocalDateTime fechaFin);
+
+    // Busca facturas asociadas a un cajero específico (sin filtro de fecha)
+    @Query("SELECT f FROM Factura f WHERE f.cajero.id = :idCajero")
+    List<Factura> findByCajero(@Param("idCajero") Long idCajero);
+
+    // Cuenta el número de facturas por cliente (sin filtro de fecha)
+    @Query("SELECT COUNT(f) FROM Factura f WHERE f.cliente.idCliente = :idCliente")
+    Long countByIdCliente(@Param("idCliente") Long idCliente);
+
+    // Cuenta el número de facturas por cliente dentro de un rango de fechas (para reportes de clientes)
+    @Query("SELECT COUNT(f) FROM Factura f WHERE f.cliente.idCliente = :idCliente AND (:fechaInicio IS NULL OR f.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR f.fecha <= :fechaFin)")
+    Long countByIdClienteAndFechaBetween(@Param("idCliente") Long idCliente, LocalDateTime fechaInicio, LocalDateTime fechaFin);
+
+    @Query("SELECT f FROM Factura f WHERE f.cliente.idCliente = :idCliente")
+    List<Factura> findByIdCliente(@Param("idCliente") Long idCliente);
 }

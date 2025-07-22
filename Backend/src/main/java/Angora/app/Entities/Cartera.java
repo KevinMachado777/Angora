@@ -14,6 +14,7 @@ import java.util.List;
 public class Cartera {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_cartera")
     private Long idCartera;
 
     @OneToOne
@@ -27,3 +28,4 @@ public class Cartera {
     @Transient
     private List<Factura> facturas;
 }
+

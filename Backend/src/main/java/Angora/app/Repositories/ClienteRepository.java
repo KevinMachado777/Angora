@@ -40,6 +40,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     boolean existsByEmail(String email);
 
     //
-    @Query("SELECT c FROM Cliente c LEFT JOIN Factura f ON c.id_cliente = f.id_cliente GROUP BY c.id_cliente")
+    @Query("SELECT c FROM Cliente c LEFT JOIN Factura f ON c.idCliente = f.cliente.idCliente GROUP BY c.idCliente")
     List<Cliente> findAllWithCompraCount();
 }
