@@ -4,7 +4,7 @@ import "../styles/botones.css";
 const BotonProveedores = ({ onClick }) => {
   return (
     <button className="btn-ordenes" onClick={onClick}>
-      <i class="bi bi-person-plus"></i> Proveedores
+      <i className="bi bi-person-plus"></i> Proveedores
     </button>
   );
 };

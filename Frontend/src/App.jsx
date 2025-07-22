@@ -1,4 +1,5 @@
 import './App.css'
+import { AuthProvider } from './context/AuthContext.jsx';
 import AppRoutes from './routes/AppRoutes'
 import { useEffect } from 'react';
 
@@ -22,9 +23,13 @@ function App() {
   }, []);
 
   return (
-    <div>
-      <AppRoutes/>
-    </div>
+
+    <AuthProvider>
+      <div>
+        <AppRoutes/>
+      </div>
+    </AuthProvider>
+
   )
 
 }

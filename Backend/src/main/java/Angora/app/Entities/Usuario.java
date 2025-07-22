@@ -32,6 +32,8 @@ public class Usuario {
 
     private String contraseña;
 
+    private String telefono;
+
     @Column(name = "is_enabled")
     private Boolean isEnabled;
 
@@ -48,6 +50,7 @@ public class Usuario {
     private Boolean credentialNoExpired;
 
     // Permisos del usuario
+    @Builder.Default // Esto evitará errores de null y permite inicialización segura incluso si olvidas pasar la lista
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "usuario_permisos",
@@ -55,5 +58,7 @@ public class Usuario {
             inverseJoinColumns = @JoinColumn(name = "permiso_id")
     )
     private List<Permiso> permisos = new ArrayList<>();
+
+    private String foto;
 
 }
