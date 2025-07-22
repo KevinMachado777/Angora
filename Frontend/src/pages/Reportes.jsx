@@ -20,7 +20,7 @@ const Reportes = () => {
     const [fechaFin, setFechaFin] = useState('');
     const [datos, setDatos] = useState([]);
     const [metricas, setMetricas] = useState({
-        totalInventario: 0, // Solo para productos
+        totalInventario: 0,
         totalProductos: 0,
         totalMateriaPrima: 0,
     });
@@ -36,8 +36,8 @@ const Reportes = () => {
         const fetchData = async () => {
             let endpoint = '';
             const params = {};
-            if (fechaInicio) params.fechaInicio = `${fechaInicio}T00:00:00`; // Formato ajustado
-            if (fechaFin) params.fechaFin = `${fechaFin}T23:59:59`; // Formato ajustado
+            if (fechaInicio) params.fechaInicio = `${fechaInicio}T00:00:00`;
+            if (fechaFin) params.fechaFin = `${fechaFin}T23:59:59`;
 
             switch (tipoReporte) {
                 case 'finanzas':
@@ -46,7 +46,7 @@ const Reportes = () => {
                     break;
                 case 'inventario':
                     endpoint = `/reportes/inventario`;
-                    params.tipo = filtroTipo === 'materiaPrima' ? 'materiaPrima' : 'productos';
+                    params.tipo = filtroTipo === 'materiaPrima' ? 'movimientos' : 'movimientos'; // Usar movimientos para ambos
                     break;
                 case 'usuarios':
                     endpoint = `/reportes/usuarios`;
@@ -59,14 +59,14 @@ const Reportes = () => {
             try {
                 const response = await axios.get(`${urlBackend}${endpoint}`, { params });
                 const data = response.data || [];
-                console.log('Datos recibidos:', data); // Depuración
+                console.log('Datos recibidos:', data);
                 setDatos(data);
 
-                // Fetch métricas financieras siempre
+                // Fetch métricas financieras
                 const financialParams = { ...params };
                 const [ingresosResp, egresosResp] = await Promise.all([
                     axios.get(`${urlBackend}/reportes/totalIngresos`, { params: financialParams }),
-                    axios.get(`${urlBackend}/reportes/totalEgresos`, { params: financialParams })
+                    axios.get(`${urlBackend}/reportes/totalEgresos`, { params: financialParams }),
                 ]);
                 const totalIngresos = ingresosResp.data || 0;
                 const totalEgresos = egresosResp.data || 0;
@@ -76,18 +76,18 @@ const Reportes = () => {
                     utilidad: totalIngresos - totalEgresos,
                 });
 
-                // Fetch métricas de inventario (totalInventario solo para productos)
+                // Fetch métricas de inventario (usando movimientos)
                 if (tipoReporte === 'inventario') {
-                    const inventarioParams = { ...params, tipo: 'productos' };
-                    const [valorResp, prodResp, matResp] = await Promise.all([
+                    const inventarioParams = { ...params, tipo: 'movimientos' };
+                    const [valorResp, prodMovResp, matMovResp] = await Promise.all([
                         axios.get(`${urlBackend}/reportes/valorInventario`, { params: inventarioParams }),
-                        axios.get(`${urlBackend}/reportes/inventario?tipo=productos`, { params: financialParams }),
-                        axios.get(`${urlBackend}/reportes/inventario?tipo=materiaPrima`, { params: financialParams })
+                        axios.get(`${urlBackend}/reportes/inventario?tipo=movimientos&fechaInicio=${fechaInicio}T00:00:00&fechaFin=${fechaFin}T23:59:59`, { params: { ...params, tipo: 'productos' } }),
+                        axios.get(`${urlBackend}/reportes/inventario?tipo=movimientos&fechaInicio=${fechaInicio}T00:00:00&fechaFin=${fechaFin}T23:59:59`, { params: { ...params, tipo: 'materiaPrima' } }),
                     ]);
                     setMetricas({
-                        totalInventario: valorResp.data || 0, // Valor monetario de productos
-                        totalProductos: filtroTipo === 'productos' ? data.length : prodResp.data.length,
-                        totalMateriaPrima: filtroTipo === 'materiaPrima' ? data.length : matResp.data.length,
+                        totalInventario: valorResp.data || 0,
+                        totalProductos: prodMovResp.data.length || 0,
+                        totalMateriaPrima: matMovResp.data.length || 0,
                     });
                 }
             } catch (error) {
@@ -106,7 +106,7 @@ const Reportes = () => {
         switch (tipoReporte) {
             case 'inventario':
                 return filtroTipo === 'productos'
-                    ? ['Id', 'Producto', 'Cantidad', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento']
+                    ? ['Id', 'Producto', 'Cantidad Pasada', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento']
                     : ['Id', 'Materia Prima', 'Cantidad Pasada', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento'];
             case 'finanzas':
                 return filtroTipo === 'ingresos'
@@ -126,16 +126,16 @@ const Reportes = () => {
             return (
                 <div className="tarjetas-container">
                     <div className="tarjeta">
-                        <h3>Valor Total Inventario (Productos)</h3>
+                        <h3>Valor Total Inventario</h3>
                         <p>${metricas.totalInventario.toLocaleString()}</p>
                     </div>
                     <div className="tarjeta">
-                        <h3>Cantidad Total Productos</h3>
-                        <p>{metricas.totalProductos}</p>
+                        <h3>Cantidad Total {filtroTipo === 'productos' ? 'Productos' : 'Materia Prima'}</h3>
+                        <p>{filtroTipo === 'productos' ? metricas.totalProductos : metricas.totalMateriaPrima}</p>
                     </div>
                     <div className="tarjeta">
-                        <h3>Cantidad Total Materia Prima</h3>
-                        <p>{metricas.totalMateriaPrima}</p>
+                        <h3>Cantidad Total {filtroTipo === 'materiaPrima' ? 'Productos' : 'Materia Prima'}</h3>
+                        <p>{filtroTipo === 'materiaPrima' ? metricas.totalProductos : metricas.totalMateriaPrima}</p>
                     </div>
                 </div>
             );
@@ -164,15 +164,15 @@ const Reportes = () => {
         if (!datos.length) return null;
 
         const barData = {
-            labels: datos.map(item => item.producto || item.materiaPrima || item.cliente || item.proveedor || item.nombre || 'Sin Nombre'),
+            labels: datos.map(item => item.nombre || item.cliente || item.proveedor || 'Sin Nombre'),
             datasets: [
                 {
                     label: tipoReporte === 'inventario' 
-                    ? 'Cantidad Actual' 
-                    : tipoReporte === 'finanzas' 
-                    ? 'Total'
-                    : 'Acciones',
-                    data: datos.map(item => item.cantidadActual || item.total || item.cantidad || 0),
+                        ? 'Cantidad Actual' 
+                        : tipoReporte === 'finanzas' 
+                        ? 'Total'
+                        : 'Acciones',
+                    data: datos.map(item => item.cantidadActual || item.total || 0),
                     backgroundColor: 'rgba(0, 80, 120, 0.8)',
                     borderColor: 'rgba(0, 120, 180, 1)',
                     borderWidth: 1,
@@ -181,10 +181,10 @@ const Reportes = () => {
         };
 
         const pieData = {
-            labels: datos.map(item => item.producto || item.materiaPrima || item.cliente || item.proveedor || item.nombre || 'Sin Nombre'),
+            labels: datos.map(item => item.nombre || item.cliente || item.proveedor || 'Sin Nombre'),
             datasets: [
                 {
-                    data: datos.map(item => item.cantidadActual || item.total || item.cantidad || 1),
+                    data: datos.map(item => item.cantidadActual || item.total || 1),
                     backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
                     borderColor: '#fff',
                     borderWidth: 1,
@@ -281,6 +281,62 @@ const Reportes = () => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte');
         XLSX.writeFile(workbook, 'reporte.xlsx');
+    };
+
+    // Mapeo dinámico para cada tipo de reporte
+    const getMapeo = () => {
+        switch (tipoReporte) {
+            case 'inventario':
+                return filtroTipo === 'productos'
+                    ? {
+                        'Id': 'id',
+                        'Producto': 'nombre',
+                        'Cantidad Pasada': 'cantidadPasada',
+                        'Cantidad Actual': 'cantidadActual',
+                        'Concepto': 'tipoMovimiento',
+                        'Fecha Movimiento': 'fechaMovimiento',
+                    }
+                    : {
+                        'Id': 'id',
+                        'Materia Prima': 'nombre',
+                        'Cantidad Pasada': 'cantidadPasada',
+                        'Cantidad Actual': 'cantidadActual',
+                        'Concepto': 'tipoMovimiento',
+                        'Fecha Movimiento': 'fechaMovimiento',
+                    };
+            case 'finanzas':
+                return filtroTipo === 'ingresos'
+                    ? {
+                        'Id': 'id',
+                        'Cliente': 'cliente',
+                        'Método Pago': 'metodoPago',
+                        'Fecha': 'fecha',
+                        'Total': 'total',
+                    }
+                    : {
+                        'Id': 'id',
+                        'Proveedor': 'proveedor',
+                        'Fecha': 'fecha',
+                        'Total': 'total',
+                    };
+            case 'usuarios':
+                return filtroTipo === 'personal'
+                    ? {
+                        'Id': 'id',
+                        'Nombre': 'nombre',
+                        'Acción': 'accion',
+                        'Fecha': 'fecha',
+                    }
+                    : {
+                        'Id': 'id',
+                        'Cliente': 'nombre',
+                        'Estado': 'estado',
+                        'Nº Compras': 'numeroCompras',
+                        'Ultima Compra': 'ultimoCompra',
+                    };
+            default:
+                return {};
+        }
     };
 
     return (
@@ -392,7 +448,11 @@ const Reportes = () => {
             </div>
             <div className="contenido-reporte">
                 <div className="tabla-container">
-                    <TablaReportes encabezados={renderizarEncabezados()} registros={datos} tipoReporte={filtroTipo} />
+                    <TablaReportes 
+                        encabezados={renderizarEncabezados()} 
+                        registros={datos} 
+                        mapeo={getMapeo()} 
+                    />
                 </div>
                 {renderizarTarjetas()}
                 {renderizarGraficos()}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import '../styles/TablaReportes.css';
 
-const TablaReportes = ({ encabezados, registros, tipoReporte }) => {
+const TablaReportes = ({ encabezados, registros, mapeo }) => {
     const [sortField, setSortField] = useState(null);
     const [sortOrder, setSortOrder] = useState('asc');
 
@@ -15,40 +15,38 @@ const TablaReportes = ({ encabezados, registros, tipoReporte }) => {
         if (!sortField) return 0;
         const aValue = getValue(a, sortField);
         const bValue = getValue(b, sortField);
-        if (typeof aValue === 'number' && typeof bValue === 'number') return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+        }
         return sortOrder === 'asc' ? String(aValue).localeCompare(String(bValue)) : String(bValue).localeCompare(String(aValue));
     });
 
     const getValue = (item, header) => {
-        switch (header) {
-            case 'Id':
-                return item.id || '-';
-            case 'Cliente':
-            case 'Proveedor':
-            case 'Nombre':
-            case 'Producto':
-            case 'Materia':
-                return item.entidad || item.nombre || '-';
-            case 'Método Pago':
-                return item.metodoPago || '-';
-            case 'Fecha':
-            case 'Fecha Movimiento':
-                return item.fecha || '-';
-            case 'Total':
-                return item.total || 0;
-            case 'Cantidad':
-                return item.cantidad || 0;
-            case 'Concepto':
-                return item.concepto || '-';
-            case 'Acción':
-                return item.accion || '-';
-            case 'Estado':
-                return item.estado || '-';
-            case 'Nº Compras':
-                return item.compras || 0;
-            default:
-                return '-';
+        const key = mapeo[header];
+        if (!key) return '-'; // Si no hay mapeo, devuelve "-"
+
+        let value = item[key];
+        if (value === undefined || value === null) return '-';
+
+        // Formatear fechas si corresponde
+        if (header === 'Fecha' || header === 'Fecha Movimiento' || header === 'Ultima Compra') {
+            return new Date(value).toLocaleString('es-ES', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
         }
+
+        // Convertir a número si es numérico (Total, Cantidad, Nº Compras)
+        if (header === 'Total' || header === 'Cantidad' || header === 'Cantidad Pasada' || header === 'Cantidad Actual' || header === 'Nº Compras') {
+            const numValue = Number(value);
+            return isNaN(numValue) ? '-' : numValue;
+        }
+
+        return String(value); // Para strings como Nombre, Cliente, etc.
     };
 
     return (
