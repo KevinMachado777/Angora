@@ -58,6 +58,8 @@ public class UserController {
                 .correo(usuario.getCorreo())
                 .nombre(usuario.getNombre())
                 .apellido(usuario.getApellido())
+                .telefono(usuario.getTelefono())
+                .direccion(usuario.getDireccion())
                 .permisos(usuario.getPermisos())
                 .build();
 
@@ -69,5 +71,24 @@ public class UserController {
     public String saludo(){
         return "Hola mundo";
     }
+
+    @PutMapping
+    public ResponseEntity<Usuario> editarUsuario(@RequestBody Usuario usuarioActualizado) {
+        Usuario actualizado = userDetailService.actualizarUsuario(usuarioActualizado);
+        return ResponseEntity.ok(actualizado); // ✅ frontend recibe el JSON correctamente
+    }
+    @GetMapping("/public/{id}")
+    public ResponseEntity<Usuario> buscarUsuarioPorId(@PathVariable Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        return new ResponseEntity<>(usuario, HttpStatus.OK);
+    }
+
+    @GetMapping("/exists/{correo}")
+    public ResponseEntity<Boolean> existeCorreo(@PathVariable String correo) {
+        boolean exists = usuarioRepository.existsByCorreo(correo);
+        return ResponseEntity.ok(exists);
+    }
+
 
 }

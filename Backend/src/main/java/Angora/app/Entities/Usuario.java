@@ -34,6 +34,8 @@ public class Usuario {
 
     private String telefono;
 
+    private String direccion;
+
     @Column(name = "is_enabled")
     private Boolean isEnabled;
 
