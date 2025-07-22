@@ -3,7 +3,7 @@ import Modal from "../components/Modal";
 import BotonAceptar from "../components/BotonAceptar";
 import BotonCancelar from "../components/BotonCancelar";
 import { CreadorTabla } from "./CreadorTabla";
-import "../styles/proveedores.css"
+import "../styles/proveedores.css";
 
 const ModalProveedor = ({
   isOpen,
@@ -21,7 +21,6 @@ const ModalProveedor = ({
     correo: "",
     direccion: "",
     notas: "",
-    items: [],
   });
 
   const [nuevoItem, setNuevoItem] = useState({
@@ -35,27 +34,30 @@ const ModalProveedor = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const conItems = {
-      ...datosIniciales,
-      items: Array.isArray(datosIniciales?.items) ? datosIniciales.items : [],
-    };
-
-    setFormulario(
-      datosIniciales
-        ? conItems
-        : {
-            id: "", // id inicia vacío siempre
-            nombre: "",
-            telefono: "",
-            correo: "",
-            direccion: "",
-            notas: "",
-            items: [],
-          }
-    );
+    if (datosIniciales) {
+      console.log(datosIniciales);
+      setFormulario({
+        id: datosIniciales.id || datosIniciales.idProveedor || "",
+        nombre: datosIniciales.nombre || "",
+        telefono: datosIniciales.telefono || "",
+        correo: datosIniciales.correo || "",
+        direccion: datosIniciales.direccion || "",
+        notas: datosIniciales.notas || "",
+      });
+    } else {
+      setFormulario({
+        id: "",
+        nombre: "",
+        telefono: "",
+        correo: "",
+        direccion: "",
+        notas: "",
+        items: [],
+      });
+    }
 
     setNuevoItem({ nombre: "", cantidad: "", precio: "" });
-  }, [isOpen]);
+  }, [isOpen, datosIniciales]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -171,7 +173,7 @@ const ModalProveedor = ({
         total: total.toFixed(2),
       });
     } else {
-      onGuardar(formulario);
+      onGuardar({ ...formulario, idMateria: [] });
     }
     if (!modalEdicionProducto) {
       onClose();
@@ -196,15 +198,19 @@ const ModalProveedor = ({
           </div>
 
           <div className="grupo-formulario">
-            <label>ID del proveedor:</label>
-            <input
-              type="text"
-              name="id"
-              value={formulario.id}
-              onChange={handleChange}
-              disabled={!!datosIniciales}
-              className="form-control"
-            />
+            {datosIniciales && (
+  <div className="grupo-formulario">
+    <label>ID del proveedor:</label>
+    <input
+      type="text"
+      name="id"
+      value={formulario.id}
+      readOnly
+      className="form-control"
+    />
+  </div>
+)}
+
           </div>
 
           <div className="grupo-formulario">
@@ -255,7 +261,9 @@ const ModalProveedor = ({
           {esOrden && (
             <>
               <div className="grupo-formulario">
-                <h3 className="proveedores subtitulo">Registro de materia prima </h3>
+                <h3 className="proveedores subtitulo">
+                  Registro de materia prima{" "}
+                </h3>
                 <input
                   placeholder="Nombre"
                   name="nombre"

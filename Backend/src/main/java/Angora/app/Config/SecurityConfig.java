@@ -59,8 +59,6 @@ public class SecurityConfig {
                     // Configurar endpoints públicos
                     // Rutas protegidas de Auth
                     http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
-                    http.requestMatchers(HttpMethod.GET, "/user/{correo}").permitAll();
-                    http.requestMatchers(HttpMethod.GET, "/user/authenticated/{correo}").permitAll();
 
                     // Rutas protegidas de Portafolio
                     http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
@@ -78,6 +76,9 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/carteras/**").permitAll();
                     http.requestMatchers(HttpMethod.PUT, "/carteras/**").permitAll();
                     http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").permitAll();
+
+                    // Rutas de reportes
+                    http.requestMatchers(HttpMethod.GET, "/reportes/**").permitAll();
 
                     http.anyRequest().denyAll();
                 })

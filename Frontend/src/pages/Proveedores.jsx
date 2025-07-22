@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CreadorTabla } from "../components/CreadorTabla";
 import ModalProveedor from "../components/ModalProveedor";
 import BotonAgregar from "../components/botonAgregar";
@@ -7,26 +7,14 @@ import BotonProveedores from "../components/BotonProveedores";
 import Modal from "../components/Modal";
 import BotonCancelar from "../components/BotonCancelar";
 import BotonAceptar from "../components/BotonAceptar";
+import axios from "axios";
 
 const Proveedores = () => {
   const [modoProveedor, setModoProveedor] = useState(true);
 
-  const [proveedores, setProveedores] = useState([
-    {
-      id: 1001,
-      nombre: "Distribuciones Andina",
-      telefono: "3104567890",
-      correo: "contacto@andina.com",
-      direccion: "Cra 15 #45-67, Bogotá",
-    },
-    {
-      id: 1002,
-      nombre: "Suministros Rápidos",
-      telefono: "3012345678",
-      correo: "ventas@suministrosrapidos.com",
-      direccion: "Cl 23 #12-34, Medellín",
-    },
-  ]);
+  const url = "http://localhost:8080/proveedores";
+
+  const [proveedores, setProveedores] = useState();
 
   const [ordenes, setOrdenes] = useState([]);
   const [modalAbierta, setModalAbierta] = useState(false);
@@ -41,6 +29,20 @@ const Proveedores = () => {
     setModalAbierta(true);
   };
 
+  useEffect(() => {
+  const cargarProveedores = async () => {
+    try {
+      const respuesta = await axios.get(url);
+      setProveedores(respuesta.data);
+    } catch (error) {
+      console.log("Error al cargar proveedores: ", error);
+    }
+  };
+
+  cargarProveedores(); // ¡Esto faltaba!
+}, []);
+
+
   const abrirModalEditar = (registro) => {
     const ordenOriginal = ordenes.find((o) => o.id === registro.id) || registro;
     setEditando(ordenOriginal);
@@ -53,25 +55,45 @@ const Proveedores = () => {
     setConfirmarEliminacion(true);
   };
 
-  const eliminarRegistro = () => {
+  const eliminarRegistro = async () => {
+  try {
     if (modoProveedor) {
-      setProveedores((prev) => prev.filter((p) => p.id !== registroEliminar.id));
-    } else {
-      setOrdenes((prev) => prev.filter((o) => o.id !== registroEliminar.id));
+      const id = registroEliminar.idProveedor || registroEliminar.id;
+      await axios.delete(`${url}/${id}`);
+
+      const response = await axios.get(url);
+      setProveedores(response.data);
     }
+
     setConfirmarEliminacion(false);
     setRegistroEliminar(null);
-  };
+  } catch (error) {
+    console.error("Error al eliminar proveedor:", error);
+  }
+};
 
-  const guardarProveedor = (nuevo) => {
+
+  const guardarProveedor = async (nuevo) => {
+  try {
     if (editando) {
-      setProveedores((prev) =>
-        prev.map((p) => (p.id === editando.id ? nuevo : p))
-      );
+      // Si estás editando, haz PUT con el ID correcto
+      await await axios.put(`${url}`, {
+
+        ...nuevo,
+        idProveedor: nuevo.id, // importante para que coincida con tu entidad
+      });
     } else {
-      setProveedores((prev) => [...prev, nuevo]);
+      await axios.post(url, nuevo);
     }
-  };
+
+    const respuesta = await axios.get(url);
+    setProveedores(respuesta.data);
+    setModalAbierta(false); // cerrar modal después de guardar
+  } catch (error) {
+    console.log("Error al guardar: ", error);
+  }
+};
+
 
   const guardarOrden = (nuevaOrden) => {
     if (editando) {
@@ -99,14 +121,21 @@ const Proveedores = () => {
   ];
 
   const registrosTabla = modoProveedor
-    ? proveedores
-    : ordenes.map((orden) => ({
-        id: orden.id,
-        nombre: orden.nombre,
-        cantidadArticulos: orden.cantidadArticulos,
-        total: orden.total,
-        notas: orden.notas,
-      }));
+  ? proveedores?.map((p) => ({
+      id: p.idProveedor ?? p.id,         // 1. ID
+      nombre: p.nombre,                  // 2. Nombre
+      telefono: p.telefono,              // 3. Teléfono
+      correo: p.correo,                  // 4. Correo electrónico
+      direccion: p.direccion,            // 5. Dirección
+    })) ?? []
+  : ordenes.map((orden) => ({
+      id: orden.id,                      // 1. ID
+      nombre: orden.nombre,              // 2. Nombre
+      cantidadArticulos: orden.cantidadArticulos, // 3. Cantidad artículos
+      total: orden.total,                // 4. Total
+      notas: orden.notas,                // 5. Notas
+    }));
+
 
   return (
     <main className="main-home proveedores inventario">

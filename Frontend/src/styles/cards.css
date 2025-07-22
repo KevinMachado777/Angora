@@ -8,43 +8,6 @@
     grid-column: 1 / -1;
 }
 
-/* Contenedor grid común para ambos tipos de tarjetas */
-.cards-grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    padding: 20px;
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto; /* Centra el contenedor en pantallas grandes */
-    align-items: center;
-}
-
-/* Media queries para el grid */
-@media (min-width: 1200px) {
-    .cards-grid-container {
-        grid-template-columns: repeat(3, 1fr);
-        justify-items: center; /* Centra las tarjetas en pantallas grandes */
-    }
-}
-
-/* Media queries para pantallas medianas */
-@media (min-width: 768px) and (max-width: 1199px) {
-    .cards-grid-container {
-        grid-template-columns: repeat(2, 1fr);
-        justify-items: center; /* Centra las tarjetas en pantallas medianas */
-    }
-}
-
-/* Media queries para pantallas pequeñas */
-@media (max-width: 767px) {
-    .cards-grid-container {
-        grid-template-columns: 1fr;
-        padding: 10px;
-        justify-items: center; /* Centra las tarjetas en pantallas pequeñas */
-    }
-}
-
 /* Estilos para las tarjetas de Home */
 .card {
     text-align: center;
