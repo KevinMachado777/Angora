@@ -122,65 +122,80 @@ const Perfil = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      if (formData.correo !== user.correo) {
-        const existe = await verificarCorreoExistente(formData.correo);
-        if (existe) {
-          abrirModal("advertencia", "Ya existe un usuario con ese correo electrónico.");
-          return;
-        }
-      }
+  // Validación de correo electrónico
+  const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo);
+  if (!correoValido) {
+    abrirModal("advertencia", "Por favor ingresa un correo electrónico válido.");
+    return;
+  }
 
-      const response = await fetch("http://localhost:8080/angora/api/v1/user", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-        body: JSON.stringify(formData),
-      });
+  // Validación de teléfono: solo 10 dígitos numéricos
+  const telefonoValido = /^\d{10}$/.test(formData.telefono);
+  if (!telefonoValido) {
+    abrirModal("advertencia", "El número de teléfono debe tener exactamente 10 dígitos.");
+    return;
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
-
-      const data = await response.json();
-
-      if (formData.correo !== user.correo) {
-        abrirModal(
-          "exito",
-          "Correo actualizado correctamente. Por favor, vuelve a iniciar sesión."
-        );
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("userData");
-        setUser(null);
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 2000);
+  try {
+    if (formData.correo !== user.correo) {
+      const existe = await verificarCorreoExistente(formData.correo);
+      if (existe) {
+        abrirModal("advertencia", "Ya existe un usuario con ese correo electrónico.");
         return;
       }
-
-      setUser(data);
-      setFormData({
-        id: data.id,
-        nombre: data.nombre || "",
-        apellido: data.apellido || "",
-        correo: data.correo || "",
-        telefono: data.telefono || "",
-        direccion: data.direccion || "",
-      });
-      localStorage.setItem("userData", JSON.stringify(data));
-      setModoEdicion(false);
-      setEditado(false);
-      abrirModal("exito", "Perfil actualizado correctamente.");
-    } catch (error) {
-      abrirModal("error", "Error al actualizar perfil: " + error.message);
-      console.error("Error:", error.message);
     }
-  };
+
+    const response = await fetch("http://localhost:8080/angora/api/v1/user", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+      body: JSON.stringify(formData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText);
+    }
+
+    const data = await response.json();
+
+    if (formData.correo !== user.correo) {
+      abrirModal(
+        "exito",
+        "Correo actualizado correctamente. Por favor, vuelve a iniciar sesión."
+      );
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userData");
+      setUser(null);
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
+      return;
+    }
+
+    setUser(data);
+    setFormData({
+      id: data.id,
+      nombre: data.nombre || "",
+      apellido: data.apellido || "",
+      correo: data.correo || "",
+      telefono: data.telefono || "",
+      direccion: data.direccion || "",
+    });
+    localStorage.setItem("userData", JSON.stringify(data));
+    setModoEdicion(false);
+    setEditado(false);
+    abrirModal("exito", "Perfil actualizado correctamente.");
+  } catch (error) {
+    abrirModal("error", "Error al actualizar perfil: " + error.message);
+    console.error("Error:", error.message);
+  }
+};
+
 
   return (
     <div className="perfil-wrapper d-flex align-items-center justify-content-center">
