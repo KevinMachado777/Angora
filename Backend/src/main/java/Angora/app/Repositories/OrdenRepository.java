@@ -11,6 +11,6 @@ import java.util.List;
 public interface OrdenRepository extends JpaRepository<Orden, Long> {
 
     // Busca órdenes dentro de un rango de fechas (para reportes de egresos)
-    @Query("SELECT o FROM Orden o WHERE (:fechaInicio IS NULL OR o.fechaOrden >= :fechaInicio) AND (:fechaFin IS NULL OR o.fechaOrden <= :fechaFin)")
+    @Query("SELECT o FROM Orden o WHERE (:fechaInicio IS NULL OR o.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR o.fecha <= :fechaFin)")
     List<Orden> findByFechaBetween(@Param("fechaInicio") LocalDateTime fechaInicio, @Param("fechaFin") LocalDateTime fechaFin);
 }

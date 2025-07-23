@@ -57,16 +57,16 @@ public class ReporteService implements IReporteService {
     // Retorna todas las órdenes si no se especifican fechas
     public List<ReporteEgresosDTO> getEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteEgresosDTO> egresos = new ArrayList<>();
-        List<OrdenSimulador> ordenes = (fechaInicio == null && fechaFin == null)
+        List<Orden> ordenes = (fechaInicio == null && fechaFin == null)
                 ? ordenRepository.findAll() // Obtiene todas las órdenes si no hay filtro
                 : ordenRepository.findByFechaBetween(fechaInicio, fechaFin); // Filtra por rango de fechas
 
-        for (OrdenSimulador o : ordenes) {
+        for (Orden o : ordenes) {
             egresos.add(new ReporteEgresosDTO(
                     o.getIdOrden(),
                     // Nombre del proveedor o valor por defecto
                     o.getProveedor() != null ? o.getProveedor().getNombre() : "Sin proveedor",
-                    o.getFechaOrden(),
+                    o.getFecha(),
                     o.getTotal() != null ? o.getTotal() : 0f // Total de la orden con valor por defecto
             ));
         }
@@ -97,7 +97,7 @@ public class ReporteService implements IReporteService {
     // Metodo para calcular el total de egresos en un rango de fechas
     // Suma los totales de todas las órdenes en el período
     public Float getTotalEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
-        List<OrdenSimulador> ordenes = (fechaInicio == null && fechaFin == null)
+        List<Orden> ordenes = (fechaInicio == null && fechaFin == null)
                 ? ordenRepository.findAll()
                 : ordenRepository.findByFechaBetween(fechaInicio, fechaFin);
         return ordenes.stream()

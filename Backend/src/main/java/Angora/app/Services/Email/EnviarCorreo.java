@@ -1,4 +1,4 @@
-package Angora.app.Services.Externos;
+package Angora.app.Services.Email;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
@@ -13,7 +13,7 @@ public class EnviarCorreo {
 
     public void enviarCorreo(String para, String asunto, String cuerpo) {
         SimpleMailMessage mensaje = new SimpleMailMessage();
-        mensaje.setFrom("johanestebanrios11@gmail.com"); // el remitente
+        mensaje.setFrom("angorasystem@gmail.com"); // el remitente
         mensaje.setTo(para);
         mensaje.setSubject(asunto);
         mensaje.setText(cuerpo);

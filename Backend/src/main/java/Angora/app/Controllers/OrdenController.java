@@ -1,6 +1,6 @@
 package Angora.app.Controllers;
 
-import Angora.app.Services.Externos.EnviarCorreo;
+import Angora.app.Services.Email.EnviarCorreo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
