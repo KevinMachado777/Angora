@@ -46,7 +46,7 @@ const Reportes = () => {
                     break;
                 case 'inventario':
                     endpoint = `/reportes/inventario`;
-                    params.tipo = filtroTipo === 'materiaPrima' ? 'movimientos' : 'movimientos'; // Usar movimientos para ambos
+                    params.tipo = 'movimientos'; // Usar movimientos como base
                     break;
                 case 'usuarios':
                     endpoint = `/reportes/usuarios`;
@@ -76,18 +76,18 @@ const Reportes = () => {
                     utilidad: totalIngresos - totalEgresos,
                 });
 
-                // Fetch métricas de inventario (usando movimientos)
+                // Fetch métricas de inventario
                 if (tipoReporte === 'inventario') {
                     const inventarioParams = { ...params, tipo: 'movimientos' };
-                    const [valorResp, prodMovResp, matMovResp] = await Promise.all([
+                    const [valorResp, totalProdResp, totalMatResp] = await Promise.all([
                         axios.get(`${urlBackend}/reportes/valorInventario`, { params: inventarioParams }),
-                        axios.get(`${urlBackend}/reportes/inventario?tipo=movimientos&fechaInicio=${fechaInicio}T00:00:00&fechaFin=${fechaFin}T23:59:59`, { params: { ...params, tipo: 'productos' } }),
-                        axios.get(`${urlBackend}/reportes/inventario?tipo=movimientos&fechaInicio=${fechaInicio}T00:00:00&fechaFin=${fechaFin}T23:59:59`, { params: { ...params, tipo: 'materiaPrima' } }),
+                        axios.get(`${urlBackend}/reportes/totalProductos`, { params: inventarioParams }), // Usamos totalProductos con fechas
+                        axios.get(`${urlBackend}/reportes/totalMateriaPrima`, { params: inventarioParams }), // Usamos totalMateriaPrima con fechas
                     ]);
                     setMetricas({
                         totalInventario: valorResp.data || 0,
-                        totalProductos: prodMovResp.data.length || 0,
-                        totalMateriaPrima: matMovResp.data.length || 0,
+                        totalProductos: totalProdResp.data || 0,
+                        totalMateriaPrima: totalMatResp.data || 0,
                     });
                 }
             } catch (error) {
@@ -126,16 +126,16 @@ const Reportes = () => {
             return (
                 <div className="tarjetas-container">
                     <div className="tarjeta">
-                        <h3>Valor Total Inventario</h3>
+                        <h3>Valor Total Inventario (Productos)</h3>
                         <p>${metricas.totalInventario.toLocaleString()}</p>
                     </div>
                     <div className="tarjeta">
-                        <h3>Cantidad Total {filtroTipo === 'productos' ? 'Productos' : 'Materia Prima'}</h3>
-                        <p>{filtroTipo === 'productos' ? metricas.totalProductos : metricas.totalMateriaPrima}</p>
+                        <h3>Cantidad Total Productos</h3>
+                        <p>{metricas.totalProductos.toLocaleString()}</p>
                     </div>
                     <div className="tarjeta">
-                        <h3>Cantidad Total {filtroTipo === 'materiaPrima' ? 'Productos' : 'Materia Prima'}</h3>
-                        <p>{filtroTipo === 'materiaPrima' ? metricas.totalProductos : metricas.totalMateriaPrima}</p>
+                        <h3>Cantidad Total Materia Prima</h3>
+                        <p>{metricas.totalMateriaPrima.toLocaleString()}</p>
                     </div>
                 </div>
             );
@@ -283,7 +283,6 @@ const Reportes = () => {
         XLSX.writeFile(workbook, 'reporte.xlsx');
     };
 
-    // Mapeo dinámico para cada tipo de reporte
     const getMapeo = () => {
         switch (tipoReporte) {
             case 'inventario':

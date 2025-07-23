@@ -1,6 +1,8 @@
 package Angora.app.Controllers;
 
 import Angora.app.Controllers.dto.*;
+import Angora.app.Entities.Movimiento;
+import Angora.app.Repositories.MovimientoRepository;
 import Angora.app.Services.ReporteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,9 @@ public class ReporteController {
 
     @Autowired
     private ReporteService reporteService;
+
+    @Autowired
+    private MovimientoRepository movimientoRepository;
 
     @GetMapping("/finanzas")
     public ResponseEntity<List<?>> getFinanzas(
@@ -40,7 +45,7 @@ public class ReporteController {
     public ResponseEntity<List<?>> getInventario(
             @RequestParam(required = false) LocalDateTime fechaInicio,
             @RequestParam(required = false) LocalDateTime fechaFin,
-            @RequestParam(defaultValue = "productos") String tipo) {
+            @RequestParam(defaultValue = "movimientos") String tipo) { // Cambiado default a "movimientos"
         try {
             if (fechaInicio != null && fechaFin != null && fechaInicio.isAfter(fechaFin)) {
                 return ResponseEntity.badRequest().build();
@@ -124,9 +129,14 @@ public class ReporteController {
     }
 
     @GetMapping("/totalProductos")
-    public ResponseEntity<Long> getTotalProductos() {
+    public ResponseEntity<Float> getTotalProductos( // Cambiado a Float y con fechas
+                                                    @RequestParam(required = false) LocalDateTime fechaInicio,
+                                                    @RequestParam(required = false) LocalDateTime fechaFin) {
         try {
-            Long total = reporteService.getTotalProductos();
+            if (fechaInicio != null && fechaFin != null && fechaInicio.isAfter(fechaFin)) {
+                return ResponseEntity.badRequest().build();
+            }
+            Float total = reporteService.getTotalProductos(fechaInicio, fechaFin);
             return ResponseEntity.ok(total);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -134,9 +144,14 @@ public class ReporteController {
     }
 
     @GetMapping("/totalMateriaPrima")
-    public ResponseEntity<Long> getTotalMateriaPrima() {
+    public ResponseEntity<Float> getTotalMateriaPrima( // Cambiado a Float y con fechas
+                                                       @RequestParam(required = false) LocalDateTime fechaInicio,
+                                                       @RequestParam(required = false) LocalDateTime fechaFin) {
         try {
-            Long total = reporteService.getTotalMateriaPrima();
+            if (fechaInicio != null && fechaFin != null && fechaInicio.isAfter(fechaFin)) {
+                return ResponseEntity.badRequest().build();
+            }
+            Float total = reporteService.getTotalMateriaPrima(fechaInicio, fechaFin);
             return ResponseEntity.ok(total);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -144,14 +159,14 @@ public class ReporteController {
     }
 
     @GetMapping("/totalProductosByFecha")
-    public ResponseEntity<Long> getTotalProductosByFecha(
-            @RequestParam(required = false) LocalDateTime fechaInicio,
-            @RequestParam(required = false) LocalDateTime fechaFin) {
+    public ResponseEntity<Float> getTotalProductosByFecha( // Cambiado a Float
+                                                           @RequestParam(required = false) LocalDateTime fechaInicio,
+                                                           @RequestParam(required = false) LocalDateTime fechaFin) {
         try {
             if (fechaInicio != null && fechaFin != null && fechaInicio.isAfter(fechaFin)) {
                 return ResponseEntity.badRequest().build();
             }
-            Long total = reporteService.getTotalProductosByFecha(fechaInicio, fechaFin);
+            Float total = reporteService.getTotalProductosByFecha(fechaInicio, fechaFin);
             return ResponseEntity.ok(total);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -159,14 +174,14 @@ public class ReporteController {
     }
 
     @GetMapping("/totalMateriaPrimaByFecha")
-    public ResponseEntity<Long> getTotalMateriaPrimaByFecha(
-            @RequestParam(required = false) LocalDateTime fechaInicio,
-            @RequestParam(required = false) LocalDateTime fechaFin) {
+    public ResponseEntity<Float> getTotalMateriaPrimaByFecha( // Cambiado a Float
+                                                              @RequestParam(required = false) LocalDateTime fechaInicio,
+                                                              @RequestParam(required = false) LocalDateTime fechaFin) {
         try {
             if (fechaInicio != null && fechaFin != null && fechaInicio.isAfter(fechaFin)) {
                 return ResponseEntity.badRequest().build();
             }
-            Long total = reporteService.getTotalMateriaPrimaByFecha(fechaInicio, fechaFin);
+            Float total = reporteService.getTotalMateriaPrimaByFecha(fechaInicio, fechaFin);
             return ResponseEntity.ok(total);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
@@ -174,12 +189,22 @@ public class ReporteController {
     }
 
     @GetMapping("/valorInventario")
-    public ResponseEntity<Float> getValorInventario() {
+    public ResponseEntity<Float> getValorInventario( // Cambiado a Float y con fechas
+                                                     @RequestParam(required = false) LocalDateTime fechaInicio,
+                                                     @RequestParam(required = false) LocalDateTime fechaFin) {
         try {
-            Float valor = reporteService.getValorInventario();
+            if (fechaInicio != null && fechaFin != null && fechaInicio.isAfter(fechaFin)) {
+                return ResponseEntity.badRequest().build();
+            }
+            Float valor = reporteService.getValorInventario(fechaInicio, fechaFin);
             return ResponseEntity.ok(valor);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @GetMapping("/movimientos")
+    public List<Movimiento> obtenerMovimientos(){
+        return movimientoRepository.findAll();
     }
 }
