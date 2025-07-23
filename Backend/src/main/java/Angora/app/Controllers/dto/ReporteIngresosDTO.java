@@ -12,7 +12,7 @@ public class ReporteIngresosDTO {
     private LocalDateTime fecha;
     private Float total;
 
-    // Constructor con parámetros (necesario para inicialización)
+    // Constructor con parámetros
     public ReporteIngresosDTO(Long id, String cliente, String metodoPago, LocalDateTime fecha, Float total) {
         this.id = id;
         this.cliente = cliente;

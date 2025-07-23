@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+// Listener para que la tabla de movimientos le pueda hacer seguimiento a esta entidad
+@EntityListeners(Angora.app.Entities.MovimientoListener.class)
 public class Producto implements Inventariable {
 
     @Id
@@ -21,7 +23,7 @@ public class Producto implements Inventariable {
     private Float costo;
     private Float precio;
 
-    @ManyToOne // Corregido de @OneToOne a @ManyToOne
+    @ManyToOne
     @JoinColumn(name = "id_categoria")
     private Categoria idCategoria;
 

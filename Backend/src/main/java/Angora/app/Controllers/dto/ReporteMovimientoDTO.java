@@ -12,10 +12,10 @@ public class ReporteMovimientoDTO {
     private Float cantidadActual;
     private String tipoMovimiento;
     private LocalDateTime fechaMovimiento;
-    private Long productoId; // Añadir este campo
-    private Long materiaPrimaId; // Añadir este campo
+    private Long productoId;
+    private Long materiaPrimaId;
 
-    // Constructor, getters y setters
+    // Constructor de parámetros
     public ReporteMovimientoDTO(Long id, String nombre, Float cantidadPasada, Float cantidadActual, String tipoMovimiento, LocalDateTime fechaMovimiento, Long productoId, Long materiaPrimaId) {
         this.id = id;
         this.nombre = nombre;

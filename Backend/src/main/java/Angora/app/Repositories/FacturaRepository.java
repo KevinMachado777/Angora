@@ -40,6 +40,7 @@ public interface FacturaRepository extends JpaRepository<Factura, Long> {
     @Query("SELECT COUNT(f) FROM Factura f WHERE f.cliente.idCliente = :idCliente AND (:fechaInicio IS NULL OR f.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR f.fecha <= :fechaFin)")
     Long countByIdClienteAndFechaBetween(@Param("idCliente") Long idCliente, LocalDateTime fechaInicio, LocalDateTime fechaFin);
 
+    // Busca las facturas asociadas a un cliente
     @Query("SELECT f FROM Factura f WHERE f.cliente.idCliente = :idCliente")
     List<Factura> findByIdCliente(@Param("idCliente") Long idCliente);
 }
