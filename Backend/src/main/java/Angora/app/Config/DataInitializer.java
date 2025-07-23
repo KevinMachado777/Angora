@@ -49,6 +49,7 @@ public class DataInitializer implements CommandLineRunner {
                 .correo("kevin@example.com")
                 .contraseña("1234") // Se codifica luego
                 .telefono("3196382919")
+                .direccion("Urrao")
                 .foto("URL_FOTO_USUARIO")
                 .permisos(new ArrayList<>()) // <-- lista inicializada
                 .build();
@@ -60,6 +61,7 @@ public class DataInitializer implements CommandLineRunner {
                 .correo("johan@example.com")
                 .contraseña("1234")
                 .telefono("3002950000")
+                .direccion("Versalles")
                 .foto("URL_FOTO_USUARIO")
                 .permisos(new ArrayList<>())
                 .build();
@@ -71,6 +73,7 @@ public class DataInitializer implements CommandLineRunner {
                 .correo("samuel@example.com")
                 .contraseña("1234")
                 .telefono("3002955138")
+                .direccion("Tamesis")
                 .foto("URL_FOTO_USUARIO")
                 .permisos(new ArrayList<>())
                 .build();

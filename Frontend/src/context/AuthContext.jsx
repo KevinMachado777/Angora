@@ -124,7 +124,7 @@ export const AuthProvider = ({ children }) => {
 
   // Retorna el proveedor de contexto, permitiendo que los componentes hijos accedan al contexto de autenticación
   return (
-    <AuthContext.Provider value={{ user, signIn, signOut, loading }}>
+<AuthContext.Provider value={{ user, setUser, signIn, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   );

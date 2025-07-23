@@ -202,4 +202,20 @@ public class UserDetailService implements UserDetailsService{
         return authResponse;
 
     }
+
+    public Usuario actualizarUsuario(Usuario usuario) {
+        Usuario usuarioActualizado = usuarioRepository.findById(usuario.getId()).orElse(null);
+
+        if (usuarioActualizado == null) {
+            throw new RuntimeException("Usuario no encontrado con ID: " + usuario.getId());
+        }
+
+        usuarioActualizado.setCorreo(usuario.getCorreo());
+        usuarioActualizado.setTelefono(usuario.getTelefono());
+        usuarioActualizado.setDireccion(usuario.getDireccion());
+
+        return usuarioRepository.save(usuarioActualizado); // ✅ ahora retorna
+    }
+
+
 }

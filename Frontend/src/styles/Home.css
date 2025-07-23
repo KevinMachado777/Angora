@@ -1,0 +1,253 @@
+/* Fondo animado degradado */
+.home-wrapper {
+  min-height: 100vh;
+  position: relative;
+  background: linear-gradient(-45deg, #f0f7ff, #c6e2f5, #f9f0ff, #e6fff7);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  font-family: 'Poppins', sans-serif;
+  overflow-x: hidden;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Burbujas decorativas */
+.burbuja, .burbuja2 {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  animation: flotar 8s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+.burbuja {
+  top: 20%;
+  left: 10%;
+}
+
+.burbuja2 {
+  bottom: 15%;
+  right: 8%;
+  width: 100px;
+  height: 100px;
+}
+
+@keyframes flotar {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-30px); }
+}
+
+/* Hero principal */
+.hero {
+  padding-top: 6rem;
+  position: relative;
+  z-index: 1;
+}
+
+.titulo-hero {
+  font-size: 3.2rem;
+  font-weight: 800;
+  color: #1c1c1c;
+  text-shadow: 1px 1px 3px #ffffff88;
+  padding-bottom: 10px;
+  display: inline-block;
+  position: relative;
+}
+
+.titulo-hero::after {
+  content: '';
+  display: block;
+  width: 100px;
+  height: 5px;
+  margin: 14px auto 0;
+  background: linear-gradient(90deg, #007bff, #4ac1f7);
+  border-radius: 4px;
+  animation: pulseBar 2s infinite ease-in-out;
+}
+
+@keyframes pulseBar {
+  0%, 100% { opacity: 0.5; transform: scaleX(1); }
+  50% { opacity: 1; transform: scaleX(1.3); }
+}
+
+/* Hover animado en el título */
+.anim-hover {
+  animation: tiltUp 0.5s ease-out;
+}
+
+@keyframes tiltUp {
+  0% { transform: rotateX(0deg); }
+  100% { transform: rotateX(10deg); }
+}
+
+/* Slogan animado */
+.slogan-animado {
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: #2c2c2c;
+  text-shadow: 0 1px 1px #ffffffaa;
+}
+
+.cursor {
+  display: inline-block;
+  width: 1px;
+  background: #2c2c2c;
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Íconos ambientales */
+.iconos-ambientales {
+  margin-top: 1rem;
+}
+
+.iconos-ambientales i {
+  font-size: 2.2rem;
+  margin: 0 0.6rem;
+  color: #2e2e2e;
+  transition: transform 0.3s ease, color 0.3s ease, opacity 0.3s;
+  opacity: 0.9;
+}
+
+.iconos-ambientales i:hover {
+  transform: scale(1.3);
+  color: #4a90e2;
+  opacity: 1;
+}
+
+/* Sección ¿Quiénes somos? */
+.quienes-glass {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #333;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.6s ease;
+}
+
+.quienes-glass::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.2), transparent);
+  animation: resplandor 10s linear infinite;
+  z-index: 0;
+}
+
+@keyframes resplandor {
+  0% { transform: translateX(0%) rotate(45deg); }
+  100% { transform: translateX(100%) rotate(45deg); }
+}
+
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Galería infinita horizontal */
+.gallery-container {
+  overflow: hidden;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.gallery-track {
+  display: flex;
+  width: max-content;
+  animation: scrollGallery 40s linear infinite;
+}
+
+.gallery-item {
+  flex: 0 0 280px;
+  margin-right: 1rem;
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gallery-item img {
+  border-radius: 12px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.overlay-caption {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+@keyframes scrollGallery {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .gallery-item {
+    flex: 0 0 220px;
+  }
+
+  .titulo-hero {
+    font-size: 2.3rem;
+  }
+
+  .slogan-animado {
+    font-size: 1.1rem;
+  }
+
+  .iconos-ambientales i {
+    font-size: 1.8rem;
+  }
+}
+
+/* Estado inicial oculto para scroll */
+.oculto-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.6s ease;
+}
+
+/* Al hacer scroll y entrar en vista */
+.mostrar-scroll {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast-bienvenida {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #d0f0ff;
+  color: #0c5460;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  font-weight: 500;
+  z-index: 9999;
+  animation: fadeInUp 0.5s ease;
+}
