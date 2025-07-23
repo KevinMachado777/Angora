@@ -59,6 +59,9 @@ public class SecurityConfig {
                     // Configurar endpoints públicos
                     // Rutas protegidas de Auth
                     http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/user/{correo}").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/user/authenticated/{correo}").permitAll();
+
 
                     // Rutas protegidas de Portafolio
                     http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
@@ -68,6 +71,7 @@ public class SecurityConfig {
                     // Configurar endpoints privados
 
                     // Rutas protegidas de Personal
+                    http.requestMatchers(HttpMethod.GET, "/user/public/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/user/**").hasAuthority("PERSONAL");
                     http.requestMatchers(HttpMethod.GET, "/user/**").hasAuthority("PERSONAL");
 
@@ -76,6 +80,15 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/carteras/**").permitAll();
                     http.requestMatchers(HttpMethod.PUT, "/carteras/**").permitAll();
                     http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").permitAll();
+
+                    // Rutas de reportes
+                    http.requestMatchers(HttpMethod.GET, "/reportes/**").permitAll();
+
+                    // Rutas de perfil
+                    http.requestMatchers(HttpMethod.PUT, "/user").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/user/exists/**").permitAll();
+
+
 
                     http.anyRequest().denyAll();
                 })

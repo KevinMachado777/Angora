@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-// Inicializador de registros de prueba en la base de datos
+// Inicializador de registros de prueba en la base de datos (para desarrollo y pruebas)
 @Component
 public class DataInitializer implements CommandLineRunner {
 
@@ -32,82 +32,86 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         // Método que inicializa permiso
-        initializePermisos();
-        //        // Metodo que inicializa Usuarios
-        initializeUsuarios();
+        initializePermisosAndUsuarios();
     }
 
-    // Inicializador de Permisos
-    private void initializePermisos() {
+    private void initializePermisosAndUsuarios() {
         System.out.println("Verificando permisos...");
 
         // Lista de permisos a crear
         List<Permiso> permisosToCreate = new ArrayList<>();
 
-        // Verificar y crear permiso HOME
-        Optional<Permiso> homeExistente = permisoRepository.findByName("HOME");
-        if (homeExistente.isEmpty()) {
-            Permiso home = Permiso.builder()
-                    .name("HOME")
-                    .build();
-            permisosToCreate.add(home);
-            System.out.println("Permiso HOME será creado");
-        } else {
-            System.out.println("Permiso HOME ya existe");
-        }
+        // Crear usuarios con listas de permisos vacías desde el principio
+        Usuario kevin = Usuario.builder()
+                .id(1041532485L)
+                .nombre("Kevin")
+                .apellido("Machado")
+                .correo("kevin@example.com")
+                .contraseña("1234") // Se codifica luego
+                .telefono("3196382919")
+                .direccion("Urrao")
+                .foto("URL_FOTO_USUARIO")
+                .permisos(new ArrayList<>()) // <-- lista inicializada
+                .build();
 
-        // Verificar y crear permiso INVENTARIOS
-        Optional<Permiso> inventariosExistente = permisoRepository.findByName("INVENTARIOS");
-        if (inventariosExistente.isEmpty()) {
-            Permiso inventarios = Permiso.builder()
-                    .name("INVENTARIOS")
-                    .build();
-            permisosToCreate.add(inventarios);
-            System.out.println("Permiso INVENTARIOS será creado");
-        } else {
-            System.out.println("Permiso INVENTARIOS ya existe");
-        }
+        Usuario johan = Usuario.builder()
+                .id(1026134871L)
+                .nombre("Johan")
+                .apellido("Rios")
+                .correo("johan@example.com")
+                .contraseña("1234")
+                .telefono("3002950000")
+                .direccion("Versalles")
+                .foto("URL_FOTO_USUARIO")
+                .permisos(new ArrayList<>())
+                .build();
 
-        // Verificar y crear permiso PERSONAL
-        Optional<Permiso> personalExistente = permisoRepository.findByName("PERSONAL");
-        if (personalExistente.isEmpty()) {
-            Permiso personal = Permiso.builder()
-                    .name("PERSONAL")
-                    .build();
-            permisosToCreate.add(personal);
-            System.out.println("Permiso PERSONAL será creado");
-        } else {
-            System.out.println("Permiso PERSONAL ya existe");
-        }
+        Usuario samuel = Usuario.builder()
+                .id(1028140791L)
+                .nombre("Samuel")
+                .apellido("Ríos")
+                .correo("samuel@example.com")
+                .contraseña("1234")
+                .telefono("3002955138")
+                .direccion("Tamesis")
+                .foto("URL_FOTO_USUARIO")
+                .permisos(new ArrayList<>())
+                .build();
 
-        // Verificar y crear permiso VENTAS
-        Optional<Permiso> ventasExistente = permisoRepository.findByName("VENTAS");
-        if (ventasExistente.isEmpty()) {
-            Permiso ventas = Permiso.builder()
-                    .name("VENTAS")
-                    .build();
-            permisosToCreate.add(ventas);
-            System.out.println("Permiso VENTAS será creado");
-        } else {
-            System.out.println("Permiso VENTAS ya existe");
-        }
+        // Crear y asignar permisos si no existen
+        crearYAsignarPermiso("HOME", List.of(samuel, kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("DASHBOARD", List.of(kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("PERSONAL", List.of(kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("INVENTARIOS", List.of(samuel, kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("REPORTES", List.of(samuel, kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("VENTAS", List.of(kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("CLIENTES", List.of(kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("PEDIDOS", List.of(samuel, kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("PROVEEDORES", List.of(kevin, johan), permisosToCreate);
 
-        // Guardar solo los permisos que no existen
+        // Guardar los nuevos permisos
         if (!permisosToCreate.isEmpty()) {
             permisoRepository.saveAll(permisosToCreate);
             System.out.println("Se crearon " + permisosToCreate.size() + " permisos nuevos");
         } else {
             System.out.println("Todos los permisos ya existen");
         }
-    }
 
-    // Inicializador de Usuarios
-    private void initializeUsuarios() {
+        // Guardar usuarios si no existen
+        createUserIfNotExists(
+                kevin.getId(), kevin.getCorreo(), kevin.getNombre(), kevin.getApellido(),
+                kevin.getContraseña(), kevin.getFoto(), kevin.getTelefono(), kevin.getPermisos()
+        );
 
-        createUserIfNotExists(1028140791L,"samuel@example.com", "Samuel", "Rios", "1234", "URL_FOTO_USUARIO", "3183886308", getAllPermisos());
-        createUserIfNotExists(1028L, "kevin@example.com", "Kevin", "Machado", "1234", "URL_FOTO_USUARIO","3196382919", getAllPermisos());
+        createUserIfNotExists(
+                johan.getId(), johan.getCorreo(), johan.getNombre(), johan.getApellido(),
+                johan.getContraseña(), johan.getFoto(), johan.getTelefono(), johan.getPermisos()
+        );
 
-        // Se pueden seguir creando mas usuarios de prueba...
+        createUserIfNotExists(
+                samuel.getId(), samuel.getCorreo(), samuel.getNombre(), samuel.getApellido(),
+                samuel.getContraseña(), samuel.getFoto(), samuel.getTelefono(), samuel.getPermisos()
+        );
     }
 
     // Método para crear un usuario si no existe
@@ -140,4 +144,23 @@ public class DataInitializer implements CommandLineRunner {
         return permisoRepository.findAll();
     }
 
+    private void crearYAsignarPermiso(String nombrePermiso, List<Usuario> usuarios, List<Permiso> permisosToCreate) {
+        Optional<Permiso> existente = permisoRepository.findByName(nombrePermiso);
+        if (existente.isEmpty()) {
+            Permiso nuevo = Permiso.builder()
+                    .name(nombrePermiso)
+                    .build();
+            permisosToCreate.add(nuevo);
+            for (Usuario usuario : usuarios) {
+                usuario.getPermisos().add(nuevo);
+            }
+            System.out.println("Permiso " + nombrePermiso + " será creado");
+        } else {
+            System.out.println("Permiso " + nombrePermiso + " ya existe");
+            Permiso permisoExistente = existente.get();
+            for (Usuario usuario : usuarios) {
+                usuario.getPermisos().add(permisoExistente);
+            }
+        }
+    }
 }

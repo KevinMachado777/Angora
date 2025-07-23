@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CreadorTabla } from "../components/CreadorTabla";
 import ModalProveedor from "../components/ModalProveedor";
 import BotonAgregar from "../components/botonAgregar";
@@ -7,26 +7,14 @@ import BotonProveedores from "../components/BotonProveedores";
 import Modal from "../components/Modal";
 import BotonCancelar from "../components/BotonCancelar";
 import BotonAceptar from "../components/BotonAceptar";
+import axios from "axios";
 
 const Proveedores = () => {
   const [modoProveedor, setModoProveedor] = useState(true);
 
-  const [proveedores, setProveedores] = useState([
-    {
-      id: 1001,
-      nombre: "Distribuciones Andina",
-      telefono: "3104567890",
-      correo: "contacto@andina.com",
-      direccion: "Cra 15 #45-67, Bogotá",
-    },
-    {
-      id: 1002,
-      nombre: "Suministros Rápidos",
-      telefono: "3012345678",
-      correo: "ventas@suministrosrapidos.com",
-      direccion: "Cl 23 #12-34, Medellín",
-    },
-  ]);
+  const url = "http://localhost:8080/angora/api/v1/proveedores";
+
+  const [proveedores, setProveedores] = useState();
 
   const [ordenes, setOrdenes] = useState([]);
   const [modalAbierta, setModalAbierta] = useState(false);
@@ -41,6 +29,32 @@ const Proveedores = () => {
     setModalAbierta(true);
   };
 
+  useEffect(() => {
+    const cargarProveedores = async () => {
+      try {
+        const respuesta = await axios.get(url);
+        setProveedores(respuesta.data);
+      } catch (error) {
+        console.log("Error al cargar proveedores: ", error);
+      }
+    };
+
+    cargarProveedores();
+  }, []);
+
+  useEffect(() => {
+    const cargarOrdenes = async () => {
+      try {
+        const response = await axios.get("http://localhost:8080/angora/api/v1/ordenes");
+        setOrdenes(response.data);
+      } catch (error) {
+        console.error("Error al cargar órdenes:", error);
+      }
+    };
+
+    cargarOrdenes();
+  }, []);
+
   const abrirModalEditar = (registro) => {
     const ordenOriginal = ordenes.find((o) => o.id === registro.id) || registro;
     setEditando(ordenOriginal);
@@ -53,33 +67,71 @@ const Proveedores = () => {
     setConfirmarEliminacion(true);
   };
 
-  const eliminarRegistro = () => {
+  const eliminarRegistro = async () => {
+  try {
     if (modoProveedor) {
-      setProveedores((prev) => prev.filter((p) => p.id !== registroEliminar.id));
+      const id = registroEliminar.idProveedor || registroEliminar.id;
+      await axios.delete(`${url}/${id}`);
+
+      const response = await axios.get(url);
+      setProveedores(response.data);
     } else {
-      setOrdenes((prev) => prev.filter((o) => o.id !== registroEliminar.id));
+      const id = registroEliminar.id || registroEliminar.idOrden;
+      await axios.delete(`http://localhost:8080/angora/api/v1/ordenes/${id}`);
+
+      const response = await axios.get("http://localhost:8080/angora/api/v1/ordenes");
+      setOrdenes(response.data);
     }
+
     setConfirmarEliminacion(false);
     setRegistroEliminar(null);
-  };
+  } catch (error) {
+    console.error("Error al eliminar:", error);
+    alert("Hubo un problema al eliminar el registro.");
+  }
+};
 
-  const guardarProveedor = (nuevo) => {
-    if (editando) {
-      setProveedores((prev) =>
-        prev.map((p) => (p.id === editando.id ? nuevo : p))
-      );
-    } else {
-      setProveedores((prev) => [...prev, nuevo]);
+
+  const guardarProveedor = async (nuevo) => {
+    try {
+      if (editando) {
+        // Si estás editando, haz PUT con el ID correcto
+        await await axios.put(`${url}`, {
+          ...nuevo,
+          idProveedor: nuevo.id, // importante para que coincida con tu entidad
+        });
+      } else {
+        await axios.post(url, nuevo);
+      }
+
+      const respuesta = await axios.get(url);
+      setProveedores(respuesta.data);
+    } catch (error) {
+      console.log("Error al guardar: ", error);
     }
   };
 
-  const guardarOrden = (nuevaOrden) => {
-    if (editando) {
-      setOrdenes((prev) =>
-        prev.map((o) => (o.id === editando.id ? nuevaOrden : o))
-      );
-    } else {
-      setOrdenes((prev) => [...prev, nuevaOrden]);
+  const guardarOrden = async (nuevaOrden) => {
+    try {
+      const response = await axios.post("http://localhost:8080/angora/api/v1/ordenes", {
+        proveedor: { idProveedor: nuevaOrden.id },
+        materiaPrima: nuevaOrden.items.map((item) => ({
+          nombre: item.nombre,
+          cantidad: parseInt(item.cantidad),
+          // si tu entidad MateriaPrima espera más datos, agrégalos aquí
+        })),
+        notas: nuevaOrden.notas,
+        estado: true,
+        fecha: new Date(),
+      });
+
+      // Recargar órdenes desde el backend
+      const ordenesResponse = await axios.get("http://localhost:8080/angora/api/v1/ordenes");
+      setOrdenes(ordenesResponse.data);
+      setModalAbierta(false);
+    } catch (error) {
+      console.error("Error al guardar orden:", error);
+      alert("Hubo un problema al guardar la orden.");
     }
   };
 
@@ -99,17 +151,24 @@ const Proveedores = () => {
   ];
 
   const registrosTabla = modoProveedor
-    ? proveedores
-    : ordenes.map((orden) => ({
-        id: orden.id,
-        nombre: orden.nombre,
-        cantidadArticulos: orden.cantidadArticulos,
-        total: orden.total,
-        notas: orden.notas,
-      }));
+  ? proveedores?.map((p) => ({
+      id: p.idProveedor ?? p.id,
+      nombre: p.nombre,
+      telefono: p.telefono,
+      correo: p.correo,
+      direccion: p.direccion,
+    })) ?? []
+  : ordenes.map((orden) => ({
+      id: orden.idOrden ?? orden.id,
+      nombre: orden.proveedor?.nombre || "Desconocido",
+      cantidadArticulos: orden.materiaPrima?.length || 0,
+      total: "N/A", // opcional si no tienes precios en el backend
+      notas: orden.notas,
+    }));
+
 
   return (
-    <main className="main-home proveedores inventario">
+    <main className="proveedores inventario">
       <h1 className="titulo">
         {modoProveedor ? "Proveedores" : "Órdenes de Compra"}
       </h1>

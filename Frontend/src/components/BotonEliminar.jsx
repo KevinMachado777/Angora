@@ -3,7 +3,7 @@ import "../styles/botones.css";
 
 const BotonEliminar = ({ onClick }) => {
   return (
-    <button className="btn-eliminar" onClick={onClick}>
+    <button type='button' className="btn-eliminar" onClick={onClick}>
       <i className="bi bi-trash"></i> Eliminar
     </button>
   );

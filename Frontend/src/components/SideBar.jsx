@@ -7,6 +7,7 @@ import reporteIcon from "../assets/icons/reportes.ico";
 import ventasIcon from "../assets/icons/ventas.ico";
 import portafolioIcon from "../assets/icons/portafolio.ico";
 import proveedorIcon from "../assets/icons/provedores.ico";
+import DashboardIcon from "../assets/icons/dashboard.png";
 import { Link } from "react-router-dom";
 
 const SideBar = ({ isOpen, onClose }) => {
@@ -23,6 +24,12 @@ const SideBar = ({ isOpen, onClose }) => {
                             <Link to="/home" className="nav-link" onClick={onClose}>
                                 <p>Home</p>
                                 <img src={homoIcon} alt="Inicio" />
+                            </Link>
+                        </li>
+                        <li>
+                            <Link to="/dashboard" className="nav-link" onClick={onClose}>
+                                <p>Dashboard</p>
+                                <img src={DashboardIcon} alt="Dashboard" />
                             </Link>
                         </li>
                         <li>

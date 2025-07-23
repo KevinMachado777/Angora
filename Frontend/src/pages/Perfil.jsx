@@ -1,133 +1,270 @@
-import React, { useState } from "react"; 
-import "../styles/perfil.css";
-import logoUser from "../assets/images/Logo_perfil.png"; 
-import productos from "../assets/images/Productos_Perfil.png"; 
-import BotonGuardar from "../components/BotonGuardar"; 
+import React, { useState, useEffect, useContext } from "react";
+import "bootstrap-icons/font/bootstrap-icons.css";
+import "../styles/Perfil.css";
+import Modal from "../components/Modal";
+import BotonEditar from "../components/BotonEditar";
 import BotonCancelar from "../components/BotonCancelar";
+import BotonGuardar from "../components/BotonGuardar";
+import { AuthContext } from "../context/AuthContext";
 
-const Perfil = () => {
-  // Estado que controla si se está editando el perfil o no
-  const [Editar, setEditar] = useState(false);
-  // Estado que controla si la tarjeta debe girarse o no
-  const [Girar, setGirar] = useState(false);
-
-  // Estado que contiene los datos del perfil del usuario
-  const [Datos, setDatos] = useState({
-    nombre: "Johan",
-    apellido: "rios",
-    correo: "johan@gmail.com",
-    telefono: 3195273030,
-    direccion: "santa barbara",
-  });
-
-  // Función que se encarga de actualizar el estado Datos cuando cambian los inputs
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setDatos((prevDatos) => ({
-      ...prevDatos,
-      [name]: value,
-    }));
+const ModalMensaje = ({ tipo, mensaje }) => {
+  const iconos = {
+    exito: "bi bi-check-circle-fill text-success display-4 mb-2",
+    error: "bi bi-x-circle-fill text-danger display-4 mb-2",
+    advertencia: "bi bi-exclamation-triangle-fill text-warning display-4 mb-2",
   };
 
-  // Función para guardar los cambios y salir del modo edición
-  const handleGuardar = () => {
-    setEditar(false);
-  };
-
-  // Función para cancelar la edición y salir del modo edición (sin guardar)
-  const handleCancelar = () => {
-    setEditar(false);
+  const titulos = {
+    exito: "¡Éxito!",
+    error: "Error",
+    advertencia: "Advertencia",
   };
 
   return (
-    <main className="main-perfil perfil">
-      {/* Contenedor de contenido principal del perfil */}
-      <div className="renderizado">
-        {Editar ? (
-          // Si está en modo edición, muestra el formulario para editar datos
-          <div className="formulario">
-            <h2>Datos básicos</h2>
-            <form>
-              <label htmlFor="correo">Correo</label>
-              <input
-                type="email"
-                name="correo"
-                id="correo"
-                value={Datos.correo}
-                onChange={handleChange}
-              />
+    <div className="text-center p-3">
+      <i className={iconos[tipo]}></i>
+      <h2>{titulos[tipo]}</h2>
+      <p>{mensaje}</p>
+    </div>
+  );
+};
 
-              <label htmlFor="telefono">Teléfono</label>
-              <input
-                type="number"
-                name="telefono"
-                id="telefono"
-                value={Datos.telefono}
-                onChange={handleChange}
-              />
+const Perfil = () => {
+  const { user, setUser } = useContext(AuthContext);
 
-              <label htmlFor="direccion">Dirección</label>
-              <input
-                type="text"
-                name="direccion"
-                id="direccion"
-                value={Datos.direccion}
-                onChange={handleChange}
-              />
-            </form>
+  const [formData, setFormData] = useState({
+    id: "",
+    nombre: "",
+    apellido: "",
+    correo: "",
+    telefono: "",
+    direccion: "",
+  });
 
-            {/* Botones de acción para guardar o cancelar */}
-            <div style={{ display: "flex", gap: "20px" }}>
-              <BotonGuardar onClick={handleGuardar} />
-              <BotonCancelar onClick={handleCancelar} />
-            </div>
-          </div>
-        ) : (
-          // Si no está en modo edición, muestra información estática de la empresa
-          <div className="informacion">
-            <h3>¿Quiénes somos?</h3>
-            <img src={productos} width={"350px"} alt="" />
-            <p>
-              Una empresa productora y comercializadora de productos de aseo
-              para el hogar, originaria del municipio de Santa Bárbara, Antioquia.
-            </p>
-          </div>
-        )}
-      </div>
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [editado, setEditado] = useState(false);
 
-      {/* Tarjeta de perfil interactiva */}
-      <div className="tarjeta-perfil" onClick={() => setGirar(!Girar)}>
-        {/* Se aplica la clase "girado" cuando el estado Girar es true */}
-        <div className={`carta-general ${Girar ? "girado" : ""}`}>
-          {/* Cara frontal de la tarjeta */}
-          <div className="carta-frontal">
-            <img src={logoUser} width={"150px"} alt="Perfil" />
-            <h3>{Datos.direccion}</h3>
-            <h5>
-              {Datos.nombre} {Datos.apellido}
-            </h5>
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [modalTipo, setModalTipo] = useState("exito"); // exito | error | advertencia
+  const [modalMensaje, setModalMensaje] = useState("");
+
+  useEffect(() => {
+    if (modalAbierto) {
+      const duracion = modalTipo === "error" ? 3000 : 2000; // error = 3s, otros = 2s
+      const timer = setTimeout(() => {
+        setModalAbierto(false);
+      }, duracion);
+      return () => clearTimeout(timer);
+    }
+  }, [modalAbierto, modalTipo]);
+
+  useEffect(() => {
+    if (user && user.id) {
+      setFormData({
+        id: user.id,
+        nombre: user.nombre || "",
+        apellido: user.apellido || "",
+        correo: user.correo || "",
+        telefono: user.telefono || "",
+        direccion: user.direccion || "",
+      });
+    }
+  }, [user]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    setEditado(true);
+  };
+
+  const toggleEdicion = () => {
+  if (modoEdicion) {
+    // Si estamos cancelando la edición, restauramos los datos originales
+    setFormData({
+      id: user.id || "",
+      nombre: user.nombre || "",
+      apellido: user.apellido || "",
+      correo: user.correo || "",
+      telefono: user.telefono || "",
+      direccion: user.direccion || "",
+    });
+    setEditado(false);
+  }
+  setModoEdicion(!modoEdicion);
+};
+
+
+  const verificarCorreoExistente = async (correo) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/angora/api/v1/user/exists/${correo}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+          },
+        }
+      );
+      if (!response.ok) {
+        return false;
+      }
+      const exists = await response.json();
+      return exists;
+    } catch (error) {
+      console.error("Error al verificar correo:", error);
+      return false;
+    }
+  };
+
+  const abrirModal = (tipo, mensaje) => {
+    setModalTipo(tipo);
+    setModalMensaje(mensaje);
+    setModalAbierto(true);
+  };
+
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // Validación de correo electrónico
+  const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo);
+  if (!correoValido) {
+    abrirModal("advertencia", "Por favor ingresa un correo electrónico válido.");
+    return;
+  }
+
+  // Validación de teléfono: solo 10 dígitos numéricos
+  const telefonoValido = /^\d{10}$/.test(formData.telefono);
+  if (!telefonoValido) {
+    abrirModal("advertencia", "El número de teléfono debe tener exactamente 10 dígitos.");
+    return;
+  }
+
+  try {
+    if (formData.correo !== user.correo) {
+      const existe = await verificarCorreoExistente(formData.correo);
+      if (existe) {
+        abrirModal("advertencia", "Ya existe un usuario con ese correo electrónico.");
+        return;
+      }
+    }
+
+    const response = await fetch("http://localhost:8080/angora/api/v1/user", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+      body: JSON.stringify(formData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText);
+    }
+
+    const data = await response.json();
+
+    if (formData.correo !== user.correo) {
+      abrirModal(
+        "exito",
+        "Correo actualizado correctamente. Por favor, vuelve a iniciar sesión."
+      );
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userData");
+      setUser(null);
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2000);
+      return;
+    }
+
+    setUser(data);
+    setFormData({
+      id: data.id,
+      nombre: data.nombre || "",
+      apellido: data.apellido || "",
+      correo: data.correo || "",
+      telefono: data.telefono || "",
+      direccion: data.direccion || "",
+    });
+    localStorage.setItem("userData", JSON.stringify(data));
+    setModoEdicion(false);
+    setEditado(false);
+    abrirModal("exito", "Perfil actualizado correctamente.");
+  } catch (error) {
+    abrirModal("error", "Error al actualizar perfil: " + error.message);
+    console.error("Error:", error.message);
+  }
+};
+
+
+  return (
+    <div className="perfil-wrapper d-flex align-items-center justify-content-center">
+      <div className={`perfil-card p-4 ${modoEdicion ? "transicion-edicion" : ""}`}>
+        <div className="text-center mb-4">
+          <div className="avatar-container">
+            <i className="bi bi-person-circle icono-perfil mb-2"></i>
           </div>
-          {/* Cara trasera de la tarjeta con todos los datos */}
-          <div className="carta-trasera">
-            <h3>{Datos.nombre}</h3>
-            <h3>{Datos.apellido}</h3>
-            <h3>{Datos.correo}</h3>
-            <h3>{Datos.telefono}</h3>
-            <h3>{Datos.direccion}</h3>
-          </div>
+          <h2 className="fw-bold">
+            {user?.nombre} {user?.apellido}
+          </h2>
         </div>
 
-        {/* Botón para activar el modo edición. Se detiene la propagación para que no gire la tarjeta */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation(); // Evita que el clic afecte la tarjeta
-            setEditar(!Editar);  // Alterna entre modo edición y vista normal
-          }}
-        >
-          Editar perfil
-        </button>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label className="form-label">Correo</label>
+            <input
+              type="email"
+              className="form-control"
+              name="correo"
+              value={formData.correo}
+              onChange={handleChange}
+              disabled={!modoEdicion}
+              required
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Teléfono</label>
+            <input
+              type="text"
+              className="form-control"
+              name="telefono"
+              value={formData.telefono}
+              onChange={handleChange}
+              disabled={!modoEdicion}
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="form-label">Dirección</label>
+            <input
+              type="text"
+              className="form-control"
+              name="direccion"
+              value={formData.direccion}
+              onChange={handleChange}
+              disabled={!modoEdicion}
+            />
+          </div>
+
+          <div className="d-flex justify-content-center gap-3">
+            {modoEdicion ? (
+              <>
+                <BotonCancelar onClick={toggleEdicion} />
+                {editado && <BotonGuardar onClick={handleSubmit} />}
+              </>
+            ) : (
+              <BotonEditar onClick={toggleEdicion} />
+            )}
+          </div>
+        </form>
+
       </div>
-    </main>
+
+      <Modal isOpen={modalAbierto} onClose={() => setModalAbierto(false)}>
+        <ModalMensaje tipo={modalTipo} mensaje={modalMensaje} />
+      </Modal>
+    </div>
   );
 };
 
