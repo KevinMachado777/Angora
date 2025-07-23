@@ -46,7 +46,7 @@ const Reportes = () => {
                     break;
                 case 'inventario':
                     endpoint = `/reportes/inventario`;
-                    params.tipo = 'movimientos'; // Usar movimientos como base
+                    params.tipo = 'movimientos'; // Seguir usando "movimientos" como base
                     break;
                 case 'usuarios':
                     endpoint = `/reportes/usuarios`;
@@ -60,7 +60,18 @@ const Reportes = () => {
                 const response = await axios.get(`${urlBackend}${endpoint}`, { params });
                 const data = response.data || [];
                 console.log('Datos recibidos:', data);
-                setDatos(data);
+
+                // Filtrar datos según filtroTipo para inventario
+                if (tipoReporte === 'inventario') {
+                    const filteredData = data.filter(item => {
+                        if (filtroTipo === 'productos' && item.productoId !== null) return true; // Usar productoId para identificar
+                        if (filtroTipo === 'materiaPrima' && item.materiaPrimaId !== null) return true; // Usar materiaPrimaId para identificar
+                        return false;
+                    });
+                    setDatos(filteredData);
+                } else {
+                    setDatos(data);
+                }
 
                 // Fetch métricas financieras
                 const financialParams = { ...params };
@@ -81,8 +92,8 @@ const Reportes = () => {
                     const inventarioParams = { ...params, tipo: 'movimientos' };
                     const [valorResp, totalProdResp, totalMatResp] = await Promise.all([
                         axios.get(`${urlBackend}/reportes/valorInventario`, { params: inventarioParams }),
-                        axios.get(`${urlBackend}/reportes/totalProductos`, { params: inventarioParams }), // Usamos totalProductos con fechas
-                        axios.get(`${urlBackend}/reportes/totalMateriaPrima`, { params: inventarioParams }), // Usamos totalMateriaPrima con fechas
+                        axios.get(`${urlBackend}/reportes/totalProductos`, { params: inventarioParams }),
+                        axios.get(`${urlBackend}/reportes/totalMateriaPrima`, { params: inventarioParams }),
                     ]);
                     setMetricas({
                         totalInventario: valorResp.data || 0,
@@ -167,11 +178,11 @@ const Reportes = () => {
             labels: datos.map(item => item.nombre || item.cliente || item.proveedor || 'Sin Nombre'),
             datasets: [
                 {
-                    label: tipoReporte === 'inventario' 
-                        ? 'Cantidad Actual' 
-                        : tipoReporte === 'finanzas' 
-                        ? 'Total'
-                        : 'Acciones',
+                    label: tipoReporte === 'inventario'
+                        ? 'Cantidad Actual'
+                        : tipoReporte === 'finanzas'
+                            ? 'Total'
+                            : 'Acciones',
                     data: datos.map(item => item.cantidadActual || item.total || 0),
                     backgroundColor: 'rgba(0, 80, 120, 0.8)',
                     borderColor: 'rgba(0, 120, 180, 1)',
@@ -447,10 +458,10 @@ const Reportes = () => {
             </div>
             <div className="contenido-reporte">
                 <div className="tabla-container">
-                    <TablaReportes 
-                        encabezados={renderizarEncabezados()} 
-                        registros={datos} 
-                        mapeo={getMapeo()} 
+                    <TablaReportes
+                        encabezados={renderizarEncabezados()}
+                        registros={datos}
+                        mapeo={getMapeo()}
                     />
                 </div>
                 {renderizarTarjetas()}

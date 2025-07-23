@@ -202,9 +202,4 @@ public class ReporteController {
             return ResponseEntity.internalServerError().build();
         }
     }
-
-    @GetMapping("/movimientos")
-    public List<Movimiento> obtenerMovimientos(){
-        return movimientoRepository.findAll();
-    }
 }

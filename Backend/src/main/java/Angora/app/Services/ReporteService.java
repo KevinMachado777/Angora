@@ -240,38 +240,46 @@ public class ReporteService implements IReporteService {
                     resultado.add(new ReporteMovimientoDTO(
                             m.getIdMovimiento(),
                             m.getProducto().getNombre(),
-                            m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getProducto().getCantidad() - m.getCantidadCambio()),
-                            m.getProducto().getCantidad(),
+                            m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() - m.getCantidadCambio() : 0f),
+                            m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() : 0f,
                             m.getTipoMovimiento(),
-                            m.getFechaMovimiento()
+                            m.getFechaMovimiento(),
+                            m.getProducto() != null ? m.getProducto().getId() : null,
+                            null
                     ));
                 } else if (m.getMateriaPrima() != null) {
                     resultado.add(new ReporteMovimientoDTO(
                             m.getIdMovimiento(),
                             m.getMateriaPrima().getNombre(),
-                            m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getMateriaPrima().getCantidad() - m.getCantidadCambio()),
-                            m.getMateriaPrima().getCantidad(),
+                            m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() - m.getCantidadCambio() : 0f),
+                            m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() : 0f,
                             m.getTipoMovimiento(),
-                            m.getFechaMovimiento()
+                            m.getFechaMovimiento(),
+                            null,
+                            m.getMateriaPrima() != null ? m.getMateriaPrima().getId() : null
                     ));
                 }
             } else if ("productos".equals(tipo) && m.getProducto() != null) {
                 resultado.add(new ReporteMovimientoDTO(
                         m.getIdMovimiento(),
                         m.getProducto().getNombre(),
-                        m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getProducto().getCantidad() - m.getCantidadCambio()),
-                        m.getProducto().getCantidad(),
+                        m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() - m.getCantidadCambio() : 0f),
+                        m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() : 0f,
                         m.getTipoMovimiento(),
-                        m.getFechaMovimiento()
+                        m.getFechaMovimiento(),
+                        m.getProducto().getId(),
+                        null
                 ));
             } else if ("materiaPrima".equals(tipo) && m.getMateriaPrima() != null) {
                 resultado.add(new ReporteMovimientoDTO(
                         m.getIdMovimiento(),
                         m.getMateriaPrima().getNombre(),
-                        m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getMateriaPrima().getCantidad() - m.getCantidadCambio()),
-                        m.getMateriaPrima().getCantidad(),
+                        m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() - m.getCantidadCambio() : 0f),
+                        m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() : 0f,
                         m.getTipoMovimiento(),
-                        m.getFechaMovimiento()
+                        m.getFechaMovimiento(),
+                        null,
+                        m.getMateriaPrima().getId()
                 ));
             }
         }
