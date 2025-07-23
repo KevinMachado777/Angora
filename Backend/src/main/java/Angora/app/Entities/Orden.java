@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -19,10 +19,18 @@ public class Orden {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idOrden;
 
+    @ManyToOne
+    @JoinColumn(name = "idProveedor")
+    private Proveedor idProveedor;
 
-
-
+    @ManyToMany
+    @JoinTable(
+            name = "orden-materia",
+            joinColumns = @JoinColumn(name = "idMateria"),
+            inverseJoinColumns = @JoinColumn(name = "idOrden")
+    )
+    private List<MateriaPrima> materiaPrima;
     private String notas;
     private Boolean estado;
-    private Date fecha;
+    private LocalDateTime fecha;
 }
