@@ -10,15 +10,13 @@ import producto1 from "../assets/images/galeria/producto1.jpg";
 import producto2 from "../assets/images/galeria/producto2.jpg";
 import producto3 from "../assets/images/galeria/producto3.jpg";
 import producto4 from "../assets/images/galeria/producto4.jpg";
-import producto5 from "../assets/images/galeria/producto5.jpg";
 
 
 const productos = [
-  { id: 1, nombre: "Detergente Floral", imagen: producto1 },
-  { id: 2, nombre: "Desinfectante Limón", imagen: producto2 },
-  { id: 3, nombre: "Suavizante Bebé", imagen: producto3 },
-  { id: 4, nombre: "Multiusos Lavanda", imagen: producto4 },
-  { id: 5, nombre: "Limpiador Pino", imagen: producto5 },
+  { id: 1, nombre: "Detergente Lavanda", imagen: producto1 },
+  { id: 2, nombre: "Detergente Floral", imagen: producto2 },
+  { id: 3, nombre: "Detergente Lavaloza", imagen: producto3 },
+  { id: 4, nombre: "Detergente Multiusos", imagen: producto4 }
 ];
 
 const sloganTexto =

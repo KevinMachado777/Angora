@@ -13,3 +13,34 @@ h3 {
 .proveedores input {
     margin: 10px 0;
 }
+
+.lista-sugerencias {
+  border: 1px solid #ccc;
+  background: white;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 150px;
+  overflow-y: auto;
+  position: absolute;
+  width: 100%;
+  z-index: 10;
+}
+
+.lista-sugerencias li {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.lista-sugerencias li:hover {
+  background-color: #f0f0f0;
+}
+
+.select__control {
+  border-radius: 8px;
+  min-height: 38px;
+  border-color: #ccc;
+}
+.select__menu {
+  z-index: 9999;
+}

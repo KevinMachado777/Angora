@@ -12,7 +12,7 @@ import axios from "axios";
 const Proveedores = () => {
   const [modoProveedor, setModoProveedor] = useState(true);
 
-  const url = "http://localhost:8080/proveedores";
+  const url = "http://localhost:8080/angora/api/v1/proveedores";
 
   const [proveedores, setProveedores] = useState();
 
@@ -30,18 +30,30 @@ const Proveedores = () => {
   };
 
   useEffect(() => {
-  const cargarProveedores = async () => {
-    try {
-      const respuesta = await axios.get(url);
-      setProveedores(respuesta.data);
-    } catch (error) {
-      console.log("Error al cargar proveedores: ", error);
-    }
-  };
+    const cargarProveedores = async () => {
+      try {
+        const respuesta = await axios.get(url);
+        setProveedores(respuesta.data);
+      } catch (error) {
+        console.log("Error al cargar proveedores: ", error);
+      }
+    };
 
-  cargarProveedores(); // ¡Esto faltaba!
-}, []);
+    cargarProveedores();
+  }, []);
 
+  useEffect(() => {
+    const cargarOrdenes = async () => {
+      try {
+        const response = await axios.get("http://localhost:8080/angora/api/v1/ordenes");
+        setOrdenes(response.data);
+      } catch (error) {
+        console.error("Error al cargar órdenes:", error);
+      }
+    };
+
+    cargarOrdenes();
+  }, []);
 
   const abrirModalEditar = (registro) => {
     const ordenOriginal = ordenes.find((o) => o.id === registro.id) || registro;
@@ -63,45 +75,63 @@ const Proveedores = () => {
 
       const response = await axios.get(url);
       setProveedores(response.data);
+    } else {
+      const id = registroEliminar.id || registroEliminar.idOrden;
+      await axios.delete(`http://localhost:8080/angora/api/v1/ordenes/${id}`);
+
+      const response = await axios.get("http://localhost:8080/angora/api/v1/ordenes");
+      setOrdenes(response.data);
     }
 
     setConfirmarEliminacion(false);
     setRegistroEliminar(null);
   } catch (error) {
-    console.error("Error al eliminar proveedor:", error);
+    console.error("Error al eliminar:", error);
+    alert("Hubo un problema al eliminar el registro.");
   }
 };
 
 
   const guardarProveedor = async (nuevo) => {
-  try {
-    if (editando) {
-      // Si estás editando, haz PUT con el ID correcto
-      await await axios.put(`${url}`, {
+    try {
+      if (editando) {
+        // Si estás editando, haz PUT con el ID correcto
+        await await axios.put(`${url}`, {
+          ...nuevo,
+          idProveedor: nuevo.id, // importante para que coincida con tu entidad
+        });
+      } else {
+        await axios.post(url, nuevo);
+      }
 
-        ...nuevo,
-        idProveedor: nuevo.id, // importante para que coincida con tu entidad
-      });
-    } else {
-      await axios.post(url, nuevo);
+      const respuesta = await axios.get(url);
+      setProveedores(respuesta.data);
+    } catch (error) {
+      console.log("Error al guardar: ", error);
     }
+  };
 
-    const respuesta = await axios.get(url);
-    setProveedores(respuesta.data);
-    setModalAbierta(false); // cerrar modal después de guardar
-  } catch (error) {
-    console.log("Error al guardar: ", error);
-  }
-};
+  const guardarOrden = async (nuevaOrden) => {
+    try {
+      const response = await axios.post("http://localhost:8080/angora/api/v1/ordenes", {
+        proveedor: { idProveedor: nuevaOrden.id },
+        materiaPrima: nuevaOrden.items.map((item) => ({
+          nombre: item.nombre,
+          cantidad: parseInt(item.cantidad),
+          // si tu entidad MateriaPrima espera más datos, agrégalos aquí
+        })),
+        notas: nuevaOrden.notas,
+        estado: true,
+        fecha: new Date(),
+      });
 
-
-  const guardarOrden = (nuevaOrden) => {
-    if (editando) {
-      setOrdenes((prev) =>
-        prev.map((o) => (o.id === editando.id ? nuevaOrden : o))
-      );
-    } else {
-      setOrdenes((prev) => [...prev, nuevaOrden]);
+      // Recargar órdenes desde el backend
+      const ordenesResponse = await axios.get("http://localhost:8080/angora/api/v1/ordenes");
+      setOrdenes(ordenesResponse.data);
+      setModalAbierta(false);
+    } catch (error) {
+      console.error("Error al guardar orden:", error);
+      alert("Hubo un problema al guardar la orden.");
     }
   };
 
@@ -122,23 +152,23 @@ const Proveedores = () => {
 
   const registrosTabla = modoProveedor
   ? proveedores?.map((p) => ({
-      id: p.idProveedor ?? p.id,         // 1. ID
-      nombre: p.nombre,                  // 2. Nombre
-      telefono: p.telefono,              // 3. Teléfono
-      correo: p.correo,                  // 4. Correo electrónico
-      direccion: p.direccion,            // 5. Dirección
+      id: p.idProveedor ?? p.id,
+      nombre: p.nombre,
+      telefono: p.telefono,
+      correo: p.correo,
+      direccion: p.direccion,
     })) ?? []
   : ordenes.map((orden) => ({
-      id: orden.id,                      // 1. ID
-      nombre: orden.nombre,              // 2. Nombre
-      cantidadArticulos: orden.cantidadArticulos, // 3. Cantidad artículos
-      total: orden.total,                // 4. Total
-      notas: orden.notas,                // 5. Notas
+      id: orden.idOrden ?? orden.id,
+      nombre: orden.proveedor?.nombre || "Desconocido",
+      cantidadArticulos: orden.materiaPrima?.length || 0,
+      total: "N/A", // opcional si no tienes precios en el backend
+      notas: orden.notas,
     }));
 
 
   return (
-    <main className="main-home proveedores inventario">
+    <main className="proveedores inventario">
       <h1 className="titulo">
         {modoProveedor ? "Proveedores" : "Órdenes de Compra"}
       </h1>

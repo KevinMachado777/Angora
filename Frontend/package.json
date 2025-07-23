@@ -26,6 +26,7 @@
     "react-dom": "^19.1.0",
     "react-number-format": "^5.4.4",
     "react-router-dom": "^7.6.1",
+    "react-select": "^5.10.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

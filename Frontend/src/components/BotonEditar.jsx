@@ -3,7 +3,7 @@ import "../styles/botones.css";
 
 const BotonEditar = ({ onClick }) => {
   return (
-    <button className="btn-modificar" onClick={onClick}>
+    <button type='button' className="btn-modificar" onClick={onClick}>
       <i className="bi bi-pen"></i> Modificar
     </button>
   );
