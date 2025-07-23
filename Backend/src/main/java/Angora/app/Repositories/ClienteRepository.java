@@ -2,6 +2,7 @@ package Angora.app.Repositories;
 
 import Angora.app.Entities.Cliente;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -37,4 +38,8 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
     // Verifica si el correo ya está en la BD
     boolean existsByEmail(String email);
+
+    //
+    @Query("SELECT c FROM Cliente c LEFT JOIN Factura f ON c.idCliente = f.cliente.idCliente GROUP BY c.idCliente")
+    List<Cliente> findAllWithCompraCount();
 }

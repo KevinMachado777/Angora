@@ -20,6 +20,7 @@ import java.util.Set;
 public class Usuario {
 
     @Id
+    @Column(name = "id")
     private Long id;
 
     private String nombre;
