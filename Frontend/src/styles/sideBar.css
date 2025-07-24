@@ -15,8 +15,32 @@
 
 .sidebar-content {
     flex: 1; /* Ocupa todo el espacio disponible dentro del sidebar */
-    overflow-y: auto; /* Scroll solo si el contenido excede */
+    display: flex; 
+    flex-direction: column; /* Apila los ítems verticalmente */
+    justify-content: flex-start; /* Comienza desde la parte superior por defecto */
+    align-items: center; /* Centra horizontalmente (opcional, para simetría) */
+    overflow-y: auto; 
     padding-bottom: 10px; /* Espacio adicional para el último elemento */
+    min-height: 0; /* Permite que el contenido se contraiga */
+}
+
+/* Ajusta el contenedor ul para distribuir el espacio */
+.sidebar-content ul {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    flex-grow: 1; /* Permite que el ul crezca para ocupar espacio */
+    justify-content: center; /* Centra verticalmente cuando hay poco contenido */
+}
+
+/* Asegura que los ítems se mantengan alineados */
+.sidebar-content ul li {
+    list-style: none;
+    width: 100%;
+    display: flex;
+    justify-content: center; /* Centra horizontalmente cada ítem */
 }
 
 /* Overlay para pantallas pequeñas */

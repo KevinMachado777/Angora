@@ -5,16 +5,21 @@ import logoutImg from "../assets/icons/logout.png";
 import fraganceys from "../assets/images/Logo_de_la_empresa.png";
 import { Link } from "react-router-dom";
 import { useContext } from "react";
-
-//
 import { AuthContext } from "../context/AuthContext";
 
 const Header = ({ onToggleSidebar }) => {
-  // Funcion para cerrar sesión
-  const { signOut } = useContext(AuthContext);
+    // Obtiene el usuario autenticado desde el contexto  
+  const { signOut, user } = useContext(AuthContext);
 
-  // Usuario autenticado
-  const { user } = useContext(AuthContext);
+  // Función para manejar el cierre de sesión
+  const handleLogout = async () => {
+    try {
+      // Llama a la función de cierre de sesión del contexto
+      await signOut();
+    } catch (error) {
+      console.error("Error durante el logout:", error);
+    }
+  };
 
   return (
     <header>
@@ -32,12 +37,9 @@ const Header = ({ onToggleSidebar }) => {
         <div className="user-section">
           <div className="user-info">
             <p className="mb-0 text-white d-none d-sm-block">
-              {" "}
-              <strong>
-                {user?.nombre} {user?.apellido}
-              </strong>
+              <strong>{user?.nombre} {user?.apellido}</strong>
             </p>
-            <Link to={"/perfil"}>
+            <Link to="/perfil">
               <img src={userImg} alt="user" width="35" />
             </Link>
           </div>
@@ -46,10 +48,7 @@ const Header = ({ onToggleSidebar }) => {
             src={logoutImg}
             alt="logout"
             width="30"
-            onClick={() => {
-              sessionStorage.removeItem("bienvenidaMostrada"); // ✅ Limpiar bandera
-              signOut(); // ✅ Cerrar sesión
-            }}
+            onClick={handleLogout}
             style={{ cursor: "pointer" }}
           />
         </div>
