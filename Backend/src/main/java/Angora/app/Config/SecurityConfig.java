@@ -82,7 +82,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").permitAll();
 
                     // Rutas de reportes
-                    http.requestMatchers(HttpMethod.GET, "/reportes/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/reportes/**").hasAuthority("REPORTES");
 
                     // Rutas de perfil
                     http.requestMatchers(HttpMethod.PUT, "/user").permitAll();

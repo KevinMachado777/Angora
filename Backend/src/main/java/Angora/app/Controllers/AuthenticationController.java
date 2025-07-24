@@ -34,29 +34,22 @@ public class AuthenticationController {
     @Autowired
     private JwtUtils jwtUtils;
 
-    // Método para autenticar y autorizar un usuario
+    // Metodo para autenticar y autorizar un usuario
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid AuthLoginRequest authLogin){
-
         AuthResponse authResponse = userDetailService.loginUser(authLogin);
-
         System.out.println("Respuesta Login: " + authResponse);
-
         return new ResponseEntity<>(authResponse, HttpStatus.OK);
     }
 
-    // Método que refresca el token
+    // Metodo que refresca el token
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@RequestBody @Valid RefreshTokenRequest refreshTokenRequest){
         try {
-
             String requestRefreshToken = refreshTokenRequest.refreshToken();
-
             System.out.println("Token recibido: " + requestRefreshToken + "");
-
             RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken)
                     .orElseThrow(() -> new RuntimeException("Refresh token no encontrado"));
-
             refreshToken = refreshTokenService.verifyExpiration(refreshToken);
 
             // Crear nuevo access token
@@ -110,5 +103,4 @@ public class AuthenticationController {
             return ResponseEntity.badRequest().body("Error al cerrar sesión: " + e.getMessage());
         }
     }
-
 }

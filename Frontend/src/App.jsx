@@ -23,15 +23,12 @@ function App() {
   }, []);
 
   return (
-
     <AuthProvider>
       <div>
         <AppRoutes/>
       </div>
     </AuthProvider>
-
   )
-
 }
 
 export default App;
