@@ -59,8 +59,8 @@ public class SecurityConfig {
                     // Configurar endpoints públicos
                     // Rutas protegidas de Auth
                     http.requestMatchers(HttpMethod.POST, "/auth/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/auth/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/user/{correo}").permitAll();
-                    http.requestMatchers(HttpMethod.POST, "/user/authenticated/{correo}").permitAll();
 
 
                     // Rutas protegidas de Portafolio

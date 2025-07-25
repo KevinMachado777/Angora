@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/user")
-
-// CrossOrigin usando jwt?
 public class UserController {
 
     @Autowired
@@ -38,31 +36,6 @@ public class UserController {
         Usuario usuario = usuarioRepository.findUsuarioByCorreo(correo)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         return new ResponseEntity<>(usuario, HttpStatus.OK);
-    }
-
-    // Método que busca un usuario por correo que se acaba de autenticar.
-    /*Requiere un ajuste
-    * Si el usuario que se esta logueando no tiene el permiso de PERSONAL, no lo deja loguearse*/
-    @GetMapping("/authenticated/{correo}")
-    public ResponseEntity<Usuario> buscarUsuarioPorCorreoAutenticado(@PathVariable String correo){
-        Usuario usuario = usuarioRepository.findUsuarioByCorreo(correo)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        Usuario usuarioAutenticado = Usuario.builder()
-                .id(usuario.getId())
-                .correo(usuario.getCorreo())
-                .nombre(usuario.getNombre())
-                .apellido(usuario.getApellido())
-                .telefono(usuario.getTelefono())
-                .direccion(usuario.getDireccion())
-                .permisos(usuario.getPermisos())
-                .build();
-        return new ResponseEntity<>(usuarioAutenticado, HttpStatus.OK);
-    }
-
-    @GetMapping("/saludo")
-    public String saludo(){
-        return "Hola mundo";
     }
 
     @PutMapping
