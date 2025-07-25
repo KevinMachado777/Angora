@@ -100,22 +100,22 @@ public class DataInitializer implements CommandLineRunner {
         // Guardar usuarios si no existen
         createUserIfNotExists(
                 kevin.getId(), kevin.getCorreo(), kevin.getNombre(), kevin.getApellido(),
-                kevin.getContraseña(), kevin.getFoto(), kevin.getTelefono(), kevin.getPermisos()
+                kevin.getContraseña(), kevin.getDireccion(), kevin.getFoto(), kevin.getTelefono(), kevin.getPermisos()
         );
 
         createUserIfNotExists(
                 johan.getId(), johan.getCorreo(), johan.getNombre(), johan.getApellido(),
-                johan.getContraseña(), johan.getFoto(), johan.getTelefono(), johan.getPermisos()
+                johan.getContraseña(), johan.getDireccion(), johan.getFoto(), johan.getTelefono(), johan.getPermisos()
         );
 
         createUserIfNotExists(
                 samuel.getId(), samuel.getCorreo(), samuel.getNombre(), samuel.getApellido(),
-                samuel.getContraseña(), samuel.getFoto(), samuel.getTelefono(), samuel.getPermisos()
+                samuel.getContraseña(), samuel.getDireccion(), samuel.getFoto(), samuel.getTelefono(), samuel.getPermisos()
         );
     }
 
     // Método para crear un usuario si no existe
-    private void createUserIfNotExists(Long id, String correo, String nombre, String apellido, String password, String foto, String telefono, List<Permiso> permisos) {
+    private void createUserIfNotExists(Long id, String correo, String nombre, String apellido, String password, String direccion, String foto, String telefono, List<Permiso> permisos) {
         if (usuarioRepository.findUsuarioByCorreo(correo).isEmpty()) {
             Usuario usuario = Usuario.builder()
                     .id(id)
@@ -123,6 +123,7 @@ public class DataInitializer implements CommandLineRunner {
                     .apellido(apellido)
                     .correo(correo)
                     .contraseña(passwordEncoder.encode(password))
+                    .direccion(direccion)
                     .telefono(telefono)
                     .foto(foto)
                     .permisos(permisos)

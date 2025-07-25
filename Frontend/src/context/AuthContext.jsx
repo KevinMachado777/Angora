@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         try {
           // Realiza una petición al backend para obtener los datos del usuario autenticado
           const respuesta = await axios.get(
-            `http://localhost:8080/angora/api/v1/user/authenticated/${correo}`,
+            `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
             { headers: { Authorization: `Bearer ${accessToken}` } }
           );
           setUser(respuesta.data);
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
 
         // Realiza una petición para obtener los datos del usuario autenticado
         const respuesta = await axios.get(
-          `http://localhost:8080/angora/api/v1/user/authenticated/${correo}`,
+          `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         console.log("Respuesta usuario: ", respuesta.data);
