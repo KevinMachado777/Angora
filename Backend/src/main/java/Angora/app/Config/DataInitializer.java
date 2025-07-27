@@ -1,6 +1,7 @@
 package Angora.app.Config;
 
 import Angora.app.Entities.Permiso;
+import Angora.app.Entities.Proveedor;
 import Angora.app.Entities.Usuario;
 import Angora.app.Repositories.PermisoRepository;
 import Angora.app.Repositories.UsuarioRepository;
@@ -29,10 +30,14 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private Angora.app.Repositories.ProveedorRepository proveedorRepository;
+
     @Override
     public void run(String... args) throws Exception {
         // Método que inicializa permiso
         initializePermisosAndUsuarios();
+        initializeProveedores();
     }
 
     private void initializePermisosAndUsuarios() {
@@ -113,6 +118,24 @@ public class DataInitializer implements CommandLineRunner {
                 samuel.getContraseña(), samuel.getFoto(), samuel.getTelefono(), samuel.getPermisos()
         );
     }
+
+
+
+    private void initializeProveedores() {
+        String nombre = "Proveedor de prueba";
+        String correo = "proveedor@example.com";
+
+
+        Proveedor proveedor = new Proveedor();
+        proveedor.setNombre(nombre);
+        proveedor.setCorreo(correo);
+        proveedor.setTelefono("3000000000");
+        proveedor.setDireccion("Calle 123");
+
+        proveedorRepository.save(proveedor);
+        System.out.println("Proveedor de prueba creado con éxito.");
+    }
+
 
     // Método para crear un usuario si no existe
     private void createUserIfNotExists(Long id, String correo, String nombre, String apellido, String password, String foto, String telefono, List<Permiso> permisos) {
