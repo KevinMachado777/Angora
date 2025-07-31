@@ -22,6 +22,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     // Verifica si un correo existe
     boolean existsByCorreo(String correo);
 
+    // Verifica si existe un empleado con ese id en la BD
+    boolean existsById(Long id);
+
     // Metodo para verificar si un correo existe excluyendo un ID
     @Query("SELECT COUNT(u) > 0 FROM Usuario u WHERE u.correo = :correo AND u.id != :id")
     boolean existsByCorreoAndIdNot(String correo, Long id);

@@ -29,7 +29,7 @@ const Personal = () => {
   ];
 
   // Permisos chequeados por defecto al agregar un nuevo usuario
-  const permisosPorDefecto = ["inventarios", "ventas", "clientes", "pedidos"]; 
+  const permisosPorDefecto = ["inventarios", "ventas", "clientes", "pedidos"];
 
   // Estado para manejar los datos del personal
   const [personas, setPersonas] = useState([]);
@@ -37,7 +37,7 @@ const Personal = () => {
   const [modalAbierta, setModalAbierta] = useState(false);
   // Estado para manejar si es edición o creación
   const [modalEdicion, setModalEdicion] = useState(false);
-  // Nuevo estado para manejar el modal de mensajes de validación
+  // Estado para manejar el modal de mensajes de validación
   const [modalMensaje, setModalMensaje] = useState({ abierto: false, tipo: "", mensaje: "" });
   // Estado para manejar el formulario
   const [formulario, setFormulario] = useState({
@@ -48,7 +48,7 @@ const Personal = () => {
     telefono: "",
     direccion: "",
     foto: "",
-    permisos: [], 
+    permisos: [],
   });
 
   // Estado para manejar la persona seleccionada para editar
@@ -148,12 +148,12 @@ const Personal = () => {
     setPersonaEliminar(null);
   };
 
-  // Nueva función para abrir el modal de mensajes de validación
+  // Función para abrir el modal de mensajes de validación
   const abrirModalMensaje = (tipo, mensaje) => {
     setModalMensaje({ abierto: true, tipo, mensaje });
   };
 
-  // Nueva función para cerrar el modal de mensajes de validación
+  // Función para cerrar el modal de mensajes de validación
   const cerrarModalMensaje = () => {
     setModalMensaje({ abierto: false, tipo: "", mensaje: "" });
   };
@@ -185,95 +185,95 @@ const Personal = () => {
   const guardarEmpleado = async (evento) => {
     evento.preventDefault();
 
-    // Nueva validación: Asegurar que el nombre tenga al menos 3 caracteres
+    // Validación: Asegurar que el nombre tenga al menos 3 caracteres
     if (formulario.nombre.length < 3) {
       abrirModalMensaje("advertencia", "El nombre debe tener al menos 3 caracteres.");
       return;
     }
 
-    // Nueva validación: Asegurar que el apellido tenga al menos 3 caracteres
+    // Validación: Asegurar que el apellido tenga al menos 3 caracteres
     if (formulario.apellido.length < 3) {
       abrirModalMensaje("advertencia", "El apellido debe tener al menos 3 caracteres.");
       return;
     }
 
-    // Nueva validación: Asegurar que el teléfono tenga exactamente 10 dígitos
+    // Validación: Asegurar que el teléfono tenga exactamente 10 dígitos
     if (!/^\d{10}$/.test(formulario.telefono)) {
       abrirModalMensaje("advertencia", "El teléfono debe tener exactamente 10 dígitos.");
       return;
     }
 
-    // Nueva validación: Asegurar que la dirección tenga al menos 3 caracteres
+    // Validación: Asegurar que la dirección tenga al menos 3 caracteres
     if (formulario.direccion.length < 3) {
       abrirModalMensaje("advertencia", "La dirección debe tener al menos 3 caracteres.");
       return;
     }
 
-    // Nueva validación: Verificar que el ID no exista en la base de datos al agregar
-    if (!modalEdicion && formulario.id && personas.some(p => p.id === formulario.id)) {
-      abrirModalMensaje("advertencia", "El ID ya está en uso.");
-      return;
-    }
-
-    // Nueva validación: Verificar que el correo no esté duplicado
+    // Validación: Verificar que el correo no esté duplicado
     const correoExistente = personas.find(p => p.correo === formulario.correo);
     if (correoExistente && (!modalEdicion || correoExistente.id !== formulario.id)) {
       abrirModalMensaje("advertencia", "El correo ya está en uso.");
       return;
     }
 
+    // Peticiones
     const url = modalEdicion
       ? `${urlBackend}/user/personal/${formulario.id}`
       : `${urlBackend}/user/register`;
     const method = modalEdicion ? "put" : "post";
-    // Preparar el cuerpo de la solicitud
+    // Preparar el cuerpo de la solicitud, sea para agregar o editar
     const body = modalEdicion
       ? {
-          id: formulario.id || null,
-          nombre: formulario.nombre,
-          apellido: formulario.apellido,
-          correo: formulario.correo,
-          telefono: formulario.telefono,
-          direccion: formulario.direccion || "",
-          foto: formulario.foto || "URL_FOTO_USUARIO",
-          permisos: formulario.permisos,
-        }
+        id: formulario.id || null,
+        nombre: formulario.nombre,
+        apellido: formulario.apellido,
+        correo: formulario.correo,
+        telefono: formulario.telefono,
+        direccion: formulario.direccion || "",
+        foto: formulario.foto || "URL_FOTO_USUARIO",
+        permisos: formulario.permisos,
+      }
       : {
-          id: formulario.id || null,
-          nombre: formulario.nombre,
-          apellido: formulario.apellido,
-          correo: formulario.correo,
-          telefono: formulario.telefono,
-          direccion: formulario.direccion || "",
-          foto: formulario.foto || "URL_FOTO_USUARIO",
-          permissions: {
-            listPermissions: formulario.permisos.map(p => p.name),
-          },
-        };
+        id: formulario.id || null,
+        nombre: formulario.nombre,
+        apellido: formulario.apellido,
+        correo: formulario.correo,
+        telefono: formulario.telefono,
+        direccion: formulario.direccion || "",
+        foto: formulario.foto || "URL_FOTO_USUARIO",
+        permissions: {
+          listPermissions: formulario.permisos.map(p => p.name),
+        },
+      };
 
-    console.log("Solicitud enviada:", { url, method, body, token }); // Depuración
-    api({
-      method,
-      url,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      data: body,
-    })
-      .then((res) => {
-        if (res.status === 200 || res.status === 201) {
-          const updatedPersona = res.data;
-          if (!modalEdicion) {
-            setPersonas([...personas, updatedPersona]);
-          } else {
-            setPersonas(personas.map((p) => (p.id === updatedPersona.id ? updatedPersona : p)));
-          }
-          cargarUsuarios(); // Forzar recarga para asegurar datos actualizados
-          cerrarModal();
+    try {
+      const res = await api({
+        method,
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        data: body,
+      });
+      if (res.status === 200 || res.status === 201) {
+        const updatedPersona = res.data;
+        if (!modalEdicion) {
+          setPersonas([...personas, updatedPersona]);
+        } else {
+          setPersonas(personas.map((p) => (p.id === updatedPersona.id ? updatedPersona : p)));
         }
-      })
-      .catch((err) => console.error("Error al guardar:", err));
+        cargarUsuarios(); // Forzar recarga para asegurar datos actualizados
+        cerrarModal();
+      }
+    } catch (err) {
+      let errorMessage = "Error al guardar el empleado, verifica el ID.";
+      if (err.response?.status === 400) {
+        errorMessage = err.response.data?.message || "El ID o correo ya está en uso.";
+      }
+      abrirModalMensaje("advertencia", errorMessage);
+      console.error("Error al guardar:", err);
+    }
   };
 
   // Función para manejar el clic en la tarjeta

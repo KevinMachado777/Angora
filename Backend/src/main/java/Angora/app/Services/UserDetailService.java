@@ -10,10 +10,8 @@ import Angora.app.Repositories.RefreshTokenRepository;
 import Angora.app.Repositories.UsuarioRepository;
 import Angora.app.Entities.Usuario;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import Angora.app.Services.Email.EnviarCorreo;
@@ -139,7 +137,7 @@ public class UserDetailService implements UserDetailsService{
     }
 
     // Metodo que guarda un usuario en la bd y genera el token para ese usuario
-    public AuthResponse createUser(AuthCreateUserRequest authCreateUser){
+    public AuthResponse createUser(AuthCreateUserRequest authCreateUser) {
         // Creación del usuario
         Long id = authCreateUser.id();
         String nombre = authCreateUser.nombre();
@@ -148,18 +146,32 @@ public class UserDetailService implements UserDetailsService{
         String telefono = authCreateUser.telefono();
         String direccion = authCreateUser.direccion();
         String foto = authCreateUser.foto();
-        List<String> listPermissions =
-                authCreateUser.permissions().listPermissions();
+        List<String> listPermissions = authCreateUser.permissions().listPermissions();
 
         List<Permiso> permisoList = permisoRepository.findPermisosByNameIn(listPermissions)
                 .stream().collect(Collectors.toList());
 
-        if (permisoList.isEmpty()){
+        if (permisoList.isEmpty()) {
             throw new IllegalArgumentException("No se encontraron permisos con los nombres especificados");
         }
 
+        // Valida que el ID no sea nulo
+        if (id == null) {
+            throw new IllegalArgumentException("El ID del usuario no puede ser nulo");
+        }
+
+        // Verifica si el ID ya existe
+        if (usuarioRepository.existsById(id)) {
+            throw new IllegalArgumentException("El ID ya está en uso por un usuario activo.");
+        }
+
+        // Verifica si el correo ya está en uso
+        if (usuarioRepository.existsByCorreo(correo)) {
+            throw new IllegalArgumentException("El correo ya está en uso por un usuario activo.");
+        }
+
         // Generamos la contraseña
-        String password = nombre.substring(0,2) + apellido.substring(0, 2) + telefono.substring(4, 7) + direccion.substring(0, 2);
+        String password = nombre.substring(0, 2) + apellido.substring(0, 2) + telefono.substring(4, 7) + direccion.substring(0, 2);
 
         // Se construye el nuevo usuario
         Usuario usuarioAgregar = Usuario.builder()
@@ -206,7 +218,7 @@ public class UserDetailService implements UserDetailsService{
         String accessToken = jwtUtils.createAccessToken(authentication);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(correo);
 
-        // Generamos la respuesta a la solictud
+        // Generamos la respuesta a la solicitud
         AuthResponse authResponse = new AuthResponse(
                 usuarioAgregar.getCorreo(),
                 "Usuario creado correctamente",
