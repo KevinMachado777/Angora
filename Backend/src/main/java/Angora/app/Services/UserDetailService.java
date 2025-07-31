@@ -6,12 +6,15 @@ import Angora.app.Controllers.dto.AuthResponse;
 import Angora.app.Entities.Permiso;
 import Angora.app.Entities.RefreshToken;
 import Angora.app.Repositories.PermisoRepository;
+import Angora.app.Repositories.RefreshTokenRepository;
 import Angora.app.Repositories.UsuarioRepository;
 import Angora.app.Entities.Usuario;
+
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.stream.Collectors;
+
+import Angora.app.Services.Email.EnviarCorreo;
 import Angora.app.Utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -38,6 +41,10 @@ public class UserDetailService implements UserDetailsService{
     @Autowired
     private PermisoRepository permisoRepository;
 
+    // Servicio de correo
+    @Autowired
+    private EnviarCorreo enviarCorreo;
+
     // Password Encoder
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -50,10 +57,12 @@ public class UserDetailService implements UserDetailsService{
     @Autowired
     private RefreshTokenService refreshTokenService;
 
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     // Cargar un usuario por correo
     @Override
     public UserDetails loadUserByUsername(String correo) throws UsernameNotFoundException {
-
         // Buscar el usuario en la base de datos por correo
         Usuario usuario = usuarioRepository.findUsuarioByCorreo(correo)
                     .orElseThrow(() -> new UsernameNotFoundException("El usuario con el correo " + correo + " no existe."));
@@ -79,7 +88,6 @@ public class UserDetailService implements UserDetailsService{
 
     // Generamos el token de acceso
     public AuthResponse loginUser(AuthLoginRequest authLogin){
-
         // Recuperamos el correo y la contraseña
         String correo = authLogin.correo();
         String password = authLogin.password();
@@ -107,7 +115,6 @@ public class UserDetailService implements UserDetailsService{
 
     // Metodo que nos permite buscar un usuario en la base de datos y verificar sus credenciales sean correctas
     public Authentication authenticate(String correo, String password) {
-
         // Buscamos el usuario en la base de datos
         UserDetails userDetails = this.loadUserByUsername(correo);
 
@@ -127,15 +134,11 @@ public class UserDetailService implements UserDetailsService{
                 userDetails.getPassword(),
                 userDetails.getAuthorities()
         );
-
-
     }
 
-    // Método que guarda un usuario en la bd y genera el token para ese usuario
-    public AuthResponse createUser(AuthCreateUserRequest authCreateUser){
-
+    // Metodo que guarda un usuario en la bd y genera el token para ese usuario
+    public AuthResponse createUser(AuthCreateUserRequest authCreateUser) {
         // Creación del usuario
-
         Long id = authCreateUser.id();
         String nombre = authCreateUser.nombre();
         String apellido = authCreateUser.apellido();
@@ -143,18 +146,32 @@ public class UserDetailService implements UserDetailsService{
         String telefono = authCreateUser.telefono();
         String direccion = authCreateUser.direccion();
         String foto = authCreateUser.foto();
-        List<String> listPermissions =
-                authCreateUser.permissions().listPermissions();
+        List<String> listPermissions = authCreateUser.permissions().listPermissions();
 
         List<Permiso> permisoList = permisoRepository.findPermisosByNameIn(listPermissions)
                 .stream().collect(Collectors.toList());
 
-        if (permisoList.isEmpty()){
+        if (permisoList.isEmpty()) {
             throw new IllegalArgumentException("No se encontraron permisos con los nombres especificados");
         }
 
+        // Valida que el ID no sea nulo
+        if (id == null) {
+            throw new IllegalArgumentException("El ID del usuario no puede ser nulo");
+        }
+
+        // Verifica si el ID ya existe
+        if (usuarioRepository.existsById(id)) {
+            throw new IllegalArgumentException("El ID ya está en uso por un usuario activo.");
+        }
+
+        // Verifica si el correo ya está en uso
+        if (usuarioRepository.existsByCorreo(correo)) {
+            throw new IllegalArgumentException("El correo ya está en uso por un usuario activo.");
+        }
+
         // Generamos la contraseña
-        String password = nombre.substring(0,2) + apellido.substring(0, 2) + telefono.substring(4, 7) + direccion.substring(0, 2);
+        String password = nombre.substring(0, 2) + apellido.substring(0, 2) + telefono.substring(4, 7) + direccion.substring(0, 2);
 
         // Se construye el nuevo usuario
         Usuario usuarioAgregar = Usuario.builder()
@@ -164,7 +181,8 @@ public class UserDetailService implements UserDetailsService{
                 .correo(correo)
                 .contraseña(passwordEncoder.encode(password))
                 .telefono(telefono)
-                .foto(foto)
+                .direccion(direccion)
+                .foto(foto != null && !foto.isEmpty() ? foto : "URL_FOTO_USUARIO")
                 .permisos(permisoList)
                 .isEnabled(true)
                 .accountNoExpired(true)
@@ -174,6 +192,14 @@ public class UserDetailService implements UserDetailsService{
 
         // Guardamos el usuario
         usuarioRepository.save(usuarioAgregar);
+
+        // Envío de correo con la contraseña generada
+        String cuerpoCorreo = "Hola " + nombre +
+                ",\n\nTu cuenta ha sido creada exitosamente.\n" +
+                "Tu contraseña temporal es: " + password + "\n\n" +
+                "Por favor, cámbiala al iniciar sesión." +
+                "\nSaludos,\nEquipo Angora";
+        enviarCorreo.enviarCorreo(correo, "Bienvenido a Angora - Tu contraseña", cuerpoCorreo);
 
         // Construcción de los permisos
         List<SimpleGrantedAuthority> authoritiesList = new ArrayList<>();
@@ -192,17 +218,18 @@ public class UserDetailService implements UserDetailsService{
         String accessToken = jwtUtils.createAccessToken(authentication);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(correo);
 
-        // Generamos la respuesta a la solictud
+        // Generamos la respuesta a la solicitud
         AuthResponse authResponse = new AuthResponse(
                 usuarioAgregar.getCorreo(),
                 "Usuario creado correctamente",
+                accessToken,
                 refreshToken.getToken(),
-                accessToken, true);
+                true);
 
         return authResponse;
-
     }
 
+    // Metodo para actualizar los datos del perfil
     public Usuario actualizarUsuario(Usuario usuario) {
         Usuario usuarioActualizado = usuarioRepository.findById(usuario.getId()).orElse(null);
 
@@ -217,5 +244,53 @@ public class UserDetailService implements UserDetailsService{
         return usuarioRepository.save(usuarioActualizado); // ✅ ahora retorna
     }
 
+    // Metodo para actualizar todos los campos del personal
+    public Usuario actualizarPersonal(Usuario usuario) {
+        Usuario usuarioExistente = usuarioRepository.findById(usuario.getId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + usuario.getId()));
 
+        if (usuarioRepository.existsByCorreoAndIdNot(usuario.getCorreo(), usuario.getId())) {
+            throw new IllegalArgumentException("El correo ya está en uso por otro usuario");
+        }
+
+        // Actualización de campos básicos
+        usuarioExistente.setNombre(usuario.getNombre());
+        usuarioExistente.setApellido(usuario.getApellido());
+        usuarioExistente.setCorreo(usuario.getCorreo());
+        usuarioExistente.setTelefono(usuario.getTelefono());
+        usuarioExistente.setDireccion(usuario.getDireccion());
+        usuarioExistente.setFoto(usuario.getFoto() != null && !usuario.getFoto().isEmpty() ? usuario.getFoto() : usuarioExistente.getFoto());
+
+        // Manejo de permisos
+        if (usuario.getPermisos() != null) {
+            // Limpiar permisos existentes
+            usuarioExistente.getPermisos().clear();
+            List<Permiso> permisosActualizados = new ArrayList<>();
+            // Recorrer todos los permisos
+            for (Permiso permiso : usuario.getPermisos()) {
+                Permiso permisoExistente = permisoRepository.findByName(permiso.getName())
+                        .orElseGet(() -> {
+                            Permiso nuevoPermiso = new Permiso();
+                            nuevoPermiso.setName(permiso.getName());
+                            return permisoRepository.save(nuevoPermiso); // Persistir nuevo permiso
+                        });
+                permisosActualizados.add(permisoExistente);
+            }
+            usuarioExistente.setPermisos(permisosActualizados);
+        }
+        return usuarioRepository.save(usuarioExistente);
+    }
+
+    // Metodo para eliminar un usuario
+    public void eliminarUsuario(Long id) {
+        Usuario usuario = usuarioRepository.findById(id).orElse(null);
+        if (usuario == null)
+            throw new RuntimeException("Usuario no encontrado con ID: " + id);
+
+        System.out.printf("Eliminacion del token");
+        refreshTokenRepository.deleteByUsuarioId(id);
+        System.out.printf("Eliminacion del token correctamente");
+        usuarioRepository.delete(usuario);
+        System.out.printf("Usuario eliminado correctamente");
+    }
 }

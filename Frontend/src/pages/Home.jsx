@@ -6,10 +6,10 @@ import "../styles/Home.css";
 
 import { AuthContext } from "../context/AuthContext";
 
-import producto1 from "../assets/images/galeria/producto1.jpg";
-import producto2 from "../assets/images/galeria/producto2.jpg";
-import producto3 from "../assets/images/galeria/producto3.jpg";
-import producto4 from "../assets/images/galeria/producto4.jpg";
+import producto1 from "../assets/images/gallery/producto1.jpg";
+import producto2 from "../assets/images/gallery/producto2.jpg";
+import producto3 from "../assets/images/gallery/producto3.jpg";
+import producto4 from "../assets/images/gallery/producto4.jpg";
 
 
 const productos = [
@@ -84,7 +84,7 @@ useEffect(() => {
 
 
 
-  const galeria = [...productos, ...productos];
+  const gallery = [...productos, ...productos];
 
   return (
     <div className="home-wrapper">
@@ -138,7 +138,7 @@ useEffect(() => {
 
       <section className="gallery-container my-5">
         <div className="gallery-track">
-          {galeria.map((item, i) => (
+          {gallery.map((item, i) => (
             <div className="gallery-item position-relative" key={i}>
               <img
                 src={item.imagen}

@@ -1,5 +1,6 @@
 package Angora.app.Controllers;
 
+import Angora.app.Controllers.dto.ClienteConCarteraDTO;
 import Angora.app.Entities.Cliente;
 import Angora.app.Entities.Cartera;
 import Angora.app.Repositories.ClienteRepository;
@@ -152,4 +153,23 @@ public class ClienteController {
         response.put("mensaje", "Cliente activado exitosamente.");
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping(value = "/activos-con-cartera", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<ClienteConCarteraDTO>> obtenerClientesActivosConCartera() {
+        List<Cliente> clientesActivos = clienteRepository.findByActivoTrue();
+
+        List<ClienteConCarteraDTO> clientesConCartera = clientesActivos.stream().map(cliente -> {
+            Cartera cartera = carteraRepository.findByIdCliente_IdCliente(cliente.getIdCliente());
+            boolean carteraActiva = cartera != null && Boolean.TRUE.equals(cartera.getEstado());
+
+            return new ClienteConCarteraDTO(
+                    cliente.getIdCliente(),
+                    cliente.getNombre() + " " + cliente.getApellido(),
+                    carteraActiva
+            );
+        }).toList();
+
+        return ResponseEntity.ok(clientesConCartera);
+    }
+
 }
