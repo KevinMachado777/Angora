@@ -1,19 +1,23 @@
+// src/routes/ProtectedRoute.jsx
 import { Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 
-// Esta ruta protegida verifica si el usuario está autenticado y tiene los permisos necesarios
 const ProtectedRoute = ({ children, requiredPermission }) => {
-    // Obtiene el usuario autenticado y sus permisos desde el contexto
-    const { user } = useContext(AuthContext);
+    const { user } = useContext(AuthContext); // Eliminamos loading
     const userPermissions = user?.permisos?.map((permiso) => permiso.name) || [];
 
-    // Si el usuario no está autenticado o no tiene el permiso requerido, redirige a la página de inicio
-    if (!user || (requiredPermission && requiredPermission !== "HOME" && !userPermissions.includes(requiredPermission))) {
+    // Si no hay usuario autenticado, redirige a /login
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    // Si hay usuario pero no tiene el permiso requerido (y no es HOME), redirige a /home
+    if (requiredPermission && requiredPermission !== "HOME" && !userPermissions.includes(requiredPermission)) {
         return <Navigate to="/home" replace />;
     }
 
-    // Si el usuario está autenticado y tiene los permisos necesarios, renderiza los hijos
+    // Si el usuario está autenticado y tiene los permisos, renderiza los hijos
     return children;
 };
 
