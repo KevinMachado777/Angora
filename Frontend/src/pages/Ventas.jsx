@@ -64,40 +64,52 @@ const Ventas = () => {
   };
 
   const handleAgregar = () => {
-    if (!formulario.id || !formulario.cantidad) {
-      abrirModal("advertencia", "Por favor ingresa el producto y la cantidad");
-      return;
-    }
+  if (!formulario.id || !formulario.cantidad) {
+    abrirModal("advertencia", "Por favor ingresa el producto y la cantidad");
+    return;
+  }
 
-    const producto = productos.find((p) => p.id === formulario.id);
-    if (!producto) {
-      abrirModal("error", "Selecciona un producto válido de la lista");
-      return;
-    }
+  const producto = productos.find((p) => p.id === formulario.id);
+  if (!producto) {
+    abrirModal("error", "Selecciona un producto válido de la lista");
+    return;
+  }
 
-    const cantidadNueva = parseInt(formulario.cantidad);
-    if (isNaN(cantidadNueva) || cantidadNueva <= 0) {
-      abrirModal("error", "La cantidad debe ser mayor a 0");
-      return;
-    }
+  const cantidadNueva = parseInt(formulario.cantidad);
+  if (isNaN(cantidadNueva) || cantidadNueva <= 0) {
+    abrirModal("error", "La cantidad debe ser mayor a 0");
+    return;
+  }
 
+  const precio = parseInt(producto.precio);
+  const total = cantidadNueva * precio;
+
+  if (modoEdicion) {
+    // 🟡 Modo edición: reemplazar
+    const actualizado = {
+      ...formulario,
+      cantidad: cantidadNueva,
+      precio,
+      total,
+    };
+    setRegistros((prev) =>
+      prev.map((item) => (item.id === idEditando ? actualizado : item))
+    );
+  } else {
     const productoExistente = registros.find(
       (item) => item.id === formulario.id
     );
-    const cantidadActual = productoExistente ? productoExistente.cantidad : 0;
-    const cantidadTotal = cantidadActual + cantidadNueva;
-
-    const precio = parseInt(producto.precio);
-    const total = cantidadTotal * precio;
-
     if (productoExistente) {
+      const cantidadTotal = productoExistente.cantidad + cantidadNueva;
       const actualizado = {
         ...productoExistente,
         cantidad: cantidadTotal,
-        total,
+        total: cantidadTotal * precio,
       };
       setRegistros((prev) =>
-        prev.map((item) => (item.id === formulario.id ? actualizado : item))
+        prev.map((item) =>
+          item.id === formulario.id ? actualizado : item
+        )
       );
     } else {
       setRegistros((prev) => [
@@ -111,11 +123,14 @@ const Ventas = () => {
         },
       ]);
     }
+  }
 
-    setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
-    setModoEdicion(false);
-    setIdEditando(null);
-  };
+  // Limpiar estado
+  setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
+  setModoEdicion(false);
+  setIdEditando(null);
+};
+
 
   const handleEditar = (dato) => {
     setFormulario({
