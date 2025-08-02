@@ -12,6 +12,7 @@ import Angora.app.Entities.Usuario;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import Angora.app.Services.Email.EnviarCorreo;
@@ -194,12 +195,35 @@ public class UserDetailService implements UserDetailsService{
         usuarioRepository.save(usuarioAgregar);
 
         // Envío de correo con la contraseña generada
-        String cuerpoCorreo = "Hola " + nombre +
-                ",\n\nTu cuenta ha sido creada exitosamente.\n" +
-                "Tu contraseña temporal es: " + password + "\n\n" +
-                "Por favor, cámbiala al iniciar sesión." +
-                "\nSaludos,\nEquipo Angora";
-        enviarCorreo.enviarCorreo(correo, "Bienvenido a Angora - Tu contraseña", cuerpoCorreo);
+        String mensaje = "Tu cuenta ha sido creada exitosamente. A continuación, encontrarás tu contraseña temporal para iniciar sesión.";
+
+        String contenidoExtra =
+                "<div style=\"background-color: #d8ecff; border: 1px dashed #034078; " +
+                        "padding: 12px 20px; font-size: 18px; font-weight: bold; color: #034078; " +
+                        "display: inline-block; margin: 15px 0; border-radius: 8px;\">" +
+                        password +
+                        "</div>" +
+                        "<br>" +
+                        "<a href=\"https://angora.com/login\" style=\"display:inline-block; margin-top:15px; " +
+                        "background-color:#034078; color:white; padding:10px 16px; border-radius:6px; " +
+                        "text-decoration:none; font-weight:bold;\">Iniciar sesión ahora</a>";
+
+        Map<String, String> variables = Map.of(
+                "nombre", nombre,
+                "mensajePrincipal", mensaje,
+                "contenidoExtra", contenidoExtra
+        );
+
+        enviarCorreo.enviarConPlantilla(
+                correo,
+                "Bienvenido a Angora - Tu contraseña",
+                "notificacion-body.html",
+                variables,
+                null,  // sin adjunto
+                null
+        );
+
+
 
         // Construcción de los permisos
         List<SimpleGrantedAuthority> authoritiesList = new ArrayList<>();

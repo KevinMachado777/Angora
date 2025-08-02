@@ -88,6 +88,15 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.PUT, "/user").permitAll();
                     http.requestMatchers(HttpMethod.GET, "/user/exists/**").permitAll();
 
+                    // Rutas de producto
+
+                    http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/inventarioProducto").permitAll();
+
+                    // Rutas de ventas
+
+                    http.requestMatchers(HttpMethod.POST, "/ventas/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET,"/activos-con-cartera/**").permitAll();
 
 
                     http.anyRequest().denyAll();
