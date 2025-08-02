@@ -1,6 +1,4 @@
 package Angora.app.Controllers;
-
-
 import Angora.app.Entities.Proveedor;
 import Angora.app.Services.IProveedorService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +8,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/proveedores")
-@CrossOrigin("http://localhost:5173")
 public class ProveedorController {
 
     @Autowired

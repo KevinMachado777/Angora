@@ -8,9 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Data
@@ -24,7 +22,6 @@ public class Usuario {
     private Long id;
 
     private String nombre;
-
     private String apellido;
 
     @Column(unique = true)
@@ -32,28 +29,21 @@ public class Usuario {
     private String correo;
 
     private String contraseña;
-
     private String telefono;
-
     private String direccion;
 
     @Column(name = "is_enabled")
     private Boolean isEnabled;
 
-    // Indica si la cuenta no está expirada
     @Column(name = "account_no_expired")
     private Boolean accountNoExpired;
 
-    // Indica si la cuenta no está bloqueada
     @Column(name = "account_no_locked")
     private Boolean accountNoLocked;
 
-    // Indica si las credenciales (como la contraseña) no están expiradas
     @Column(name = "credential_no_expired")
     private Boolean credentialNoExpired;
 
-    // Permisos del usuario
-    @Builder.Default // Esto evitará errores de null y permite inicialización segura incluso si olvidas pasar la lista
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "usuario_permisos",
@@ -63,5 +53,4 @@ public class Usuario {
     private List<Permiso> permisos = new ArrayList<>();
 
     private String foto;
-
 }

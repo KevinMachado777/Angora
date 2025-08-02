@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f9ff !important;
+            color: #003049;
+            color-scheme: only light;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            background-color: #034078 !important;
+            padding: 25px 20px 20px;
+            text-align: center;
+            color-scheme: only light;
+        }
+
+        .logo-wrapper {
+            background: radial-gradient(circle, #ffffff 5%, #dceeff 35%, #034078 100%) !important;
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 100px;
+            box-shadow: 0 0 8px rgba(255,255,255,0.2);
+        }
+
+        .logo-wrapper img {
+            max-height: 55px;
+            display: block;
+            margin: auto;
+        }
+
+        .contenido {
+            padding: 30px 25px;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            background: linear-gradient(to right, #0466c8, #023e8a);
+            color: #ffffff;
+            text-align: center;
+            padding: 25px 20px;
+            font-size: 13px;
+        }
+
+        .footer strong {
+            display: block;
+            margin: 6px 0 4px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #ffffff;
+            text-decoration: underline;
+            font-weight: 500;
+        }
+
+        .footer a:hover {
+            text-decoration: none;
+        }
+
+        .footer-logos {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .footer-logos img {
+            display: inline-block;
+            margin: 0 12px;
+            max-height: 60px;
+            max-width: 100px;
+            object-fit: contain;
+        }
+
+        @media only screen and (max-width: 600px) {
+            .contenido {
+                padding: 20px 15px;
+            }
+
+            .footer-logos img {
+                max-width: 80px;
+                height: auto;
+                margin: 8px 0;
+            }
+
+            .logo-wrapper {
+                padding: 10px 20px;
+            }
+
+            .logo-wrapper img {
+                max-width: 90%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="logo-wrapper">
+            <img src="https://res.cloudinary.com/dtmtmn3cu/image/upload/v1753997476/LogoFraganceys-removebg-preview_dxvruv.png" alt="Logo Fraganceys" />
+        </div>
+    </div>
+
+    <div class="contenido">
+        {{contenido}}
+    </div>
+
+    <div class="footer">
+        Este mensaje fue enviado por <strong>Fraganceys</strong>
+        Santa Bárbara - Antioquia<br>
+        Visítanos en <a href="https://fraganceys.com">fraganceys.com</a>
+
+        <div class="footer-logos">
+            <img src="https://res.cloudinary.com/dtmtmn3cu/image/upload/v1753997550/image-removebg-preview_bonage.png" alt="Fr Logo" />
+            <img src="https://res.cloudinary.com/dtmtmn3cu/image/upload/v1753997476/logoAngora-removebg-preview_t3gdqx.png" alt="Logo Angora" />
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
