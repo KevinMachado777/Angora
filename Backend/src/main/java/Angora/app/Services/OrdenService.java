@@ -2,7 +2,7 @@ package Angora.app.Services;
 
 import Angora.app.Entities.Orden;
 import Angora.app.Repositories.OrdenRepository;
-import Angora.app.Services.Externos.EnviarCorreo;
+import Angora.app.Services.Email.EnviarCorreo;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
