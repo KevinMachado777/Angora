@@ -21,7 +21,7 @@ public class Orden {
 
     @ManyToOne
     @JoinColumn(name = "idProveedor")
-    private Proveedor idProveedor;
+    private Proveedor proveedor;
 
     @ManyToMany
     @JoinTable(
@@ -33,4 +33,5 @@ public class Orden {
     private String notas;
     private Boolean estado;
     private LocalDateTime fecha;
+    private Float total;
 }

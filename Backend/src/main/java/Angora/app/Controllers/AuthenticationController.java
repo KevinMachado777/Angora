@@ -5,6 +5,8 @@ import Angora.app.Controllers.dto.AuthLoginRequest;
 import Angora.app.Controllers.dto.AuthResponse;
 import Angora.app.Controllers.dto.RefreshTokenRequest;
 import Angora.app.Entities.RefreshToken;
+import Angora.app.Entities.Usuario;
+import Angora.app.Repositories.UsuarioRepository;
 import Angora.app.Services.RefreshTokenService;
 import Angora.app.Services.UserDetailService;
 import Angora.app.Utils.JwtUtils;
@@ -30,22 +32,23 @@ public class AuthenticationController {
     @Autowired
     private RefreshTokenService refreshTokenService;
 
-    // Utlidad
+    // Utilidad
     @Autowired
     private JwtUtils jwtUtils;
 
-    // Método para autenticar y autorizar un usuario
+    // Repositorio del usuario
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    // Metodo para autenticar y autorizar un usuario
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid AuthLoginRequest authLogin){
-
         AuthResponse authResponse = userDetailService.loginUser(authLogin);
-
         System.out.println("Respuesta Login: " + authResponse);
-
         return new ResponseEntity<>(authResponse, HttpStatus.OK);
     }
 
-    // Método que refresca el token
+    // Metodo que refresca el token
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refreshToken(@RequestBody @Valid RefreshTokenRequest refreshTokenRequest){
         try {
@@ -53,10 +56,8 @@ public class AuthenticationController {
             String requestRefreshToken = refreshTokenRequest.refreshToken();
 
             System.out.println("Token recibido: " + requestRefreshToken + "");
-
             RefreshToken refreshToken = refreshTokenService.findByToken(requestRefreshToken)
                     .orElseThrow(() -> new RuntimeException("Refresh token no encontrado"));
-
             refreshToken = refreshTokenService.verifyExpiration(refreshToken);
 
             // Crear nuevo access token
@@ -111,4 +112,24 @@ public class AuthenticationController {
         }
     }
 
+    // Método que busca un usuario por correo que se acaba de autenticar.
+    @GetMapping("/authenticated/{correo}")
+    public ResponseEntity<Usuario> buscarUsuarioPorCorreoAutenticado(@PathVariable String correo){
+
+        Usuario usuario = usuarioRepository.findUsuarioByCorreo(correo)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        Usuario usuarioAutenticado = Usuario.builder()
+                .id(usuario.getId())
+                .correo(usuario.getCorreo())
+                .nombre(usuario.getNombre())
+                .apellido(usuario.getApellido())
+                .telefono(usuario.getTelefono())
+                .direccion(usuario.getDireccion())
+                .permisos(usuario.getPermisos())
+                .build();
+
+        System.out.println("Usuario autenticado buscado por correo: " + usuarioAutenticado);
+        return new ResponseEntity<>(usuarioAutenticado, HttpStatus.OK);
+    }
 }

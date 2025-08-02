@@ -467,7 +467,7 @@ const Portafolio = () => {
     };
 
     // Guarda o actualiza un cliente
-    const guardarCliente = async (e) => {
+    const guardarCliente = async (  ) => {
         e.preventDefault();
         const form = e.target;
         const idCliente = form.idCliente?.value ? parseInt(form.idCliente.value) : personaSelect?.id;

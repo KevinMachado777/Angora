@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import '../styles/reportes.css';
 import TablaReportes from '../components/TablaReportes';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
@@ -7,13 +8,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarAlt, faFileExcel } from '@fortawesome/free-solid-svg-icons';
 import * as XLSX from 'xlsx';
 
-// Registrando componentes de ChartJS para habilitar la renderización de gráficos variados
+// Registrando componentes de ChartJS
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend);
 
+const urlBackend = 'http://localhost:8080/angora/api/v1';
+
 const Reportes = () => {
-    // Inicializando variables de estado para gestionar el tipo de reporte, tipo de filtro, rangos de fechas, datos y métricas acumuladas
-    const [tipoReporte, setTipoReporte] = useState('inventario');
-    const [filtroTipo, setFiltroTipo] = useState('productos');
+    const [tipoReporte, setTipoReporte] = useState('finanzas');
+    const [filtroTipo, setFiltroTipo] = useState('ingresos');
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
     const [datos, setDatos] = useState([]);
@@ -21,123 +23,130 @@ const Reportes = () => {
         totalInventario: 0,
         totalProductos: 0,
         totalMateriaPrima: 0,
+    });
+    const [financialMetrics, setFinancialMetrics] = useState({
         totalIngresos: 0,
         totalEgresos: 0,
         utilidad: 0,
     });
 
-    // Creando una referencia para los elementos de los gráficos, permitiendo manipularlos dinámicamente
     const chartRef = useRef(null);
 
-    // Definiendo una estructura de datos mock que contiene información simulada para inventario, finanzas y usuarios
-    const datosMock = {
-        inventario: {
-            productos: [
-                { id: 1, nombre: 'Lava Manos', cantidad: 2, precioUnitario: 41200, tipo: 'Producto', fecha: '2025-07-01' },
-                { id: 2, nombre: 'Jabón Líquido', cantidad: 5, precioUnitario: 25000, tipo: 'Producto', fecha: '2025-07-02' },
-            ],
-            materiaPrima: [
-                { id: 1, nombre: 'Base Jabón', cantidad: 10, costoUnitario: 5000, tipo: 'Materia Prima', fecha: '2025-07-01' },
-                { id: 2, nombre: 'Esencia Floral', cantidad: 3, costoUnitario: 15000, tipo: 'Materia Prima', fecha: '2025-07-02' },
-            ],
-        },
-        finanzas: {
-            ingresos: [
-                { id: 1, concepto: 'Venta Lava Manos', tipo: 'Ingreso', fecha: '2025-07-01', total: 82400 },
-                { id: 2, concepto: 'Venta Jabón Líquido', tipo: 'Ingreso', fecha: '2025-07-02', total: 25000 },
-            ],
-            egresos: [
-                { id: 1, concepto: 'Compra Base Jabón', tipo: 'Egreso', fecha: '2025-07-01', total: 25000 },
-                { id: 2, concepto: 'Compra Esencia Floral', tipo: 'Egreso', fecha: '2025-07-02', total: 15000 },
-            ],
-        },
-        usuarios: {
-            personal: [
-                { id: 1, usuario: 'Admin', rol: 'Administrador', accion: 'Inicio de sesión', fecha: '2025-07-01T10:00' },
-                { id: 2, usuario: 'Cajero', rol: 'Cajero', accion: 'Venta realizada', fecha: '2025-07-01T12:00' },
-            ],
-            clientes: [
-                { id: 1, usuario: 'Cliente A', rol: 'Cliente', accion: 'Compra realizada', fecha: '2025-07-01T14:00' },
-                { id: 2, usuario: 'Cliente B', rol: 'Cliente', accion: 'Abono realizado', fecha: '2025-07-02T09:00' },
-            ],
-        },
-    };
-
-    // Calculando métricas totales al cambiar el tipo de reporte o al cargar la página por primera vez
     useEffect(() => {
-        let nuevasMetricas = {
-            totalInventario: 0,
-            totalProductos: 0,
-            totalMateriaPrima: 0,
-            totalIngresos: 0,
-            totalEgresos: 0,
-            utilidad: 0,
+        const fetchData = async () => {
+            let endpoint = '';
+            const params = {};
+            if (fechaInicio) params.fechaInicio = `${fechaInicio}T00:00:00`;
+            if (fechaFin) params.fechaFin = `${fechaFin}T23:59:59`;
+
+            switch (tipoReporte) {
+                case 'finanzas':
+                    endpoint = `/reportes/finanzas`;
+                    params.tipo = filtroTipo === 'egresos' ? 'egresos' : 'ingresos';
+                    break;
+                case 'inventario':
+                    endpoint = `/reportes/inventario`;
+                    params.tipo = 'movimientos'; // Seguir usando "movimientos" como base
+                    break;
+                case 'usuarios':
+                    endpoint = `/reportes/usuarios`;
+                    params.tipo = filtroTipo === 'clientes' ? 'clientes' : 'personal';
+                    break;
+                default:
+                    endpoint = '/reportes/finanzas';
+            }
+
+            try {
+                const response = await axios.get(`${urlBackend}${endpoint}`, { params });
+                const data = response.data || [];
+                console.log('Datos recibidos:', data);
+
+                // Filtrar datos según filtroTipo para inventario
+                if (tipoReporte === 'inventario') {
+                    const filteredData = data.filter(item => {
+                        if (filtroTipo === 'productos' && item.productoId !== null) return true; // Usar productoId para identificar
+                        if (filtroTipo === 'materiaPrima' && item.materiaPrimaId !== null) return true; // Usar materiaPrimaId para identificar
+                        return false;
+                    });
+                    setDatos(filteredData);
+                } else {
+                    setDatos(data);
+                }
+
+                // Fetch métricas financieras
+                const financialParams = { ...params };
+                const [ingresosResp, egresosResp] = await Promise.all([
+                    axios.get(`${urlBackend}/reportes/totalIngresos`, { params: financialParams }),
+                    axios.get(`${urlBackend}/reportes/totalEgresos`, { params: financialParams }),
+                ]);
+                const totalIngresos = ingresosResp.data || 0;
+                const totalEgresos = egresosResp.data || 0;
+                setFinancialMetrics({
+                    totalIngresos,
+                    totalEgresos,
+                    utilidad: totalIngresos - totalEgresos,
+                });
+
+                // Fetch métricas de inventario
+                if (tipoReporte === 'inventario') {
+                    const inventarioParams = { ...params, tipo: 'movimientos' };
+                    const [valorResp, totalProdResp, totalMatResp] = await Promise.all([
+                        axios.get(`${urlBackend}/reportes/valorInventario`, { params: inventarioParams }),
+                        axios.get(`${urlBackend}/reportes/totalProductos`, { params: inventarioParams }),
+                        axios.get(`${urlBackend}/reportes/totalMateriaPrima`, { params: inventarioParams }),
+                    ]);
+                    setMetricas({
+                        totalInventario: valorResp.data || 0,
+                        totalProductos: totalProdResp.data || 0,
+                        totalMateriaPrima: totalMatResp.data || 0,
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
         };
-        if (tipoReporte === 'inventario') {
-            nuevasMetricas.totalInventario = datosMock.inventario.productos.reduce((sum, item) => sum + item.cantidad * item.precioUnitario, 0);
-            nuevasMetricas.totalProductos = datosMock.inventario.productos.length;
-            nuevasMetricas.totalMateriaPrima = datosMock.inventario.materiaPrima.length;
-        } else if (tipoReporte === 'finanzas') {
-            nuevasMetricas.totalIngresos = datosMock.finanzas.ingresos.reduce((sum, item) => sum + item.total, 0);
-            nuevasMetricas.totalEgresos = datosMock.finanzas.egresos.reduce((sum, item) => sum + item.total, 0);
-            nuevasMetricas.utilidad = nuevasMetricas.totalIngresos - nuevasMetricas.totalEgresos;
-        }
-        setMetricas(nuevasMetricas);
-    }, [tipoReporte]);
-
-    // Actualizando datos filtrados al cambiar el tipo de filtro, los rangos de fechas o ambos
-    useEffect(() => {
-        const datosPorDefecto = tipoReporte === 'inventario' ? datosMock.inventario[filtroTipo] :
-            tipoReporte === 'finanzas' ? datosMock.finanzas[filtroTipo] :
-                datosMock.usuarios[filtroTipo];
-        let nuevosDatos = [...datosPorDefecto];
-        if (fechaInicio && fechaFin) {
-            nuevosDatos = datosPorDefecto.filter(item => {
-                const itemDate = new Date(item.fecha || '2025-07-19').toISOString().split('T')[0];
-                return itemDate >= fechaInicio && itemDate <= fechaFin;
-            });
-        }
-        setDatos(nuevosDatos);
+        fetchData();
     }, [tipoReporte, filtroTipo, fechaInicio, fechaFin]);
 
-    // Limpiando filtros de fechas para restablecerlos a su estado inicial sin restricciones
     const limpiarFechas = () => {
         setFechaInicio('');
         setFechaFin('');
     };
 
-    // Renderizando encabezados de la tabla según el tipo de reporte y filtro seleccionado
     const renderizarEncabezados = () => {
         switch (tipoReporte) {
             case 'inventario':
                 return filtroTipo === 'productos'
-                    ? ['ID', 'Nombre', 'Cantidad', 'Precio Unitario', 'Valor Total', 'Tipo', 'Fecha']
-                    : ['ID', 'Nombre', 'Cantidad', 'Costo Unitario', 'Tipo', 'Fecha'];
+                    ? ['Id', 'Producto', 'Cantidad Pasada', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento']
+                    : ['Id', 'Materia Prima', 'Cantidad Pasada', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento'];
             case 'finanzas':
-                return ['ID', 'Concepto', 'Tipo', 'Fecha', 'Total'];
+                return filtroTipo === 'ingresos'
+                    ? ['Id', 'Cliente', 'Método Pago', 'Fecha', 'Total']
+                    : ['Id', 'Proveedor', 'Fecha', 'Total'];
             case 'usuarios':
-                return ['ID', 'Usuario', 'Rol', 'Acción', 'Fecha'];
+                return filtroTipo === 'personal'
+                    ? ['Id', 'Nombre', 'Acción', 'Fecha']
+                    : ['Id', 'Cliente', 'Estado', 'Nº Compras', 'Ultima Compra'];
             default:
                 return [];
         }
     };
 
-    // Renderizando tarjetas de métricas según el tipo de reporte activo
     const renderizarTarjetas = () => {
         if (tipoReporte === 'inventario') {
             return (
                 <div className="tarjetas-container">
                     <div className="tarjeta">
-                        <h3>Valor Total Inventario</h3>
+                        <h3>Valor Total Inventario (Productos)</h3>
                         <p>${metricas.totalInventario.toLocaleString()}</p>
                     </div>
                     <div className="tarjeta">
                         <h3>Cantidad Total Productos</h3>
-                        <p>{metricas.totalProductos}</p>
+                        <p>{metricas.totalProductos.toLocaleString()}</p>
                     </div>
                     <div className="tarjeta">
                         <h3>Cantidad Total Materia Prima</h3>
-                        <p>{metricas.totalMateriaPrima}</p>
+                        <p>{metricas.totalMateriaPrima.toLocaleString()}</p>
                     </div>
                 </div>
             );
@@ -146,15 +155,15 @@ const Reportes = () => {
                 <div className="tarjetas-container">
                     <div className="tarjeta">
                         <h3>Total Ingresos</h3>
-                        <p>${metricas.totalIngresos.toLocaleString()}</p>
+                        <p>${financialMetrics.totalIngresos.toLocaleString()}</p>
                     </div>
                     <div className="tarjeta">
                         <h3>Total Egresos</h3>
-                        <p>${metricas.totalEgresos.toLocaleString()}</p>
+                        <p>${financialMetrics.totalEgresos.toLocaleString()}</p>
                     </div>
                     <div className="tarjeta">
                         <h3>Utilidad</h3>
-                        <p>${metricas.utilidad.toLocaleString()}</p>
+                        <p>${financialMetrics.utilidad.toLocaleString()}</p>
                     </div>
                 </div>
             );
@@ -162,55 +171,53 @@ const Reportes = () => {
         return null;
     };
 
-    // Renderizando gráficos basados en los datos filtrados, incluyendo barras, pastel y líneas según el contexto
     const renderizarGraficos = () => {
-        // Verificando si hay datos para evitar renderizar gráficos vacíos
         if (!datos.length) return null;
 
-        // Preparando datos para el gráfico de barras, extrayendo etiquetas y valores según el tipo de reporte
         const barData = {
-            labels: datos.map(item => item.nombre || item.concepto || item.usuario),
+            labels: datos.map(item => item.nombre || item.cliente || item.proveedor || 'Sin Nombre'),
             datasets: [
                 {
-                    label: tipoReporte === 'inventario' ? 'Cantidad' : tipoReporte === 'finanzas' ? 'Total' : 'Acciones',
-                    data: datos.map(item => item.cantidad || item.total || 1),
-                    backgroundColor: 'rgba(0, 80, 120, 0.8)', // Estableciendo color de fondo con transparencia
-                    borderColor: 'rgba(0, 120, 180, 1)', // Definiendo color del borde
-                    borderWidth: 1, // Configurando grosor del borde
+                    label: tipoReporte === 'inventario'
+                        ? 'Cantidad Actual'
+                        : tipoReporte === 'finanzas'
+                            ? 'Total'
+                            : 'Acciones',
+                    data: datos.map(item => item.cantidadActual || item.total || 0),
+                    backgroundColor: 'rgba(0, 80, 120, 0.8)',
+                    borderColor: 'rgba(0, 120, 180, 1)',
+                    borderWidth: 1,
                 },
             ],
         };
 
-        // Preparando datos para el gráfico de pastel, reutilizando etiquetas y ajustando colores
         const pieData = {
-            labels: datos.map(item => item.nombre || item.concepto || item.usuario),
+            labels: datos.map(item => item.nombre || item.cliente || item.proveedor || 'Sin Nombre'),
             datasets: [
                 {
-                    data: datos.map(item => item.cantidad || item.total || 1),
-                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'], // Asignando colores variados para cada sección
-                    borderColor: '#fff', // Estableciendo borde blanco
-                    borderWidth: 1, // Configurando grosor del borde
+                    data: datos.map(item => item.cantidadActual || item.total || 1),
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                    borderColor: '#fff',
+                    borderWidth: 1,
                 },
             ],
         };
 
-        // Preparando datos para el gráfico de líneas, disponible solo para finanzas con etiquetas de fecha
         const lineData = tipoReporte === 'finanzas' ? {
-            labels: datos.map(item => item.fecha),
+            labels: datos.map(item => item.fecha || 'Sin Fecha'),
             datasets: [
                 {
-                    label: filtroTipo === 'ingresos' ? 'Ingresos' : 'Egresos', // Determinando la etiqueta según el filtro
-                    data: datos.map(item => item.total), 
-                    borderColor: 'rgba(0, 120, 180, 1)', // Definiendo color de la línea
-                    backgroundColor: 'rgba(0, 80, 120, 0.5)', // Estableciendo color de relleno con transparencia
-                    fill: true, // Habilitando relleno bajo la línea
-                    pointRadius: 5, // Configurando tamaño de los puntos
-                    pointHoverRadius: 7, // Ajustando tamaño de puntos al pasar el mouse
+                    label: filtroTipo === 'ingresos' ? 'Ingresos' : 'Egresos',
+                    data: datos.map(item => item.total || 0),
+                    borderColor: 'rgba(0, 120, 180, 1)',
+                    backgroundColor: 'rgba(0, 80, 120, 0.5)',
+                    fill: true,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
                 },
             ],
         } : null;
 
-        // Retornando un contenedor con los tres tipos de gráficos, rindiendo solo los aplicables
         return (
             <div className="graficos-container">
                 <div className="grafico-item">
@@ -219,16 +226,16 @@ const Reportes = () => {
                             ref={chartRef}
                             data={barData}
                             options={{
-                                responsive: true, // Asegurando que el gráfico se adapte al tamaño de la pantalla
-                                maintainAspectRatio: false, // Permitiendo control manual del aspecto
+                                responsive: true,
+                                maintainAspectRatio: false,
                                 plugins: {
-                                    legend: { position: 'top', labels: { color: '#fff' } }, // Colocando la leyenda en la parte superior con texto blanco
-                                    title: { display: true, text: barData.datasets[0].label, color: '#fff' }, // Mostrando título dinámico en blanco
+                                    legend: { position: 'top', labels: { color: '#fff' } },
+                                    title: { display: true, text: barData.datasets[0].label, color: '#fff' },
                                 },
-                                animation: { duration: 1000, easing: 'easeOutQuad' }, // Aplicando animación suave de 1 segundo
-                                scales: { 
-                                    y: { ticks: { color: '#fff' } }, // Configurando color de las etiquetas del eje Y
-                                    x: { ticks: { color: '#fff', maxRotation: 45, minRotation: 45 } }, // Ajustando rotación de etiquetas del eje X
+                                animation: { duration: 1000, easing: 'easeOutQuad' },
+                                scales: {
+                                    y: { ticks: { color: '#fff' } },
+                                    x: { ticks: { color: '#fff', maxRotation: 45, minRotation: 45 } },
                                 },
                             }}
                         />
@@ -239,13 +246,13 @@ const Reportes = () => {
                         <Pie
                             data={pieData}
                             options={{
-                                responsive: true, // Asegurando adaptabilidad al tamaño de la pantalla
-                                maintainAspectRatio: false, // Permitiendo ajuste manual del aspecto
+                                responsive: true,
+                                maintainAspectRatio: false,
                                 plugins: {
-                                    legend: { position: 'right', labels: { color: '#fff' } }, // Colocando leyenda a la derecha con texto blanco
-                                    title: { display: true, text: 'Proporción', color: '#fff' }, // Mostrando título fijo en blanco
+                                    legend: { position: 'right', labels: { color: '#fff' } },
+                                    title: { display: true, text: 'Proporción', color: '#fff' },
                                 },
-                                animation: { duration: 1000, easing: 'easeOutQuad' }, // Aplicando animación suave de 1 segundo
+                                animation: { duration: 1000, easing: 'easeOutQuad' },
                             }}
                         />
                     </div>
@@ -257,16 +264,16 @@ const Reportes = () => {
                                 ref={chartRef}
                                 data={lineData}
                                 options={{
-                                    responsive: true, // Asegurando adaptabilidad al tamaño de la pantalla
-                                    maintainAspectRatio: false, // Permitiendo ajuste manual del aspecto
+                                    responsive: true,
+                                    maintainAspectRatio: false,
                                     plugins: {
-                                        legend: { position: 'top', labels: { color: '#fff' } }, // Colocando leyenda en la parte superior con texto blanco
-                                        title: { display: true, text: lineData.datasets[0].label, color: '#fff' }, // Mostrando título dinámico en blanco
+                                        legend: { position: 'top', labels: { color: '#fff' } },
+                                        title: { display: true, text: lineData.datasets[0].label, color: '#fff' },
                                     },
-                                    animation: { duration: 1000, easing: 'easeOutQuad' }, // Aplicando animación suave de 1 segundo
-                                    scales: { 
-                                        y: { ticks: { color: '#fff' } }, // Configurando color de las etiquetas del eje Y
-                                        x: { ticks: { color: '#fff' } }, // Configurando color de las etiquetas del eje X
+                                    animation: { duration: 1000, easing: 'easeOutQuad' },
+                                    scales: {
+                                        y: { ticks: { color: '#fff' } },
+                                        x: { ticks: { color: '#fff' } },
                                     },
                                 }}
                             />
@@ -277,17 +284,74 @@ const Reportes = () => {
         );
     };
 
-    // Exportando datos a un archivo Excel, transformando y organizando la información
     const exportarAExcel = () => {
-        const worksheet = XLSX.utils.json_to_sheet(datos.map(item => ({ ...item, ValorTotal: item.cantidad * (item.precioUnitario || item.costoUnitario) || item.total })));
+        const worksheet = XLSX.utils.json_to_sheet(datos.map(item => ({
+            ...item,
+            ValorTotal: item.cantidadActual || item.total || item.cantidad || 0
+        })));
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte');
         XLSX.writeFile(workbook, 'reporte.xlsx');
     };
 
+    const getMapeo = () => {
+        switch (tipoReporte) {
+            case 'inventario':
+                return filtroTipo === 'productos'
+                    ? {
+                        'Id': 'id',
+                        'Producto': 'nombre',
+                        'Cantidad Pasada': 'cantidadPasada',
+                        'Cantidad Actual': 'cantidadActual',
+                        'Concepto': 'tipoMovimiento',
+                        'Fecha Movimiento': 'fechaMovimiento',
+                    }
+                    : {
+                        'Id': 'id',
+                        'Materia Prima': 'nombre',
+                        'Cantidad Pasada': 'cantidadPasada',
+                        'Cantidad Actual': 'cantidadActual',
+                        'Concepto': 'tipoMovimiento',
+                        'Fecha Movimiento': 'fechaMovimiento',
+                    };
+            case 'finanzas':
+                return filtroTipo === 'ingresos'
+                    ? {
+                        'Id': 'id',
+                        'Cliente': 'cliente',
+                        'Método Pago': 'metodoPago',
+                        'Fecha': 'fecha',
+                        'Total': 'total',
+                    }
+                    : {
+                        'Id': 'id',
+                        'Proveedor': 'proveedor',
+                        'Fecha': 'fecha',
+                        'Total': 'total',
+                    };
+            case 'usuarios':
+                return filtroTipo === 'personal'
+                    ? {
+                        'Id': 'id',
+                        'Nombre': 'nombre',
+                        'Acción': 'accion',
+                        'Fecha': 'fecha',
+                    }
+                    : {
+                        'Id': 'id',
+                        'Cliente': 'nombre',
+                        'Estado': 'estado',
+                        'Nº Compras': 'numeroCompras',
+                        'Ultima Compra': 'ultimoCompra',
+                    };
+            default:
+                return {};
+        }
+    };
+
     return (
         <div className="reportes-container">
-            <button className="btn-exportar" style={{ left: '20px' }} onClick={exportarAExcel}>
+            <button className="btn-exportar-reporte" style={{ left: '20px' }} onClick={exportarAExcel}>
                 <FontAwesomeIcon icon={faFileExcel} /> Exportar
             </button>
             <div className="pestanas-reporte">
@@ -319,11 +383,23 @@ const Reportes = () => {
                 {tipoReporte === 'inventario' && (
                     <div className="radio-botones">
                         <label>
-                            <input type="radio" name="filtroInventario" value="productos" checked={filtroTipo === 'productos'} onChange={() => setFiltroTipo('productos')} defaultChecked />
+                            <input
+                                type="radio"
+                                name="filtroInventario"
+                                value="productos"
+                                checked={filtroTipo === 'productos'}
+                                onChange={() => setFiltroTipo('productos')}
+                            />
                             Productos
                         </label>
                         <label>
-                            <input type="radio" name="filtroInventario" value="materiaPrima" checked={filtroTipo === 'materiaPrima'} onChange={() => setFiltroTipo('materiaPrima')} />
+                            <input
+                                type="radio"
+                                name="filtroInventario"
+                                value="materiaPrima"
+                                checked={filtroTipo === 'materiaPrima'}
+                                onChange={() => setFiltroTipo('materiaPrima')}
+                            />
                             Materia Prima
                         </label>
                         <button className="btn-guardar" onClick={limpiarFechas}>Limpiar fechas</button>
@@ -332,11 +408,23 @@ const Reportes = () => {
                 {tipoReporte === 'finanzas' && (
                     <div className="radio-botones">
                         <label>
-                            <input type="radio" name="filtroFinanzas" value="ingresos" checked={filtroTipo === 'ingresos'} onChange={() => setFiltroTipo('ingresos')} defaultChecked />
+                            <input
+                                type="radio"
+                                name="filtroFinanzas"
+                                value="ingresos"
+                                checked={filtroTipo === 'ingresos'}
+                                onChange={() => setFiltroTipo('ingresos')}
+                            />
                             Ingresos
                         </label>
                         <label>
-                            <input type="radio" name="filtroFinanzas" value="egresos" checked={filtroTipo === 'egresos'} onChange={() => setFiltroTipo('egresos')} />
+                            <input
+                                type="radio"
+                                name="filtroFinanzas"
+                                value="egresos"
+                                checked={filtroTipo === 'egresos'}
+                                onChange={() => setFiltroTipo('egresos')}
+                            />
                             Egresos
                         </label>
                         <button className="btn-guardar" onClick={limpiarFechas}>Limpiar fechas</button>
@@ -345,11 +433,23 @@ const Reportes = () => {
                 {tipoReporte === 'usuarios' && (
                     <div className="radio-botones">
                         <label>
-                            <input type="radio" name="filtroUsuarios" value="personal" checked={filtroTipo === 'personal'} onChange={() => setFiltroTipo('personal')} defaultChecked />
+                            <input
+                                type="radio"
+                                name="filtroUsuarios"
+                                value="personal"
+                                checked={filtroTipo === 'personal'}
+                                onChange={() => setFiltroTipo('personal')}
+                            />
                             Personal
                         </label>
                         <label>
-                            <input type="radio" name="filtroUsuarios" value="clientes" checked={filtroTipo === 'clientes'} onChange={() => setFiltroTipo('clientes')} />
+                            <input
+                                type="radio"
+                                name="filtroUsuarios"
+                                value="clientes"
+                                checked={filtroTipo === 'clientes'}
+                                onChange={() => setFiltroTipo('clientes')}
+                            />
                             Clientes
                         </label>
                         <button className="btn-guardar" onClick={limpiarFechas}>Limpiar fechas</button>
@@ -358,11 +458,15 @@ const Reportes = () => {
             </div>
             <div className="contenido-reporte">
                 <div className="tabla-container">
-                    <TablaReportes encabezados={renderizarEncabezados()} registros={datos} tipoReporte={filtroTipo} />
+                    <TablaReportes
+                        encabezados={renderizarEncabezados()}
+                        registros={datos}
+                        mapeo={getMapeo()}
+                    />
                 </div>
                 {renderizarTarjetas()}
+                {renderizarGraficos()}
             </div>
-            {renderizarGraficos()}
         </div>
     );
 };

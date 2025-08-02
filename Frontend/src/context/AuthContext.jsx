@@ -1,130 +1,107 @@
-// Importa funciones y hooks necesarios desde React
-import { createContext, useState, useEffect } from 'react';
-// Importa funciones de login y logout desde el archivo de API
-import { login, logout } from '../api/auth';
-// Importa el hook de navegación para redireccionar al usuario
-import { useNavigate } from 'react-router-dom';
-// Importa Axios para hacer peticiones HTTP
-import axios from 'axios';
+// src/context/AuthContext.jsx
+import { createContext, useState, useEffect } from "react";
+import { login, logout } from "../api/auth";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-// Crea un nuevo contexto de autenticación que se podrá usar en toda la app
+// Crea un contexto para la autenticación
 export const AuthContext = createContext();
 
-// Define el proveedor de autenticación, que envuelve a los componentes hijos
+// Proveedor del contexto de autenticación
 export const AuthProvider = ({ children }) => {
-  // Estado que almacena los datos del usuario autenticado
-  const [user, setUser] = useState(null);
-  // Estado que indica si la app está cargando (útil para proteger rutas mientras se verifica la sesión)
+  const [user, setUser] = useState(() => {
+    // Inicializa user desde localStorage si existe para evitar retrasos
+    const accessToken = localStorage.getItem("accessToken");
+    // Si no hay accessToken, user será null
+    const correo = localStorage.getItem("correo");
+    return accessToken && correo ? { correo } : null; // Valor temporal hasta la verificación
+  });
+  // Estado para manejar el loading que es necesario para evitar renderizados prematuros
   const [loading, setLoading] = useState(true);
-  // Hook para redirigir al usuario a diferentes rutas
+  // Navegación para redirigir después del login
   const navigate = useNavigate();
 
-  // useEffect que se ejecuta al montar el componente, usado para verificar si ya hay una sesión iniciada
+  // Efecto para verificar la sesión al cargar el componente
   useEffect(() => {
-    // Función asincrónica para verificar y cargar sesión automáticamente
     const verificarSesion = async () => {
-      // Obtiene el accessToken y correo del localStorage
-      const accessToken = localStorage.getItem('accessToken');
-      const correo = localStorage.getItem('correo');
+      const accessToken = localStorage.getItem("accessToken");
+      const correo = localStorage.getItem("correo");
 
-      // Si existen ambos, intenta validar el token
-      if (accessToken && correo) {
-        try {
-          // Hace la petición al backend con el token en los headers
-          const respuesta = await axios.get(
-            `http://localhost:8080/angora/api/v1/user/authenticated/${correo}`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`
-              }
-            }
-          );
-
-          // Si el token es válido, actualiza el estado con los datos del usuario
-          setUser(respuesta.data);
-        } catch (error) {
-          // Si el token es inválido o expiró, cierra sesión
-          console.error('Token inválido o expirado:', error.message);
-          await signOut(); // Usa la función de cierre de sesión ya definida
-        }
+      // Si no hay accessToken o correo, no hay sesión activa
+      if (!accessToken || !correo) {
+        setUser(null);
+        setLoading(false);
+        return;
       }
 
-      // Marca la app como ya cargada
-      setLoading(false);
+      try {
+        const response = await axios.get(
+          `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        setUser(response.data);
+      } catch (error) {
+        console.error("Error al verificar sesión:", error.message);
+        await signOut();
+      } finally {
+        setLoading(false);
+      }
     };
-
-    verificarSesion(); // Ejecuta la función
+    verificarSesion();
   }, []);
 
   // Función para iniciar sesión
   const signIn = async (correo, password) => {
     try {
-      // Llama a la función login del backend
       const response = await login(correo, password);
-      // Extrae datos del token y estado desde la respuesta
       const { accessToken, refreshToken, correo: userCorreo, status } = response.data;
 
-      // Si el estado es exitoso (status === true)
+      
       if (status) {
-        // Guarda los tokens y correo en el localStorage
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-        localStorage.setItem('correo', userCorreo);
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("correo", userCorreo);
 
-        // Hace una petición para obtener los datos del usuario autenticado
-        const respuesta = await axios.get(`http://localhost:8080/angora/api/v1/user/authenticated/${correo}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        });
+        // Actualiza el estado del usuario con el correo
+        const respuesta = await axios.get(
+          `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        console.log("Respuesta usuario: ", respuesta.data);
 
-        // Muestra los datos obtenidos del backend por consola
-        console.log("Respuesta usuario: " + respuesta.data);
-
-        // Actualiza el estado con los datos del usuario autenticado
+        // Actualiza el estado del usuario con la respuesta del backend
         setUser(respuesta.data);
-
-        // Redirige al usuario a la ruta /home
-        navigate('/home', { replace: true });
+        navigate("/home", { replace: true });
       } else {
-        // Lanza un error si el login no fue exitoso
-        throw new Error(response.data.message || 'Error en el login');
+        throw new Error(response.data.message || "Error en el login");
       }
     } catch (error) {
-      // Muestra el error por consola
-      console.error('Error en signIn:', error);
-      // Si la respuesta fue 401 (no autorizado), lanza un error específico
+      console.error("Error en signIn:", error);
       if (error.response?.status === 401) {
-        throw new Error('Credenciales incorrectas. Por favor, verifica tu correo y contraseña.');
+        throw new Error("Credenciales incorrectas. Por favor, verifica tu correo y contraseña.");
       }
-      // Lanza un error general si no fue un 401
-      throw new Error(error.response?.data?.message || error.message || 'Error al iniciar sesión');
+      throw new Error(error.response?.data?.message || error.message || "Error al iniciar sesión");
     }
   };
 
   // Función para cerrar sesión
   const signOut = async () => {
     try {
-      // Llama al logout en el backend (opcional)
       await logout();
     } catch (error) {
-      // Muestra cualquier error que ocurra al cerrar sesión
-      console.log("Error Logout: " + error.message)
+      console.error("Error al cerrar sesión en el backend:", error.message);
     } finally {
-      // Elimina los datos de sesión del localStorage
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('correo');
-      // Limpia el estado del usuario
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("correo");
       setUser(null);
-      // Redirige al login
-      navigate('/login', { replace: true });
+      window.location.replace("/login");
     }
   };
 
-  // Retorna el proveedor de contexto, permitiendo que los componentes hijos accedan al contexto de autenticación
+  // Proporciona el contexto de autenticación a los componentes hijos
   return (
-<AuthContext.Provider value={{ user, setUser, signIn, signOut, loading }}>
+    <AuthContext.Provider value={{ user, setUser, signIn, signOut, loading }}>
       {children}
     </AuthContext.Provider>
   );
