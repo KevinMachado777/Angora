@@ -112,7 +112,6 @@ public class ProductoService {
         productoDto.setIdCategoria(categoriaIdDto);
         productoDto.setMaterias(materias);
 
-
         return productoDto;
     }
 
@@ -363,5 +362,10 @@ public class ProductoService {
     public void delete(Long id){
         materiaProductoRepository.deleteByProducto_IdProducto(id);
         productoRepository.deleteById(id);
+
+    @Override
+    public void disminuirStock(Producto producto, int cantidadComprada) {
+        producto.setStock(producto.getStock() - cantidadComprada);
+        productoRepository.save(producto);
     }
 }

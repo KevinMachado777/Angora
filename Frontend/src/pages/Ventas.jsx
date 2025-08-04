@@ -1,131 +1,165 @@
-// Importamos React y useState para manejar estados
-import React, { useState } from "react";
-
-// Importamos estilos CSS para esta vista
+import React, { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+import axios from "axios";
 import "../styles/ventas.css";
 import "../styles/inventario.css";
-
-// Importamos componentes personalizados reutilizables
 import Modal from "../components/Modal";
 import BotonAgregar from "../components/botonAgregar";
 import BotonGuardar from "../components/BotonGuardar";
 import { CreadorTabla } from "../components/CreadorTabla";
 import BotonAceptar from "../components/BotonAceptar";
 import BotonCancelar from "../components/BotonCancelar";
-
-// Importamos una librería para formatear números (como valores monetarios)
+import Select from "react-select";
 import { NumericFormat } from "react-number-format";
 import "../styles/botones.css";
 
 const Ventas = () => {
-  // Nombres de las columnas para la tabla de productos
-  const cabeceros = ["ID", "Nombre", "Cantidad", "Precio unitario", "Total"];
+  const { user } = useContext(AuthContext);
+  const token = localStorage.getItem("accessToken");
 
-  // Lista de productos disponibles para seleccionar
-  const productosDisponibles = [
-    { id: "1", nombre: "Lava manos x500", precio: 25000 },
-    { id: "2", nombre: "Lava loza x500", precio: 30000 },
-    { id: "3", nombre: "Multiusos x500", precio: 18000 },
-  ];
-
-  // Estado para controlar los datos del formulario (producto a ingresar)
+  const [clientes, setClientes] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
   const [formulario, setFormulario] = useState({
     id: "",
     nombre: "",
     cantidad: "",
     precio: "",
   });
-
-  // Lista de productos que ya han sido agregados a la factura
   const [registros, setRegistros] = useState([]);
-
-  // Estados para datos adicionales de la venta
-  const [cliente, setCliente] = useState(""); // Nombre del cliente
-  const [pagoCon, setPagoCon] = useState(""); // Valor con el que paga
-  const [notas, setNotas] = useState(""); // Notas opcionales
-  const [metodoPago, setMetodoPago] = useState(""); // Método de pago: efectivo o crédito
-
-  // Estados para controlar el modal y si se está editando un producto
+  const [pagoCon, setPagoCon] = useState("");
+  const [notas, setNotas] = useState("");
+  const [metodoPago, setMetodoPago] = useState("");
   const [mostrarModal, setMostrarModal] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
-  const [idEditando, setIdEditando] = useState(null); // ID del producto que se está editando
+  const [idEditando, setIdEditando] = useState(null);
+  const [carteraCliente, setCarteraCliente] = useState(null);
 
-  // Maneja los cambios en los inputs del formulario
-  const handleChange = (e) => {
-    const { id, value } = e.target;
+  const [modalMensaje, setModalMensaje] = useState({
+    tipo: "",
+    mensaje: "",
+    visible: false,
+  });
 
-    // Si cambia el ID, autocompleta nombre y precio
-    if (id === "id") {
-      const producto = productosDisponibles.find((p) => p.id === value);
-      if (producto) {
-        setFormulario((prev) => ({
-          ...prev,
-          id: value,
-          nombre: producto.nombre,
-          precio: producto.precio,
-        }));
-      } else {
-        // Si el ID no existe, se limpia el formulario
-        setFormulario((prev) => ({
-          ...prev,
-          id: value,
-          nombre: "",
-          precio: "",
-        }));
-      }
-    } else {
-      // Para los demás campos solo actualiza el valor
-      setFormulario((prev) => ({ ...prev, [id]: value }));
-    }
+  const abrirModal = (tipo, mensaje) => {
+    setModalMensaje({ tipo, mensaje, visible: true });
+    setTimeout(() => {
+      setModalMensaje({ tipo: "", mensaje: "", visible: false });
+    }, 3000);
   };
 
-  // Función para agregar o actualizar un producto
+  useEffect(() => {
+    console.log("Token enviado:", token);
+
+    if (!token) {
+      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      return;
+    }
+
+    // Cargar productos
+    axios
+      .get("http://localhost:8080/angora/api/v1/inventarioProducto", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        console.log("Productos recibidos:", res.data);
+        setProductos(res.data);
+      })
+      .catch((err) => {
+        console.error("Error al cargar productos:", err.response?.status, err.response?.data);
+        abrirModal("error", `Error al cargar productos: ${err.response?.data?.message || err.message}`);
+      });
+
+    // Cargar clientes
+    axios
+      .get("http://localhost:8080/angora/api/v1/clientes/activos-con-cartera", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        console.log("Clientes recibidos:", res.data);
+        setClientes(res.data);
+      })
+      .catch((err) => {
+        console.error("Error al cargar clientes:", err.response?.status, err.response?.data);
+        abrirModal("error", `Error al cargar clientes: ${err.response?.data?.message || err.message}`);
+      });
+  }, [token]);
+
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setFormulario((prev) => ({ ...prev, [id]: value }));
+  };
+
   const handleAgregar = () => {
-    // Validación: ID y cantidad son obligatorios
     if (!formulario.id || !formulario.cantidad) {
-      alert("Por favor ingresa el ID y la cantidad");
+      abrirModal("advertencia", "Por favor ingresa el producto y la cantidad");
       return;
     }
 
-    // Verificamos que el ID exista en la lista de productos
-    const producto = productosDisponibles.find((p) => p.id === formulario.id);
+    const producto = productos.find((p) => p.id === formulario.id);
     if (!producto) {
-      alert("El ID ingresado no corresponde a un producto existente");
+      abrirModal("error", "Selecciona un producto válido de la lista");
       return;
     }
 
-    // Convertimos los valores numéricos
-    const cantidad = parseInt(formulario.cantidad);
-    const precio = parseInt(formulario.precio);
-    const total = cantidad * precio;
+    const cantidadNueva = parseInt(formulario.cantidad);
+    if (isNaN(cantidadNueva) || cantidadNueva <= 0) {
+      abrirModal("error", "La cantidad debe ser mayor a 0");
+      return;
+    }
 
-    // Si estamos editando, reemplazamos el producto en la lista
+    const precio = parseInt(producto.precio);
+    const total = cantidadNueva * precio;
+
     if (modoEdicion) {
       const actualizado = {
-        id: formulario.id,
-        nombre: formulario.nombre,
-        cantidad,
+        ...formulario,
+        cantidad: cantidadNueva,
         precio,
         total,
       };
-
       setRegistros((prev) =>
         prev.map((item) => (item.id === idEditando ? actualizado : item))
       );
-
-      setModoEdicion(false);
-      setIdEditando(null);
     } else {
-      // Si no estamos editando, simplemente lo agregamos a la lista
-      const nuevoRegistro = { ...formulario, cantidad, precio, total };
-      setRegistros((prev) => [...prev, nuevoRegistro]);
+      const productoExistente = registros.find(
+        (item) => item.id === formulario.id
+      );
+      if (productoExistente) {
+        const cantidadTotal = productoExistente.cantidad + cantidadNueva;
+        const actualizado = {
+          ...productoExistente,
+          cantidad: cantidadTotal,
+          total: cantidadTotal * precio,
+        };
+        setRegistros((prev) =>
+          prev.map((item) => (item.id === formulario.id ? actualizado : item))
+        );
+      } else {
+        setRegistros((prev) => [
+          ...prev,
+          {
+            id: formulario.id,
+            nombre: formulario.nombre,
+            cantidad: cantidadNueva,
+            precio,
+            total,
+          },
+        ]);
+      }
     }
 
-    // Limpiamos el formulario
     setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
+    setModoEdicion(false);
+    setIdEditando(null);
   };
 
-  // Cargar un producto en el formulario para editarlo
   const handleEditar = (dato) => {
     setFormulario({
       id: dato.id,
@@ -137,10 +171,8 @@ const Ventas = () => {
     setIdEditando(dato.id);
   };
 
-  // Eliminar un producto de la lista
   const handleEliminar = (dato) => {
     setRegistros(registros.filter((item) => item.id !== dato.id));
-    // Si estaba editando ese producto, cancelamos edición
     if (modoEdicion && dato.id === idEditando) {
       setModoEdicion(false);
       setIdEditando(null);
@@ -148,29 +180,142 @@ const Ventas = () => {
     }
   };
 
-  // Calcular el total y el cambio (si pagó con efectivo)
   const total = registros.reduce((acu, item) => acu + item.total, 0);
   const cambio = pagoCon - total;
 
-  // Muestra el modal de confirmación
   const handleGuardar = () => {
     setMostrarModal(true);
   };
 
-  // Render del componente
+  const confirmarVenta = async () => {
+    if (!metodoPago) {
+      abrirModal("advertencia", "Selecciona un método de pago");
+      return;
+    }
+
+    if (
+      metodoPago === "efectivo" &&
+      (!pagoCon || parseFloat(pagoCon) < total)
+    ) {
+      abrirModal(
+        "error",
+        "El valor con el que paga debe ser mayor o igual al total."
+      );
+      return;
+    }
+
+    if (!clienteSeleccionado) {
+      abrirModal("error", "Selecciona un cliente válido.");
+      return;
+    }
+
+    if (registros.length === 0) {
+      abrirModal("advertencia", "Agrega al menos un producto.");
+      return;
+    }
+
+    const productosCompletos = registros.map((r) => ({
+      producto: { idProducto: r.id },
+      cantidad: r.cantidad,
+    }));
+
+    const clienteCompleto = { idCliente: clienteSeleccionado.idCliente };
+    const cajeroCompleto = { id: user.id };
+
+    const carteraCompleta =
+      metodoPago === "credito" && carteraCliente?.idCartera
+        ? {
+            idCartera: carteraCliente.idCartera,
+            abono: 0,
+            deudas: total,
+            estado: 1,
+          }
+        : null;
+
+    const factura = {
+      fecha: new Date().toISOString(),
+      cliente: clienteCompleto,
+      productos: productosCompletos,
+      subtotal: total,
+      total: total,
+      saldoPendiente: metodoPago === "credito" ? total * 1.0 : 0.0,
+      cajero: cajeroCompleto,
+      estado: metodoPago === "credito" ? "PENDIENTE" : "PAGADO",
+      idCartera: carteraCompleta,
+    };
+
+    try {
+      console.log("factura", factura);
+      await axios.post("http://localhost:8080/angora/api/v1/ventas", factura, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      abrirModal("exito", "Venta registrada correctamente.");
+      setMostrarModal(false);
+      setPagoCon("");
+      setNotas("");
+      setMetodoPago("");
+      setClienteSeleccionado(null);
+      setRegistros([]);
+      setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
+    } catch (err) {
+      console.error("Error al registrar venta:", err.response?.status, err.response?.data);
+      abrirModal("error", `Error al registrar la venta: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+  const iconos = {
+    exito: "bi bi-check-circle-fill text-success display-4 mb-2",
+    error: "bi bi-x-circle-fill text-danger display-4 mb-2",
+    advertencia: "bi bi-exclamation-triangle-fill text-warning display-4 mb-2",
+  };
+
+  const titulos = {
+    exito: "¡Éxito!",
+    error: "Error",
+    advertencia: "Advertencia",
+  };
+
   return (
     <main className="main-home ventas inventario">
       <h1 className="titulo">Facturación</h1>
 
-      {/* Formulario para agregar productos */}
       <form className="ventas-formulario" onSubmit={(e) => e.preventDefault()}>
-        <div>
-          <label htmlFor="id">ID</label>
-          <input
-            type="text"
-            id="id"
-            value={formulario.id}
-            onChange={handleChange}
+        <div className="campo-formulario">
+          <label htmlFor="id">Producto</label>
+          <Select
+            className="select-react"
+            classNamePrefix="select"
+            options={productos.map((p) => ({
+              value: p.id,
+              label: p.nombre,
+            }))}
+            value={
+              formulario.id
+                ? {
+                    value: parseInt(formulario.id),
+                    label:
+                      productos.find((p) => p.id === parseInt(formulario.id))
+                        ?.nombre || "Producto",
+                  }
+                : null
+            }
+            onChange={(selected) => {
+              const producto = productos.find((p) => p.id === selected.value);
+              setFormulario((prev) => ({
+                ...prev,
+                id: producto.id,
+                nombre: producto.nombre,
+                precio: producto.precio,
+              }));
+            }}
+            placeholder="Seleccionar producto"
+            menuPortalTarget={document.body}
+            styles={{
+              menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+            }}
           />
         </div>
 
@@ -184,38 +329,77 @@ const Ventas = () => {
           />
         </div>
 
-        {/* Botón que cambia si estás en modo edición */}
         <div onClick={handleAgregar}>
           {modoEdicion ? <BotonAceptar /> : <BotonAgregar />}
         </div>
       </form>
 
-      {/* Tabla que muestra los productos agregados */}
       <CreadorTabla
-        cabeceros={cabeceros}
+        cabeceros={["ID", "Nombre", "Cantidad", "Precio unitario", "Total"]}
         registros={registros}
         onEditar={handleEditar}
         onEliminar={handleEliminar}
       />
 
-      {/* Formulario inferior con datos del cliente y total */}
       <form
         className="ventas-formulario ventas-inferior"
         onSubmit={(e) => e.preventDefault()}
       >
-        <div>
-          <label htmlFor="cliente">Id o Nombre del cliente</label>
-          <input
-            type="text"
-            id="cliente"
-            value={cliente}
-            onChange={(e) => setCliente(e.target.value)}
+        <div className="campo-formulario">
+          <label>Cliente</label>
+          <Select
+            className="select-react"
+            classNamePrefix="select"
+            options={clientes.map((c) => ({
+              value: c.idCliente,
+              label: c.nombre,
+              idCartera: c.idCartera,
+              carteraActiva: c.carteraActiva,
+            }))}
+            value={
+              clienteSeleccionado
+                ? {
+                    value: clienteSeleccionado.idCliente,
+                    label: clienteSeleccionado.nombre,
+                  }
+                : null
+            }
+            onChange={async (selected) => {
+              const nuevoCliente = {
+                idCliente: selected.value,
+                nombre: selected.label,
+                carteraActiva: selected.carteraActiva,
+              };
+              setClienteSeleccionado(nuevoCliente);
+
+              try {
+                const res = await axios.get(
+                  `http://localhost:8080/angora/api/v1/carteras/${selected.value}`,
+                  {
+                    headers: {
+                      Accept: "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                  }
+                );
+                setCarteraCliente(res.data);
+              } catch (error) {
+                console.error("Error al cargar cartera:", error.response?.status, error.response?.data);
+                setCarteraCliente(null);
+                abrirModal("error", "No se pudo cargar la cartera del cliente.");
+              }
+            }}
+            placeholder="Seleccionar cliente"
+            menuPortalTarget={document.body}
+            styles={{
+              menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+            }}
           />
         </div>
+
         <div>
-          <label htmlFor="total">Total</label>
+          <label>Total</label>
           <NumericFormat
-            id="total"
             value={total}
             displayType="text"
             thousandSeparator="."
@@ -225,24 +409,21 @@ const Ventas = () => {
           />
         </div>
 
-        {/* Botón para guardar y mostrar modal */}
         <div onClick={handleGuardar}>
           <BotonGuardar />
         </div>
       </form>
 
-      {/* Modal con resumen de venta y opciones de pago */}
       <Modal isOpen={mostrarModal} onClose={() => setMostrarModal(false)}>
         <div className="modal-flex">
-          {/* Ticket de venta (lado izquierdo del modal) */}
           <div className="ticket">
             <h2 style={{ textAlign: "center" }}>Fragancey´s</h2>
             <p>
-              <strong>Ticket #1</strong>
+              <strong>Ticket</strong>
             </p>
             <p>Fecha: {new Date().toLocaleDateString()}</p>
-            <p>Cajero: Kevin Machado</p>
-            <p>Cliente: {cliente}</p>
+            <p>Cajero: {user?.nombre}</p>
+            <p>Cliente: {clienteSeleccionado?.nombre}</p>
             <p>Método de pago: {metodoPago}</p>
             <hr />
             <table>
@@ -256,7 +437,6 @@ const Ventas = () => {
                 </tr>
               </thead>
               <tbody>
-                {/* Lista de productos en el ticket */}
                 {registros.map((item, i) => (
                   <tr key={i}>
                     <td>{item.id}</td>
@@ -265,17 +445,17 @@ const Ventas = () => {
                     <td>
                       <NumericFormat
                         value={item.precio}
-                        displayType={"text"}
-                        thousandSeparator={true}
-                        prefix={"$"}
+                        displayType="text"
+                        thousandSeparator
+                        prefix="$"
                       />
                     </td>
                     <td>
                       <NumericFormat
                         value={item.total}
-                        displayType={"text"}
-                        thousandSeparator={true}
-                        prefix={"$"}
+                        displayType="text"
+                        thousandSeparator
+                        prefix="$"
                       />
                     </td>
                   </tr>
@@ -293,26 +473,26 @@ const Ventas = () => {
               />
             </p>
             {pagoCon && (
-              <p>
-                <strong>Pago con: </strong>
-                <NumericFormat
-                  value={pagoCon}
-                  displayType="text"
-                  thousandSeparator
-                  prefix="$"
-                />
-              </p>
-            )}
-            {pagoCon && (
-              <p>
-                <strong>Cambio: </strong>
-                <NumericFormat
-                  value={cambio}
-                  displayType="text"
-                  thousandSeparator
-                  prefix="$"
-                />
-              </p>
+              <>
+                <p>
+                  <strong>Pago con: </strong>
+                  <NumericFormat
+                    value={pagoCon}
+                    displayType="text"
+                    thousandSeparator
+                    prefix="$"
+                  />
+                </p>
+                <p>
+                  <strong>Cambio: </strong>
+                  <NumericFormat
+                    value={cambio}
+                    displayType="text"
+                    thousandSeparator
+                    prefix="$"
+                  />
+                </p>
+              </>
             )}
             {notas && (
               <p>
@@ -324,7 +504,6 @@ const Ventas = () => {
             </p>
           </div>
 
-          {/* Controles del lado derecho del modal */}
           <div className="ticket-panel">
             <h3>Método de pago</h3>
             <label>
@@ -342,51 +521,48 @@ const Ventas = () => {
                 name="metodoPago"
                 checked={metodoPago === "credito"}
                 onChange={() => setMetodoPago("credito")}
-                disabled={cliente.trim() === ""}
+                disabled={!clienteSeleccionado?.carteraActiva}
               />
               Crédito
             </label>
 
-            {/* Campo para registrar con cuánto pagó el cliente */}
             <h4>Pagó con</h4>
             <NumericFormat
-              disabled={metodoPago === "credito"} // Desactivado si es a crédito
+              disabled={metodoPago === "credito"}
               value={pagoCon}
-              onValueChange={(val) => {
-                setPagoCon(val.floatValue || "");
-              }}
-              thousandSeparator={true}
+              onValueChange={(val) => setPagoCon(val.floatValue || "")}
+              thousandSeparator
               prefix="$"
               allowNegative={false}
               placeholder="Ingrese el valor"
             />
 
-            {/* Notas adicionales */}
-            <h4>Agregar notas</h4>
+            <h4>Notas</h4>
             <textarea
               rows="4"
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Escribe una nota aquí..."
+              placeholder="Escribe una nota..."
             ></textarea>
 
-            {/* Botones de acción finales */}
             <div className="acciones">
-              <button
-                className="btn-agregar"
-                onClick={() => {
-                  setMostrarModal(false);
-                  setPagoCon("");
-                  setNotas("");
-                }}
-              >
+              <button className="btn-agregar" onClick={confirmarVenta}>
                 Confirmar
               </button>
-
-              <BotonCancelar onClick={() => setMostrarModal(false)}>
-              </BotonCancelar>
+              <BotonCancelar onClick={() => setMostrarModal(false)} />
             </div>
           </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={modalMensaje.visible}
+        onClose={() => setModalMensaje({ ...modalMensaje, visible: false })}
+      >
+        <div className="text-center p-3">
+          <i className={iconos[modalMensaje.tipo]}></i>
+          <h2>{titulos[modalMensaje.tipo]}</h2>
+          <p>{modalMensaje.mensaje}</p>
         </div>
       </Modal>
     </main>

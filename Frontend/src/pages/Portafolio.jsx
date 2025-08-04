@@ -67,6 +67,8 @@ const Portafolio = () => {
     const [clientesInactivos, setClientesInactivos] = useState([]);
     // Estado para filtrar clientes inactivos por ID
     const [filtroIdCliente, setFiltroIdCliente] = useState("");
+    // Estado para filtrar clientes con cartera activa por ID
+    const [filtroIdCartera, setFiltroIdCartera] = useState("");
     // Estado para controlar la modal de confirmación de reactivación
     const [modalConfirmarReactivacion, setModalConfirmarReactivacion] = useState(false);
     // Estado para almacenar el cliente a reactivar
@@ -74,13 +76,18 @@ const Portafolio = () => {
     // Estado para indicar si la reactivación es por ID
     const [reactivacionPorId, setReactivacionPorId] = useState(false);
 
+    const token = localStorage.getItem("accessToken");
+
     // Carga los clientes activos y sus carteras al montar el componente
     useEffect(() => {
         const cargarClientes = async () => {
             try {
                 // Obtiene los clientes activos desde el backend
                 const respuestaClientes = await axios.get(`${urlBackend}/clientes`, {
-                    headers: { 'Accept': 'application/json' }
+                    headers: { 
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
                 console.log("Respuesta GET /api/clientes:", JSON.stringify(respuestaClientes.data, null, 2));
                 // Mapea los clientes y sus carteras
@@ -89,7 +96,10 @@ const Portafolio = () => {
                         try {
                             // Obtiene la cartera del cliente
                             const respuestaCartera = await axios.get(`${urlBackend}/carteras/${cliente.idCliente}`, {
-                                headers: { 'Accept': 'application/json' }
+                                headers: { 
+                                    'Accept': 'application/json',
+                                    'Authorization': `Bearer ${token}`
+                                }
                             });
                             console.log(`Respuesta GET /api/carteras/${cliente.idCliente}:`, JSON.stringify(respuestaCartera.data, null, 2));
                             return {
@@ -135,7 +145,10 @@ const Portafolio = () => {
                 try {
                     // Obtiene la cartera del cliente
                     const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`, {
-                        headers: { 'Accept': 'application/json' }
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
                     });
                     
                     console.log(`Respuesta GET /api/carteras/${clienteId}:`, JSON.stringify(respuesta.data, null, 2));
@@ -236,8 +249,11 @@ const Portafolio = () => {
         if (aceptar && personaDesactivar) {
             try {
                 // Envía la solicitud para desactivar el cliente
-                const response = await axios.put(`${urlBackend}/clientes/${personaDesactivar.id}/desactivar`, {
-                    headers: { 'Accept': 'application/json' }
+                const response = await axios.put(`${urlBackend}/clientes/${personaDesactivar.id}/desactivar`, {}, {
+                    headers: { 
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
                 console.log(`Respuesta PUT /api/clientes/${personaDesactivar.id}/desactivar:`, response.data);
                 // Actualiza los registros eliminando el cliente desactivado
@@ -280,7 +296,10 @@ const Portafolio = () => {
             console.log("Iniciando mostrarModalCarteras...");
             // Obtiene las carteras activas desde el backend
             const respuesta = await axios.get(`${urlBackend}/carteras?estado=true`, {
-                headers: { 'Accept': 'application/json' }
+                headers: { 
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
             });
             console.log("Respuesta cruda GET /api/carteras?estado=true:", {
                 status: respuesta.status,
@@ -360,6 +379,7 @@ const Portafolio = () => {
         setClientesCarteras([]);
         setRespuestaCarteras([]);
         setModalError(null);
+        setFiltroIdCartera("");
     };
 
     // Muestra la modal de clientes inactivos
@@ -368,7 +388,10 @@ const Portafolio = () => {
             console.log("Iniciando mostrarModalInactivos...");
             // Obtiene los clientes inactivos desde el backend
             const respuesta = await axios.get(`${urlBackend}/clientes/inactivos`, {
-                headers: { 'Accept': 'application/json' }
+                headers: { 
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
             });
             console.log("Respuesta GET /api/clientes/inactivos:", JSON.stringify(respuesta.data, null, 2));
             // Actualiza los clientes inactivos
@@ -400,6 +423,14 @@ const Portafolio = () => {
         );
     };
 
+    // Filtra los clientes con cartera activa por ID
+    const filtrarClientesCarteras = (clientes, filtro) => {
+        if (!filtro) return clientes;
+        return clientes.filter(cliente =>
+            cliente.id.toString().includes(filtro)
+        );
+    };
+
     // Abre la modal de confirmación para reactivar un cliente
     const abrirModalReactivacion = (cliente, porId = true) => {
         setClienteReactivar(cliente);
@@ -407,19 +438,27 @@ const Portafolio = () => {
         setModalConfirmarReactivacion(true);
     };
 
-    // Cierra la modal de confirmación de reactivación
+    // Cierra la modal de confirmación de reactivacion
     const cerrarModalConfirmacionReactivacion = async (aceptar) => {
         if (aceptar && clienteReactivar) {
             try {
                 // Envía la solicitud para reactivar el cliente
-                const response = await axios.put(`${urlBackend}/clientes/${clienteReactivar.idCliente}/activar`, {
-                    headers: { 'Accept': 'application/json' }
+                const response = await axios.put(`${urlBackend}/clientes/${clienteReactivar.idCliente}/activar`, {}, {
+                    headers: { 
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
                 });
                 console.log(`Respuesta PUT /api/clientes/${clienteReactivar.idCliente}/activar:`, response.data);
                 // Carga la cartera del cliente reactivado
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 try {
-                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${clienteReactivar.idCliente}`);
+                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${clienteReactivar.idCliente}`, {
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                     console.log(`Respuesta GET /api/carteras/${clienteReactivar.idCliente}:`, respuestaCartera.data);
                     carteraData = respuestaCartera.data;
                 } catch (error) {
@@ -501,17 +540,32 @@ const Portafolio = () => {
             if (personaSelect) {
                 // Actualiza un cliente existente
                 console.log(`Enviando PUT /api/clientes/${personaSelect.id} con datos:`, clienteData);
-                const respuesta = await axios.put(`${urlBackend}/clientes/${personaSelect.id}`, clienteData);
+                const respuesta = await axios.put(`${urlBackend}/clientes/${personaSelect.id}`, clienteData, {
+                    headers: { 
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 console.log("Respuesta PUT /api/clientes:", respuesta.data);
                 // Actualiza el estado de la cartera si cambió
                 if (creditoActivo !== (personaSelect.cartera === "Activa")) {
                     console.log(`Enviando PUT /api/carteras/${personaSelect.id}/estado con estado:`, creditoActivo);
-                    await axios.put(`${urlBackend}/carteras/${personaSelect.id}/estado`, { estado: creditoActivo });
+                    await axios.put(`${urlBackend}/carteras/${personaSelect.id}/estado`, { estado: creditoActivo }, {
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                 }
                 // Carga la cartera actualizada
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
-                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${personaSelect.id}`);
+                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${personaSelect.id}`, {
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                     console.log(`Respuesta GET /api/carteras/${personaSelect.id}:`, respuestaCartera.data);
                     carteraData = respuestaCartera.data;
                 }
@@ -537,7 +591,12 @@ const Portafolio = () => {
             } else {
                 // Crea un nuevo cliente
                 console.log("Enviando POST /api/clientes con datos:", clienteData);
-                const respuesta = await axios.post(`${urlBackend}/clientes`, clienteData);
+                const respuesta = await axios.post(`${urlBackend}/clientes`, clienteData, {
+                    headers: { 
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 console.log("Respuesta POST /api/clientes:", respuesta.data);
                 // Maneja el caso de cliente inactivo existente
                 if (respuesta.data.existe) {
@@ -552,12 +611,22 @@ const Portafolio = () => {
                 // Activa la cartera si se seleccionó crédito
                 if (creditoActivo) {
                     console.log(`Enviando PUT /api/carteras/${respuesta.data.cliente.idCliente}/estado con estado: true`);
-                    await axios.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/estado`, { estado: true });
+                    await axios.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/estado`, { estado: true }, {
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                 }
                 // Carga la cartera del nuevo cliente
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
-                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`);
+                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`, {
+                        headers: { 
+                            'Accept': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
                     console.log(`Respuesta GET /api/carteras/${respuesta.data.cliente.idCliente}:`, respuestaCartera.data);
                     carteraData = respuestaCartera.data;
                 }
@@ -636,6 +705,11 @@ const Portafolio = () => {
                 cantidad,
                 fecha: new Date().toISOString().split('T')[0],
                 idFactura: facturaSeleccionadaParaAbono.idFactura
+            }, {
+                headers: { 
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
             });
             console.log("Respuesta POST /api/carteras/", personaCartera.id, "/abonos:", respuesta.data);
             // Filtra las facturas con saldo pendiente
@@ -752,18 +826,28 @@ const Portafolio = () => {
                     <div className="encabezado-modal">
                         <h2>Personas con Cartera Activa</h2>
                     </div>
+                    <div className="grupo-formulario">
+                        <label>Buscar por ID:</label>
+                        <input
+                            type="number"
+                            value={filtroIdCartera}
+                            onChange={(e) => setFiltroIdCartera(e.target.value)}
+                            className="form-control mb-2"
+                            placeholder="Ingrese ID del cliente"
+                        />
+                    </div>
                     <div>
-                        {clientesCarteras.length === 0 ? (
+                        {filtrarClientesCarteras(clientesCarteras, filtroIdCartera).length === 0 ? (
                             <p style={{ marginTop: '20px', textAlign: 'center' }}>
-                                No hay clientes con cartera activa.
+                                {filtroIdCartera ? "No existe un cliente con ese ID en el sistema." : "No hay clientes con cartera activa."}
                             </p>
                         ) : (
-                            clientesCarteras.map((cliente, index) => (
+                            filtrarClientesCarteras(clientesCarteras, filtroIdCartera).map((cliente, index) => (
                                 <div key={index} className="cartera-row" style={{ marginTop: '10px' }}>
                                     {/* Botón para abrir la cartera del cliente */}
                                     <BotonCartera onClick={() => abrirModalcartera(cliente)} />
                                     <span>
-                                        {cliente.id} - {cliente.nombre} {cliente.apellido}
+                                        {cliente.id} - {cliente.nombre.split(' ')[0]} {cliente.apellido.split(' ')[0]}
                                     </span>
                                 </div>
                             ))

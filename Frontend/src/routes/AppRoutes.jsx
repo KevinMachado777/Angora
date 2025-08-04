@@ -14,7 +14,6 @@ import Proveedores from "../pages/Proveedores";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "../routes/ProtectedRoute";
 
-// Definición de las rutas de la aplicación
 const AppRoutes = () => {
     return (
         <Routes>
@@ -25,9 +24,11 @@ const AppRoutes = () => {
                 exact
                 path="/home"
                 element={
-                    <Layout>
-                        <Home />
-                    </Layout>
+                    <ProtectedRoute>
+                        <Layout>
+                            <Home />
+                        </Layout>
+                    </ProtectedRoute>
                 }
             />
             <Route
@@ -45,9 +46,11 @@ const AppRoutes = () => {
                 exact
                 path="/perfil"
                 element={
-                    <Layout>
-                        <Perfil />
-                    </Layout>
+                    <ProtectedRoute> {/* Agrega protección */}
+                        <Layout>
+                            <Perfil />
+                        </Layout>
+                    </ProtectedRoute>
                 }
             />
             <Route

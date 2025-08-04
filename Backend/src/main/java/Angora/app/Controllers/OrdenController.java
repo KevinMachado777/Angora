@@ -2,23 +2,49 @@ package Angora.app.Controllers;
 
 import Angora.app.Services.Email.EnviarCorreo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
 
 @RestController
-@RequestMapping("/ordenes")
+@RequestMapping("/api/ordenes")
 public class OrdenController {
 
     @Autowired
     private EnviarCorreo enviarCorreo;
 
-    @PostMapping
-    public void enviarCorreo(){
-        String destinatario = "johanestebanrios11@gmail.com";
-        String asunto = "Prueba de envio";
-        String cuerpo = "Gracias por tu compra. Aquí va el resumen de tu orden...";
+    @PostMapping("/enviar")
+    public ResponseEntity<String> enviarOrden(
+            @RequestParam String email,
+            @RequestParam String nombre,
+            @RequestParam String ordenNumero,
+            @RequestParam String monto,
+            @RequestParam(required = false) MultipartFile adjunto // PDF opcional
+    ) {
+        try {
+            byte[] archivo = adjunto != null ? adjunto.getBytes() : null;
 
-        enviarCorreo.enviarCorreo(destinatario, asunto, cuerpo);
+            Map<String, String> variables = Map.of(
+                    "nombre", nombre,
+                    "factura", ordenNumero,
+                    "monto", monto
+            );
+
+            enviarCorreo.enviarConPlantilla(
+                    email,
+                    "Resumen de tu orden en Fraganceys",
+                    "orden-body.html",
+                    variables,
+                    archivo,
+                    archivo != null ? "orden_" + ordenNumero + ".pdf" : null
+            );
+
+            return ResponseEntity.ok("Correo enviado exitosamente.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error al enviar correo: " + e.getMessage());
+        }
     }
 }

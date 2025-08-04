@@ -43,4 +43,6 @@ public interface FacturaRepository extends JpaRepository<Factura, Long> {
     // Busca las facturas asociadas a un cliente
     @Query("SELECT f FROM Factura f WHERE f.cliente.idCliente = :idCliente")
     List<Factura> findByIdCliente(@Param("idCliente") Long idCliente);
+
+
 }

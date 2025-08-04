@@ -1,67 +1,75 @@
-import { createContext, useState, useEffect } from "react"; // Importa React y hooks necesarios
-import { login, logout } from "../api/auth"; // Importa las funciones de autenticación
+// src/context/AuthContext.jsx
+import { createContext, useState, useEffect } from "react";
+import { login, logout } from "../api/auth";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 // Crea un contexto para la autenticación
 export const AuthContext = createContext();
 
+// Proveedor del contexto de autenticación
 export const AuthProvider = ({ children }) => {
-  // Estado para almacenar el usuario autenticado y el estado de carga
-  const [user, setUser] = useState(null);
-  // Estado para manejar la carga de la verificación de sesión
+  const [user, setUser] = useState(() => {
+    // Inicializa user desde localStorage si existe para evitar retrasos
+    const accessToken = localStorage.getItem("accessToken");
+    // Si no hay accessToken, user será null
+    const correo = localStorage.getItem("correo");
+    return accessToken && correo ? { correo } : null; // Valor temporal hasta la verificación
+  });
+  // Estado para manejar el loading que es necesario para evitar renderizados prematuros
   const [loading, setLoading] = useState(true);
-  // Hook para redireccionar al usuario
+  // Navegación para redirigir después del login
   const navigate = useNavigate();
 
-  // Efecto para verificar si hay una sesión activa al cargar la aplicación
+  // Efecto para verificar la sesión al cargar el componente
   useEffect(() => {
     const verificarSesion = async () => {
-      // Obtiene el access token y correo del localStorage
-      // Si no hay token, redirige al login
       const accessToken = localStorage.getItem("accessToken");
       const correo = localStorage.getItem("correo");
 
-      // Si hay un access token y correo, intenta obtener los datos del usuario
-      if (accessToken && correo) {
-        try {
-          // Realiza una petición al backend para obtener los datos del usuario autenticado
-          const respuesta = await axios.get(
-            `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
-            { headers: { Authorization: `Bearer ${accessToken}` } }
-          );
-          setUser(respuesta.data);
-        } catch (error) {
-          console.error("Error al verificar sesión:", error.message);
-          await signOut();
-        }
+      // Si no hay accessToken o correo, no hay sesión activa
+      if (!accessToken || !correo) {
+        setUser(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      try {
+        const response = await axios.get(
+          `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        setUser(response.data);
+      } catch (error) {
+        console.error("Error al verificar sesión:", error.message);
+        await signOut();
+      } finally {
+        setLoading(false);
+      }
     };
-    // Llama a la función de verificación de sesión al montar el componente
     verificarSesion();
   }, []);
 
   // Función para iniciar sesión
   const signIn = async (correo, password) => {
     try {
-      // Obtiene el access token y refresh token del backend
       const response = await login(correo, password);
       const { accessToken, refreshToken, correo: userCorreo, status } = response.data;
 
-      // Si el login es exitoso, guarda los tokens y redirige al usuario
+      
       if (status) {
         localStorage.setItem("accessToken", accessToken);
         localStorage.setItem("refreshToken", refreshToken);
         localStorage.setItem("correo", userCorreo);
 
-        // Realiza una petición para obtener los datos del usuario autenticado
+        // Actualiza el estado del usuario con el correo
         const respuesta = await axios.get(
           `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
           { headers: { Authorization: `Bearer ${accessToken}` } }
         );
         console.log("Respuesta usuario: ", respuesta.data);
 
+        // Actualiza el estado del usuario con la respuesta del backend
         setUser(respuesta.data);
         navigate("/home", { replace: true });
       } else {
@@ -83,12 +91,11 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Error al cerrar sesión en el backend:", error.message);
     } finally {
-      // Limpia el estado y redirige inmediatamente
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("correo");
-      // Forzar redirección instantánea sin re-renderizado
-      window.location.replace("/login"); // Usa replace para no dejar la página en el historial
+      setUser(null);
+      window.location.replace("/login");
     }
   };
 

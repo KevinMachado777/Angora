@@ -48,6 +48,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         initializePermisosAndUsuarios(); // Permisos y usuarios
         initializeCategorias(); // Categorias
+        initializeProveedores(); // Proveedores
         initializeMateriasPrimas(); // Materias primas
         initializeProductos(); // Productos
     }
@@ -65,8 +66,8 @@ public class DataInitializer implements CommandLineRunner {
                 .contraseña("1234")
                 .telefono("3196382919")
                 .direccion("Urrao")
-                .foto("URL_FOTO_USUARIO")
-                .permisos(new ArrayList<>())
+                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg")
+                .permisos(new ArrayList<>()) // <-- lista inicializada
                 .build();
 
         Usuario johan = Usuario.builder()
@@ -77,7 +78,7 @@ public class DataInitializer implements CommandLineRunner {
                 .contraseña("1234")
                 .telefono("3002950000")
                 .direccion("Versalles")
-                .foto("URL_FOTO_USUARIO")
+                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg")
                 .permisos(new ArrayList<>())
                 .build();
 
@@ -89,7 +90,7 @@ public class DataInitializer implements CommandLineRunner {
                 .contraseña("1234")
                 .telefono("3002955138")
                 .direccion("Tamesis")
-                .foto("URL_FOTO_USUARIO")
+                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg")
                 .permisos(new ArrayList<>())
                 .build();
 
@@ -121,6 +122,22 @@ public class DataInitializer implements CommandLineRunner {
                 samuel.getContraseña(), samuel.getDireccion(), samuel.getFoto(), samuel.getTelefono(), samuel.getPermisos());
     }
 
+    private void initializeProveedores() {
+        String nombre = "Proveedor de prueba";
+        String correo = "proveedor@example.com";
+
+
+        Proveedor proveedor = new Proveedor();
+        proveedor.setNombre(nombre);
+        proveedor.setCorreo(correo);
+        proveedor.setTelefono("3000000000");
+        proveedor.setDireccion("Calle 123");
+
+        proveedorRepository.save(proveedor);
+        System.out.println("Proveedor de prueba creado con éxito.");
+    }
+
+    // Método para crear un usuario si no existe
     private void createUserIfNotExists(Long id, String correo, String nombre, String apellido, String password, String direccion, String foto, String telefono, List<Permiso> permisos) {
         if (usuarioRepository.findUsuarioByCorreo(correo).isEmpty()) {
             Usuario usuario = Usuario.builder()
