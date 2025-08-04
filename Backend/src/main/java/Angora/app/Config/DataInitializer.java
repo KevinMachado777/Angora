@@ -1,58 +1,69 @@
 package Angora.app.Config;
 
-import Angora.app.Entities.Permiso;
-import Angora.app.Entities.Proveedor;
-import Angora.app.Entities.Usuario;
-import Angora.app.Repositories.PermisoRepository;
-import Angora.app.Repositories.UsuarioRepository;
+import Angora.app.Controllers.dto.CategoriaIdDTO;
+import Angora.app.Controllers.dto.MateriaProductoDTO;
+import Angora.app.Controllers.dto.ProductoDTO;
+import Angora.app.Entities.*;
+import Angora.app.Repositories.*;
+import Angora.app.Services.ProductoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-// Inicializador de registros de prueba en la base de datos (para desarrollo y pruebas)
 @Component
 public class DataInitializer implements CommandLineRunner {
 
-    // Usuario repositorio
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    // Permiso repositorio
     @Autowired
     private PermisoRepository permisoRepository;
 
-    // Password Encoder
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private Angora.app.Repositories.ProveedorRepository proveedorRepository;
+    private MateriaPrimaRepository materiaPrimaRepository;
+
+    @Autowired
+    private ProductoRepository productoRepository;
+
+    @Autowired
+    private CategoriaRepository categoriaRepository;
+
+    @Autowired
+    private MateriaProductoRepository materiaProductoRepository;
+
+    @Autowired
+    private ProductoService productoService;
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
-        // Método que inicializa permiso
-        initializePermisosAndUsuarios();
-        initializeProveedores();
+        initializePermisosAndUsuarios(); // Permisos y usuarios
+        initializeCategorias(); // Categorias
+        initializeProveedores(); // Proveedores
+        initializeMateriasPrimas(); // Materias primas
+        initializeProductos(); // Productos
     }
 
     private void initializePermisosAndUsuarios() {
         System.out.println("Verificando permisos...");
 
-        // Lista de permisos a crear
         List<Permiso> permisosToCreate = new ArrayList<>();
 
-        // Crear usuarios con listas de permisos vacías desde el principio
         Usuario kevin = Usuario.builder()
                 .id(1041532485L)
                 .nombre("Kevin")
                 .apellido("Machado")
                 .correo("kevin@example.com")
-                .contraseña("1234") // Se codifica luego
+                .contraseña("1234")
                 .telefono("3196382919")
                 .direccion("Urrao")
                 .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg")
@@ -83,8 +94,8 @@ public class DataInitializer implements CommandLineRunner {
                 .permisos(new ArrayList<>())
                 .build();
 
-        // Crear y asignar permisos si no existen
         crearYAsignarPermiso("HOME", List.of(samuel, kevin, johan), permisosToCreate);
+        crearYAsignarPermiso("PERFIL", List.of(samuel, kevin, johan), permisosToCreate);
         crearYAsignarPermiso("DASHBOARD", List.of(kevin, johan), permisosToCreate);
         crearYAsignarPermiso("PERSONAL", List.of(kevin, johan), permisosToCreate);
         crearYAsignarPermiso("INVENTARIOS", List.of(samuel, kevin, johan), permisosToCreate);
@@ -94,7 +105,6 @@ public class DataInitializer implements CommandLineRunner {
         crearYAsignarPermiso("PEDIDOS", List.of(samuel, kevin, johan), permisosToCreate);
         crearYAsignarPermiso("PROVEEDORES", List.of(kevin, johan), permisosToCreate);
 
-        // Guardar los nuevos permisos
         if (!permisosToCreate.isEmpty()) {
             permisoRepository.saveAll(permisosToCreate);
             System.out.println("Se crearon " + permisosToCreate.size() + " permisos nuevos");
@@ -102,24 +112,15 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Todos los permisos ya existen");
         }
 
-        // Guardar usuarios si no existen
-        createUserIfNotExists(
-                kevin.getId(), kevin.getCorreo(), kevin.getNombre(), kevin.getApellido(),
-                kevin.getContraseña(), kevin.getDireccion(), kevin.getFoto(), kevin.getTelefono(), kevin.getPermisos()
-        );
+        createUserIfNotExists(kevin.getId(), kevin.getCorreo(), kevin.getNombre(), kevin.getApellido(),
+                kevin.getContraseña(), kevin.getDireccion(), kevin.getFoto(), kevin.getTelefono(), kevin.getPermisos());
 
-        createUserIfNotExists(
-                johan.getId(), johan.getCorreo(), johan.getNombre(), johan.getApellido(),
-                johan.getContraseña(), johan.getDireccion(), johan.getFoto(), johan.getTelefono(), johan.getPermisos()
-        );
+        createUserIfNotExists(johan.getId(), johan.getCorreo(), johan.getNombre(), johan.getApellido(),
+                johan.getContraseña(), johan.getDireccion(), johan.getFoto(), johan.getTelefono(), johan.getPermisos());
 
-        createUserIfNotExists(
-                samuel.getId(), samuel.getCorreo(), samuel.getNombre(), samuel.getApellido(),
-                samuel.getContraseña(), samuel.getDireccion(), samuel.getFoto(), samuel.getTelefono(), samuel.getPermisos()
-        );
+        createUserIfNotExists(samuel.getId(), samuel.getCorreo(), samuel.getNombre(), samuel.getApellido(),
+                samuel.getContraseña(), samuel.getDireccion(), samuel.getFoto(), samuel.getTelefono(), samuel.getPermisos());
     }
-
-
 
     private void initializeProveedores() {
         String nombre = "Proveedor de prueba";
@@ -135,7 +136,6 @@ public class DataInitializer implements CommandLineRunner {
         proveedorRepository.save(proveedor);
         System.out.println("Proveedor de prueba creado con éxito.");
     }
-
 
     // Método para crear un usuario si no existe
     private void createUserIfNotExists(Long id, String correo, String nombre, String apellido, String password, String direccion, String foto, String telefono, List<Permiso> permisos) {
@@ -163,11 +163,6 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    // Método para obtener todos los permisos
-    private List<Permiso> getAllPermisos() {
-        return permisoRepository.findAll();
-    }
-
     private void crearYAsignarPermiso(String nombrePermiso, List<Usuario> usuarios, List<Permiso> permisosToCreate) {
         Optional<Permiso> existente = permisoRepository.findByName(nombrePermiso);
         if (existente.isEmpty()) {
@@ -187,4 +182,88 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
     }
+
+    @Transactional
+    private void initializeCategorias() {
+        System.out.println("Verificando categorías...");
+        List<Categoria> categorias = List.of(
+                new Categoria(null, "Limpieza", new ArrayList<>()),
+                new Categoria(null, "Higiene", new ArrayList<>())
+        );
+
+        for (Categoria categoria : categorias) {
+            if (!categoriaRepository.existsByNombre(categoria.getNombre())) {
+                System.out.println("Categoría " + categoria.getNombre() + " será creada");
+                categoriaRepository.save(categoria);
+            } else {
+                System.out.println("Categoría " + categoria.getNombre() + " ya existe, omitiendo creación");
+            }
+        }
+
+        System.out.println("Categorias agregadas: " + categoriaRepository.findAll());
+    }
+
+    @Transactional
+    private void initializeMateriasPrimas() {
+        if (materiaPrimaRepository.count() == 0) {
+            List<MateriaPrima> materiasPrimas = List.of(
+                    new MateriaPrima(null, "Ácido sulfónico", 3500f, 4200f, 50f),
+                    new MateriaPrima(null, "Glicerina", 2500f, 3000f, 40f),
+                    new MateriaPrima(null, "Carbonato de sodio", 1800f, 2200f, 60f),
+                    new MateriaPrima(null, "Lauril éter sulfato de sodio", 4200f, 4800f, 30f),
+                    new MateriaPrima(null, "Fragancia lavanda", 6000f, 7000f, 20f),
+                    new MateriaPrima(null, "Colorante azul", 1000f, 1200f, 10f),
+                    new MateriaPrima(null, "Formol", 1500f, 1800f, 15f),
+                    new MateriaPrima(null, "Agua destilada", 300f, 500f, 100f),
+                    new MateriaPrima(null, "Cloruro de amonio", 2000f, 2500f, 25f),
+                    new MateriaPrima(null, "Alcohol etílico", 4500f, 5200f, 35f)
+            );
+
+            materiaPrimaRepository.saveAll(materiasPrimas);
+            System.out.println("Materias primas base para productos de aseo creadas exitosamente");
+        } else {
+            System.out.println("Ya existen materias primas en la base de datos");
+        }
+    }
+
+    @Transactional
+    private void initializeProductos() {
+        if (productoRepository.count() > 0) {
+            System.out.println("Productos ya existen en la base de datos");
+            return;
+        }
+
+        System.out.println("Buscando categoría con Nombre Limpieza...");
+        Categoria categoria = categoriaRepository.findByNombre("Limpieza")
+                .orElseThrow(() -> new RuntimeException("Categoría con ID 1 no existe"));
+
+        System.out.println("Creando DTO del producto...");
+        ProductoDTO dto = new ProductoDTO();
+        dto.setNombre("Detergente en polvo");
+        dto.setCosto(6000f);
+        dto.setPrecio(8500f);
+        dto.setStock(50f);
+        dto.setIva(true);
+
+        CategoriaIdDTO catDto = new CategoriaIdDTO();
+        catDto.setIdCategoria(categoria.getIdCategoria());
+        dto.setIdCategoria(catDto);
+
+        List<MateriaProductoDTO> materias = new ArrayList<>();
+        materias.add(createMateriaDTO(1L, 15f)); // Ácido sulfónico
+        materias.add(createMateriaDTO(3L, 10f)); // Carbonato de sodio
+        dto.setMaterias(materias);
+
+        System.out.println("Guardando producto usando ProductoService...");
+        productoService.crearProductoDesdeDTO(dto);
+        System.out.println("Producto con materias creado correctamente.");
+    }
+
+    private MateriaProductoDTO createMateriaDTO(Long idMateria, Float cantidad) {
+        MateriaProductoDTO dto = new MateriaProductoDTO();
+        dto.setIdMateria(idMateria);
+        dto.setCantidad(cantidad);
+        return dto;
+    }
+
 }

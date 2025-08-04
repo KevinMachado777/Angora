@@ -8,9 +8,11 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 // Repositorio para manejar materia prima
 @Repository
 public interface MateriaPrimaRepository extends JpaRepository<MateriaPrima, Long> {
 
+    Optional<Object> findByNombre(String nombreMateria);
 }

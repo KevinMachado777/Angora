@@ -2,23 +2,24 @@ package Angora.app.Entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "produccion")
 public class Produccion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id_produccion")
+    private Long idProduccion;
 
-    @ManyToOne
-    @JoinColumn(name = "idProducto")
-    private Producto producto;
+    @Column(name = "id_producto", nullable = false)
+    private Long idProducto;
 
-    @ManyToOne
-    @JoinColumn(name = "idMateria")
-    private MateriaPrima materiaPrima;
+    @Column(nullable = false)
+    private LocalDateTime fecha;
 
-    private Float cantidadUsada; // ejemplo: cuánta materia prima se usa por producto
 }
