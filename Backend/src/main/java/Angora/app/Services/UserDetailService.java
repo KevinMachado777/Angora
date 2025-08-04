@@ -10,6 +10,7 @@ import Angora.app.Repositories.RefreshTokenRepository;
 import Angora.app.Repositories.UsuarioRepository;
 import Angora.app.Entities.Usuario;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -17,6 +18,8 @@ import java.util.stream.Collectors;
 
 import Angora.app.Services.Email.EnviarCorreo;
 import Angora.app.Utils.JwtUtils;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,6 +33,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class UserDetailService implements UserDetailsService{
@@ -58,8 +62,23 @@ public class UserDetailService implements UserDetailsService{
     @Autowired
     private RefreshTokenService refreshTokenService;
 
+    // Repositorio para el refresh token
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
+
+    // Inyeccion de la configuracion de cloudinary
+    @Autowired
+    private Cloudinary cloudinary;
+
+    // Metodo para subir imagen a Cloudinary
+    public String uploadImage(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            // URL de la imagen por defecto subida a Cloudinary
+            return "https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg";
+        }
+        Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
+        return uploadResult.get("url").toString();
+    }
 
     // Cargar un usuario por correo
     @Override
@@ -138,7 +157,7 @@ public class UserDetailService implements UserDetailsService{
     }
 
     // Metodo que guarda un usuario en la bd y genera el token para ese usuario
-    public AuthResponse createUser(AuthCreateUserRequest authCreateUser) {
+    public AuthResponse createUser(AuthCreateUserRequest authCreateUser, MultipartFile foto) throws IOException {
         // Creación del usuario
         Long id = authCreateUser.id();
         String nombre = authCreateUser.nombre();
@@ -146,7 +165,6 @@ public class UserDetailService implements UserDetailsService{
         String correo = authCreateUser.correo();
         String telefono = authCreateUser.telefono();
         String direccion = authCreateUser.direccion();
-        String foto = authCreateUser.foto();
         List<String> listPermissions = authCreateUser.permissions().listPermissions();
 
         List<Permiso> permisoList = permisoRepository.findPermisosByNameIn(listPermissions)
@@ -174,6 +192,9 @@ public class UserDetailService implements UserDetailsService{
         // Generamos la contraseña
         String password = nombre.substring(0, 2) + apellido.substring(0, 2) + telefono.substring(4, 7) + direccion.substring(0, 2);
 
+        // Subir la imagen a Cloudinary si se proporciona
+        String fotoUrl = uploadImage(foto);
+
         // Se construye el nuevo usuario
         Usuario usuarioAgregar = Usuario.builder()
                 .id(id)
@@ -183,7 +204,7 @@ public class UserDetailService implements UserDetailsService{
                 .contraseña(passwordEncoder.encode(password))
                 .telefono(telefono)
                 .direccion(direccion)
-                .foto(foto != null && !foto.isEmpty() ? foto : "URL_FOTO_USUARIO")
+                .foto(fotoUrl)
                 .permisos(permisoList)
                 .isEnabled(true)
                 .accountNoExpired(true)
@@ -196,7 +217,6 @@ public class UserDetailService implements UserDetailsService{
 
         // Envío de correo con la contraseña generada
         String mensaje = "Tu cuenta ha sido creada exitosamente. A continuación, encontrarás tu contraseña temporal para iniciar sesión.";
-
         String contenidoExtra =
                 "<div style=\"background-color: #d8ecff; border: 1px dashed #034078; " +
                         "padding: 12px 20px; font-size: 18px; font-weight: bold; color: #034078; " +
@@ -223,8 +243,6 @@ public class UserDetailService implements UserDetailsService{
                 null
         );
 
-
-
         // Construcción de los permisos
         List<SimpleGrantedAuthority> authoritiesList = new ArrayList<>();
         usuarioAgregar.getPermisos().forEach(permiso -> {
@@ -232,7 +250,6 @@ public class UserDetailService implements UserDetailsService{
         });
 
         SecurityContext context = SecurityContextHolder.getContext();
-
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 usuarioAgregar.getCorreo(),
                 usuarioAgregar.getCorreo(),
@@ -269,7 +286,7 @@ public class UserDetailService implements UserDetailsService{
     }
 
     // Metodo para actualizar todos los campos del personal
-    public Usuario actualizarPersonal(Usuario usuario) {
+    public Usuario actualizarPersonal(Usuario usuario, MultipartFile foto) throws IOException {
         Usuario usuarioExistente = usuarioRepository.findById(usuario.getId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + usuario.getId()));
 
@@ -283,20 +300,29 @@ public class UserDetailService implements UserDetailsService{
         usuarioExistente.setCorreo(usuario.getCorreo());
         usuarioExistente.setTelefono(usuario.getTelefono());
         usuarioExistente.setDireccion(usuario.getDireccion());
-        usuarioExistente.setFoto(usuario.getFoto() != null && !usuario.getFoto().isEmpty() ? usuario.getFoto() : usuarioExistente.getFoto());
+
+        // Manejo de la foto
+        if (foto != null && !foto.isEmpty()) {
+            // Eliminar la foto anterior de Cloudinary si existe
+            if (usuarioExistente.getFoto() != null && !usuarioExistente.getFoto().isEmpty()) {
+                String publicId = extractPublicIdFromUrl(usuarioExistente.getFoto());
+                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            }
+            String fotoUrl = uploadImage(foto); // Subir nueva foto a Cloudinary
+            usuarioExistente.setFoto(fotoUrl);
+        }
 
         // Manejo de permisos
         if (usuario.getPermisos() != null) {
             // Limpiar permisos existentes
             usuarioExistente.getPermisos().clear();
             List<Permiso> permisosActualizados = new ArrayList<>();
-            // Recorrer todos los permisos
             for (Permiso permiso : usuario.getPermisos()) {
                 Permiso permisoExistente = permisoRepository.findByName(permiso.getName())
                         .orElseGet(() -> {
                             Permiso nuevoPermiso = new Permiso();
                             nuevoPermiso.setName(permiso.getName());
-                            return permisoRepository.save(nuevoPermiso); // Persistir nuevo permiso
+                            return permisoRepository.save(nuevoPermiso);
                         });
                 permisosActualizados.add(permisoExistente);
             }
@@ -306,15 +332,27 @@ public class UserDetailService implements UserDetailsService{
     }
 
     // Metodo para eliminar un usuario
-    public void eliminarUsuario(Long id) {
+    public void eliminarUsuario(Long id) throws IOException {
         Usuario usuario = usuarioRepository.findById(id).orElse(null);
-        if (usuario == null)
+        if (usuario == null) {
             throw new RuntimeException("Usuario no encontrado con ID: " + id);
+        }
 
-        System.out.printf("Eliminacion del token");
+        // Eliminar la foto de Cloudinary si existe
+        if (usuario.getFoto() != null && !usuario.getFoto().isEmpty()) {
+            String publicId = extractPublicIdFromUrl(usuario.getFoto());
+            cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+        }
+
         refreshTokenRepository.deleteByUsuarioId(id);
-        System.out.printf("Eliminacion del token correctamente");
         usuarioRepository.delete(usuario);
-        System.out.printf("Usuario eliminado correctamente");
+    }
+
+    // Metodo auxiliar para extraer el publicId de la URL de Cloudinary
+    private String extractPublicIdFromUrl(String imageUrl) {
+        String[] parts = imageUrl.split("/");
+        String publicIdWithExtension = parts[parts.length - 1]; // Último segmento (ej. v1754246870/Perfil_sa1uug.jpg)
+        String[] subParts = publicIdWithExtension.split("\\.")[0].split("/"); // Separar por punto y tomar antes de la extensión
+        return subParts[subParts.length - 1]; // Tomar el último segmento como publicId
     }
 }

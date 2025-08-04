@@ -64,37 +64,35 @@ public class SecurityConfig {
 
 
                     // Rutas protegidas de Portafolio
-                    http.requestMatchers(HttpMethod.GET, "/clientes/**").permitAll();
-                    http.requestMatchers(HttpMethod.POST, "/clientes").permitAll();
-                    http.requestMatchers(HttpMethod.PUT, "/clientes/**").permitAll();
-                    http.requestMatchers(HttpMethod.OPTIONS, "/clientes/**").permitAll();
-                    // Configurar endpoints privados
+                    http.requestMatchers(HttpMethod.GET, "/clientes/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.POST, "/clientes").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.PUT, "/clientes/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.OPTIONS, "/clientes/**").hasAuthority("CLIENTES");
+
+                    // Rutas de perfil
+                    http.requestMatchers(HttpMethod.PUT, "/user/perfil").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/user/exists/**").permitAll();
 
                     // Rutas protegidas de Personal
-                    http.requestMatchers(HttpMethod.GET, "/user/public/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/user/**").hasAuthority("PERSONAL");
                     http.requestMatchers(HttpMethod.GET, "/user/**").hasAuthority("PERSONAL");
+                    http.requestMatchers(HttpMethod.PUT, "/user/**").hasAuthority("PERSONAL");
+                    http.requestMatchers(HttpMethod.DELETE, "/user/**").hasAuthority("PERSONAL");
 
                     // Rutas protegidas de Cartera
-                    http.requestMatchers(HttpMethod.GET, "/carteras/**").permitAll();
-                    http.requestMatchers(HttpMethod.POST, "/carteras/**").permitAll();
-                    http.requestMatchers(HttpMethod.PUT, "/carteras/**").permitAll();
-                    http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET, "/carteras/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.POST, "/carteras/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.PUT, "/carteras/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").hasAuthority("CLIENTES");
 
                     // Rutas de reportes
                     http.requestMatchers(HttpMethod.GET, "/reportes/**").hasAuthority("REPORTES");
 
-                    // Rutas de perfil
-                    http.requestMatchers(HttpMethod.PUT, "/user").permitAll();
-                    http.requestMatchers(HttpMethod.GET, "/user/exists/**").permitAll();
-
                     // Rutas de producto
-
                     http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/**").permitAll();
                     http.requestMatchers(HttpMethod.GET, "/inventarioProducto").permitAll();
 
                     // Rutas de ventas
-
                     http.requestMatchers(HttpMethod.POST, "/ventas/**").permitAll();
                     http.requestMatchers(HttpMethod.GET,"/activos-con-cartera/**").permitAll();
 

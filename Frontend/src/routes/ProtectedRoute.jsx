@@ -1,23 +1,49 @@
-// src/routes/ProtectedRoute.jsx
+// src/routes/ProtectedRoute.jsx (versión con spinner)
 import { Navigate } from "react-router-dom";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { AuthContext } from "../context/AuthContext";
+import "../styles/spiner.css"
 
 const ProtectedRoute = ({ children, requiredPermission }) => {
-    const { user } = useContext(AuthContext); // Eliminamos loading
-    const userPermissions = user?.permisos?.map((permiso) => permiso.name) || [];
+    const { user, loading } = useContext(AuthContext);
 
-    // Si no hay usuario autenticado, redirige a /login
+    useEffect(() => {
+        if (loading) return;
+
+        if (!user) {
+            console.log("No hay usuario autenticado, redirigiendo a /login");
+        } else {
+            const userPermissions = user?.permisos?.map((permiso) => permiso.name.toUpperCase()) || [];
+            const requiredPerm = requiredPermission?.toUpperCase();
+
+            console.log("Usuario:", user);
+            console.log("Permisos del usuario:", userPermissions);
+            console.log("Permiso requerido:", requiredPerm);
+
+            if (requiredPerm && requiredPerm !== "HOME" && !userPermissions.includes(requiredPerm)) {
+                console.log(`Permiso ${requiredPerm} no encontrado, redirigiendo a /home`);
+            }
+        }
+    }, [user, loading, requiredPermission]);
+
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <div className="spinner"></div>
+            </div>
+        );
+    }
+
     if (!user) {
         return <Navigate to="/login" replace />;
     }
 
-    // Si hay usuario pero no tiene el permiso requerido (y no es HOME), redirige a /home
-    if (requiredPermission && requiredPermission !== "HOME" && !userPermissions.includes(requiredPermission)) {
+    const userPermissions = user?.permisos?.map((permiso) => permiso.name.toUpperCase()) || [];
+    const requiredPerm = requiredPermission?.toUpperCase();
+    if (requiredPerm && requiredPerm !== "HOME" && !userPermissions.includes(requiredPerm)) {
         return <Navigate to="/home" replace />;
     }
 
-    // Si el usuario está autenticado y tiene los permisos, renderiza los hijos
     return children;
 };
 

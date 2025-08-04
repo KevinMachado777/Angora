@@ -57,6 +57,8 @@ const Personal = () => {
   const [confirmarEliminacion, setConfirmarEliminacion] = useState(false);
   // Estado para manejar la persona a eliminar
   const [personaEliminar, setPersonaEliminar] = useState(null);
+  // Estado para manejar el filtro de búsqueda
+  const [filtro, setFiltro] = useState("");
 
   // Contexto de autenticación para obtener el usuario actual
   const { user } = useContext(AuthContext);
@@ -74,7 +76,7 @@ const Personal = () => {
   // Función para cargar los usuarios desde el backend
   const cargarUsuarios = () => {
     api
-      .get(`${urlBackend}/user/public`, {
+      .get(`${urlBackend}/user`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => setPersonas(res.data))
@@ -159,27 +161,36 @@ const Personal = () => {
   };
 
   // Función para manejar los cambios en el formulario
-  const manejarCambioFormulario = (evento) => {
-    const { name, value, type, checked, files } = evento.target;
-    if (type === "file") {
-      const archivo = files[0];
-      if (archivo) {
-        const lector = new FileReader();
-        lector.onloadend = () => {
-          setFormulario({ ...formulario, foto: lector.result });
-        };
-        lector.readAsDataURL(archivo);
+const manejarCambioFormulario = (evento) => {
+  const { name, value, type, checked, files } = evento.target;
+  if (type === "file") {
+    const archivo = files[0];
+    if (archivo) {
+      // Validar tamaño (12MB máximo)
+      const maxSize = 12 * 1024 * 1024; // 12MB en bytes
+      if (archivo.size > maxSize) {
+        abrirModalMensaje("advertencia", "La imagen debe ser menor a 12MB.");
+        return;
       }
-    } else if (type === "checkbox") {
-      const permiso = value.toLowerCase();
-      const nuevosPermisos = checked
-        ? [...formulario.permisos, { name: permiso }]
-        : formulario.permisos.filter((p) => p.name !== permiso);
-      setFormulario({ ...formulario, permisos: nuevosPermisos });
+      const lector = new FileReader();
+      lector.onloadend = () => {
+        setFormulario({ ...formulario, foto: lector.result });
+      };
+      lector.readAsDataURL(archivo);
     } else {
-      setFormulario({ ...formulario, [name]: value });
+      // Si no seleccionan nuevo archivo, mantener la foto existente
+      setFormulario({ ...formulario, foto: personaSelect ? personaSelect.foto : "" });
     }
-  };
+  } else if (type === "checkbox") {
+    const permiso = value.toLowerCase();
+    const nuevosPermisos = checked
+      ? [...formulario.permisos, { name: permiso }]
+      : formulario.permisos.filter((p) => p.name !== permiso);
+    setFormulario({ ...formulario, permisos: nuevosPermisos });
+  } else {
+    setFormulario({ ...formulario, [name]: value });
+  }
+};
 
   // Función para guardar el empleado (agregar o editar)
   const guardarEmpleado = async (evento) => {
@@ -211,7 +222,7 @@ const Personal = () => {
 
     // Validación: Verificar que el correo no esté duplicado
     const correoExistente = personas.find(p => p.correo === formulario.correo);
-    if (correoExistente && (!modalEdicion || correoExistente.id !== formulario.id)) {
+    if (correoExistente && (!modalEdicion || correoExistente.id !== parseInt(formulario.id))) {
       abrirModalMensaje("advertencia", "El correo ya está en uso.");
       return;
     }
@@ -221,40 +232,41 @@ const Personal = () => {
       ? `${urlBackend}/user/personal/${formulario.id}`
       : `${urlBackend}/user/register`;
     const method = modalEdicion ? "put" : "post";
-    // Preparar el cuerpo de la solicitud, sea para agregar o editar
-    const body = modalEdicion
-      ? {
-        id: formulario.id || null,
-        nombre: formulario.nombre,
-        apellido: formulario.apellido,
-        correo: formulario.correo,
-        telefono: formulario.telefono,
-        direccion: formulario.direccion || "",
-        foto: formulario.foto || "URL_FOTO_USUARIO",
-        permisos: formulario.permisos,
+
+    const formData = new FormData();
+    const body = {
+      id: formulario.id || null,
+      nombre: formulario.nombre,
+      apellido: formulario.apellido,
+      correo: formulario.correo,
+      telefono: formulario.telefono,
+      direccion: formulario.direccion || "",
+      permisos: formulario.permisos,
+    };
+    formData.append("usuario", new Blob([JSON.stringify(body)], { type: "application/json" }));
+    if (modalEdicion && !formulario.foto.startsWith("data:")) {
+      formData.append("foto", ""); // Mantener foto existente si no cambia
+    } else if (formulario.foto.startsWith("data:")) {
+      const byteString = atob(formulario.foto.split(",")[1]);
+      const mimeString = formulario.foto.split(",")[0].split(":")[1].split(";")[0];
+      const ab = new ArrayBuffer(byteString.length);
+      const ia = new Uint8Array(ab);
+      for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
       }
-      : {
-        id: formulario.id || null,
-        nombre: formulario.nombre,
-        apellido: formulario.apellido,
-        correo: formulario.correo,
-        telefono: formulario.telefono,
-        direccion: formulario.direccion || "",
-        foto: formulario.foto || "URL_FOTO_USUARIO",
-        permissions: {
-          listPermissions: formulario.permisos.map(p => p.name),
-        },
-      };
+      const blob = new Blob([ab], { type: mimeString });
+      formData.append("foto", blob, "image.jpg");
+    }
 
     try {
       const res = await api({
         method,
         url,
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
         },
-        data: body,
+        data: formData,
       });
       if (res.status === 200 || res.status === 201) {
         const updatedPersona = res.data;
@@ -285,18 +297,22 @@ const Personal = () => {
     }
   };
 
+  // Filtrar personas según el texto de búsqueda
+  const personasFiltradas = personas.filter(persona =>
+    persona.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
+    persona.apellido?.toLowerCase().includes(filtro.toLowerCase()) ||
+    persona.correo.toLowerCase().includes(filtro.toLowerCase())
+  );
+
   return (
     <main>
-      <div className="titulo">
+      <div className="titulo" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h1>Personal</h1>
-        {user && user.permisos.some((p) => p.name === "PERSONAL") && (
-          <BotonAgregar onClick={abrirModalAgregar} />
-        )}
       </div>
 
       {/* Mostrar mensaje si no hay personal registrado */}
       <div className="cards-container">
-        {personas.map((persona) => (
+        {personasFiltradas.map((persona) => (
           <div key={persona.id} className="personal" onClick={clicTarjeta}>
             <div className="card-front">
               <img src={persona.foto || perfil} alt="imagen_perfil" />

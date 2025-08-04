@@ -8,9 +8,12 @@ import Angora.app.Services.UserDetailService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -26,12 +29,14 @@ public class UserController {
     private UsuarioRepository usuarioRepository;
 
     // Endpoint para crear un usuario
-    @PostMapping("/register")
-    public AuthResponse register(@RequestBody @Valid AuthCreateUserRequest authCreateUser) {
-        System.out.println(authCreateUser);
-        AuthResponse authResponse = userDetailService.createUser(authCreateUser);
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AuthResponse> register(
+            @RequestPart("authCreateUser") @Valid AuthCreateUserRequest authCreateUser,
+            @RequestPart(value = "foto", required = false) MultipartFile foto) throws IOException {
+        System.out.println("Recibido authCreateUser: " + authCreateUser);
+        AuthResponse authResponse = userDetailService.createUser(authCreateUser, foto);
         System.out.println("Usuario register: " + authResponse);
-        return authResponse;
+        return ResponseEntity.ok(authResponse);
     }
 
     // Endpoint para consultar un usuario por correo
@@ -61,7 +66,7 @@ public class UserController {
     }
 
     // Endpoint para la actualizacion del usuario en el perfil
-    @PutMapping
+    @PutMapping("/perfil")
     public ResponseEntity<Usuario> editarUsuario(@RequestBody Usuario usuarioActualizado) {
         Usuario actualizado = userDetailService.actualizarUsuario(usuarioActualizado);
         return ResponseEntity.ok(actualizado);
@@ -83,22 +88,25 @@ public class UserController {
     }
 
     // Endpoint para actualizar un usuario completo en el modulo de Personal
-    @PutMapping("/personal/{id}")
-    public ResponseEntity<Usuario> actualizarPersonal(@PathVariable Long id, @RequestBody Usuario usuario) {
-        usuario.setId(id); // Asegurar que el ID coincida con el path
-        Usuario actualizado = userDetailService.actualizarPersonal(usuario);
+    @PutMapping(value = "/personal/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Usuario> actualizarPersonal(
+            @PathVariable Long id,
+            @RequestPart("usuario") Usuario usuario,
+            @RequestPart(value = "foto", required = false) MultipartFile foto) throws IOException {
+        usuario.setId(id);
+        Usuario actualizado = userDetailService.actualizarPersonal(usuario, foto); // Ajusta el servicio
         return ResponseEntity.ok(actualizado);
     }
 
     // Endpoint para eliminar un usuario
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> eliminarUsuario(@PathVariable Long id) {
+    public ResponseEntity<Void> eliminarUsuario(@PathVariable Long id) throws IOException {
         userDetailService.eliminarUsuario(id);
         return ResponseEntity.noContent().build();
     }
 
     // Endpoint para listar todos los usuarios
-    @GetMapping("/public")
+    @GetMapping
     public ResponseEntity<List<Usuario>> getPublicUsers() {
         List<Usuario> users = usuarioRepository.findAll(); // O filtra según necesidad
         return new ResponseEntity<>(users, HttpStatus.OK);
