@@ -15,6 +15,8 @@ import "../styles/botones.css";
 
 const Ventas = () => {
   const { user } = useContext(AuthContext);
+  const token = localStorage.getItem("accessToken");
+
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
@@ -47,16 +49,47 @@ const Ventas = () => {
   };
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8080/angora/api/v1/inventarioProducto")
-      .then((res) => setProductos(res.data))
-      .catch(() => abrirModal("error", "Error al cargar productos"));
+    console.log("Token enviado:", token);
 
+    if (!token) {
+      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      return;
+    }
+
+    // Cargar productos
     axios
-      .get("http://localhost:8080/angora/api/v1/clientes/activos-con-cartera")
-      .then((res) => setClientes(res.data))
-      .catch(() => abrirModal("error", "Error al cargar clientes"));
-  }, []);
+      .get("http://localhost:8080/angora/api/v1/inventarioProducto", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        console.log("Productos recibidos:", res.data);
+        setProductos(res.data);
+      })
+      .catch((err) => {
+        console.error("Error al cargar productos:", err.response?.status, err.response?.data);
+        abrirModal("error", `Error al cargar productos: ${err.response?.data?.message || err.message}`);
+      });
+
+    // Cargar clientes
+    axios
+      .get("http://localhost:8080/angora/api/v1/clientes/activos-con-cartera", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then((res) => {
+        console.log("Clientes recibidos:", res.data);
+        setClientes(res.data);
+      })
+      .catch((err) => {
+        console.error("Error al cargar clientes:", err.response?.status, err.response?.data);
+        abrirModal("error", `Error al cargar clientes: ${err.response?.data?.message || err.message}`);
+      });
+  }, [token]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -64,73 +97,68 @@ const Ventas = () => {
   };
 
   const handleAgregar = () => {
-  if (!formulario.id || !formulario.cantidad) {
-    abrirModal("advertencia", "Por favor ingresa el producto y la cantidad");
-    return;
-  }
+    if (!formulario.id || !formulario.cantidad) {
+      abrirModal("advertencia", "Por favor ingresa el producto y la cantidad");
+      return;
+    }
 
-  const producto = productos.find((p) => p.id === formulario.id);
-  if (!producto) {
-    abrirModal("error", "Selecciona un producto válido de la lista");
-    return;
-  }
+    const producto = productos.find((p) => p.id === formulario.id);
+    if (!producto) {
+      abrirModal("error", "Selecciona un producto válido de la lista");
+      return;
+    }
 
-  const cantidadNueva = parseInt(formulario.cantidad);
-  if (isNaN(cantidadNueva) || cantidadNueva <= 0) {
-    abrirModal("error", "La cantidad debe ser mayor a 0");
-    return;
-  }
+    const cantidadNueva = parseInt(formulario.cantidad);
+    if (isNaN(cantidadNueva) || cantidadNueva <= 0) {
+      abrirModal("error", "La cantidad debe ser mayor a 0");
+      return;
+    }
 
-  const precio = parseInt(producto.precio);
-  const total = cantidadNueva * precio;
+    const precio = parseInt(producto.precio);
+    const total = cantidadNueva * precio;
 
-  if (modoEdicion) {
-    // 🟡 Modo edición: reemplazar
-    const actualizado = {
-      ...formulario,
-      cantidad: cantidadNueva,
-      precio,
-      total,
-    };
-    setRegistros((prev) =>
-      prev.map((item) => (item.id === idEditando ? actualizado : item))
-    );
-  } else {
-    const productoExistente = registros.find(
-      (item) => item.id === formulario.id
-    );
-    if (productoExistente) {
-      const cantidadTotal = productoExistente.cantidad + cantidadNueva;
+    if (modoEdicion) {
       const actualizado = {
-        ...productoExistente,
-        cantidad: cantidadTotal,
-        total: cantidadTotal * precio,
+        ...formulario,
+        cantidad: cantidadNueva,
+        precio,
+        total,
       };
       setRegistros((prev) =>
-        prev.map((item) =>
-          item.id === formulario.id ? actualizado : item
-        )
+        prev.map((item) => (item.id === idEditando ? actualizado : item))
       );
     } else {
-      setRegistros((prev) => [
-        ...prev,
-        {
-          id: formulario.id,
-          nombre: formulario.nombre,
-          cantidad: cantidadNueva,
-          precio,
-          total,
-        },
-      ]);
+      const productoExistente = registros.find(
+        (item) => item.id === formulario.id
+      );
+      if (productoExistente) {
+        const cantidadTotal = productoExistente.cantidad + cantidadNueva;
+        const actualizado = {
+          ...productoExistente,
+          cantidad: cantidadTotal,
+          total: cantidadTotal * precio,
+        };
+        setRegistros((prev) =>
+          prev.map((item) => (item.id === formulario.id ? actualizado : item))
+        );
+      } else {
+        setRegistros((prev) => [
+          ...prev,
+          {
+            id: formulario.id,
+            nombre: formulario.nombre,
+            cantidad: cantidadNueva,
+            precio,
+            total,
+          },
+        ]);
+      }
     }
-  }
 
-  // Limpiar estado
-  setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
-  setModoEdicion(false);
-  setIdEditando(null);
-};
-
+    setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
+    setModoEdicion(false);
+    setIdEditando(null);
+  };
 
   const handleEditar = (dato) => {
     setFormulario({
@@ -201,9 +229,6 @@ const Ventas = () => {
             abono: 0,
             deudas: total,
             estado: 1,
-            idCliente: {
-              idCliente: clienteSeleccionado.idCliente,
-            },
           }
         : null;
 
@@ -221,7 +246,12 @@ const Ventas = () => {
 
     try {
       console.log("factura", factura);
-      await axios.post("http://localhost:8080/angora/api/v1/ventas", factura);
+      await axios.post("http://localhost:8080/angora/api/v1/ventas", factura, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
       abrirModal("exito", "Venta registrada correctamente.");
       setMostrarModal(false);
       setPagoCon("");
@@ -231,8 +261,8 @@ const Ventas = () => {
       setRegistros([]);
       setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
     } catch (err) {
-      abrirModal("error", "Error al registrar la venta.");
-      console.error(err);
+      console.error("Error al registrar venta:", err.response?.status, err.response?.data);
+      abrirModal("error", `Error al registrar la venta: ${err.response?.data?.message || err.message}`);
     }
   };
 
@@ -344,15 +374,19 @@ const Ventas = () => {
 
               try {
                 const res = await axios.get(
-                  `http://localhost:8080/angora/api/v1/carteras/${selected.value}`
+                  `http://localhost:8080/angora/api/v1/carteras/${selected.value}`,
+                  {
+                    headers: {
+                      Accept: "application/json",
+                      Authorization: `Bearer ${token}`,
+                    },
+                  }
                 );
                 setCarteraCliente(res.data);
               } catch (error) {
+                console.error("Error al cargar cartera:", error.response?.status, error.response?.data);
                 setCarteraCliente(null);
-                abrirModal(
-                  "error",
-                  "No se pudo cargar la cartera del cliente."
-                );
+                abrirModal("error", "No se pudo cargar la cartera del cliente.");
               }
             }}
             placeholder="Seleccionar cliente"
@@ -360,7 +394,7 @@ const Ventas = () => {
             styles={{
               menuPortal: (base) => ({ ...base, zIndex: 9999 }),
             }}
-            />
+          />
         </div>
 
         <div>
