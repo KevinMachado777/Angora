@@ -147,7 +147,7 @@ const Perfil = () => {
       }
     }
 
-    const response = await fetch("http://localhost:8080/angora/api/v1/user", {
+    const response = await fetch("http://localhost:8080/angora/api/v1/user/perfil", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

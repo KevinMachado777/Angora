@@ -1,4 +1,4 @@
-package Angora.app.Utils;
+package Angora.app.Services.Email;
 
 import org.springframework.stereotype.Component;
 

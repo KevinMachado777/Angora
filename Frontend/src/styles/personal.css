@@ -1,10 +1,10 @@
 /* Contenedor del título */
 .titulo {
-     display: flex;
-  flex-direction: column;         
-  align-items: center;           
-  justify-content: center;
-  text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
 /* Estilos para el botón dentro del título */
@@ -17,40 +17,49 @@
     text-align: center;
     margin: 50px;
     margin-top: 0px;
-    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5); /* Sombra para efecto 3D */
-    transition: transform 1s; /* Transición suave para animaciones */
+    box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+    /* Sombra para efecto 3D */
+    transition: transform 1s;
+    /* Transición suave para animaciones */
     width: 250px;
     height: 300px;
-    position: relative; /* Base para efectos 3D con posicionamiento */
-    perspective: 1000px; /* Profundidad para efecto 3D */
+    position: relative;
+    /* Base para efectos 3D con posicionamiento */
+    perspective: 1000px;
+    /* Profundidad para efecto 3D */
     background: linear-gradient(#1b1a1a, #012E40);
-    border-radius: 30px; 
-    overflow: hidden; /* Contiene el contenido sin desbordar */
+    border-radius: 30px;
+    overflow: hidden;
+    /* Contiene el contenido sin desbordar */
 }
 
 /* Estilos para las imágenes dentro de .personal */
 .personal img {
     width: 150px;
     height: 150px;
-    border-radius: 200px; 
+    border-radius: 200px;
 }
 
 /* Estilos para los párrafos dentro de .personal */
 .personal p {
     color: white;
-    text-shadow: 3px 3px 5px rgba(255, 255, 255, 0.8); 
+    text-shadow: 3px 3px 5px rgba(255, 255, 255, 0.8);
     max-width: 100%;
-    word-wrap: break-word; /* Permite romper palabras largas */
+    word-wrap: break-word;
+    /* Permite romper palabras largas */
 }
 
 /* Estilos para las caras frontal y trasera de la tarjeta */
 .card-front,
 .card-back {
-    position: absolute; /* Superposición de las caras */
+    position: absolute;
+    /* Superposición de las caras */
     width: 100%;
     height: 100%;
-    backface-visibility: hidden; /* Oculta la cara no visible en 3D */
-    transition: transform 0.6s; /* Transición suave para el giro */
+    backface-visibility: hidden;
+    /* Oculta la cara no visible en 3D */
+    transition: transform 0.6s;
+    /* Transición suave para el giro */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -59,35 +68,44 @@
 
 /* Estilos específicos para la cara frontal */
 .card-front {
-    transform: rotateY(0deg); /* Posición inicial */
-    z-index: 1; /* Por encima por defecto */
+    transform: rotateY(0deg);
+    /* Posición inicial */
+    z-index: 1;
+    /* Por encima por defecto */
 }
 
 /* Estilos específicos para la cara trasera */
 .card-back {
-    transform: rotateY(180deg); /* Posición inicial invertida */
-    overflow: hidden; /* Contiene el contenido trasero */
-    z-index: 0; /* Por detrás por defecto */
+    transform: rotateY(180deg);
+    /* Posición inicial invertida */
+    overflow: hidden;
+    /* Contiene el contenido trasero */
+    z-index: 0;
+    /* Por detrás por defecto */
 }
 
 /* Regla para el efecto de giro en la cara frontal */
 .personal.girar .card-front {
-    transform: rotateY(-180deg); /* Giro completo al activar */
-    z-index: 0; /* Pasa atrás */
+    transform: rotateY(-180deg);
+    /* Giro completo al activar */
+    z-index: 0;
+    /* Pasa atrás */
 }
 
 /* Regla para el efecto de giro en la cara trasera */
 .personal.girar .card-back {
-    transform: rotateY(0deg); /* Vuelve a posición frontal */
-    z-index: 1; /* Pasa adelante */
+    transform: rotateY(0deg);
+    /* Vuelve a posición frontal */
+    z-index: 1;
+    /* Pasa adelante */
 }
 
 /* Estilos para el botón personalizado "Agregar Empleado" */
 .titulo .btn-custom-add {
-    background-color: #3CA6A6; 
+    background-color: #3CA6A6;
     color: #fff;
     border: none;
-    border-radius: 5px; 
+    border-radius: 5px;
     padding: 8px 20px;
     font-size: 18px;
     display: inline-block;
@@ -95,28 +113,33 @@
 
 /* Estilos al pasar el mouse sobre el botón */
 .titulo .btn-custom-add:hover {
-    background-color: #2F8C8C; /* Cambio de tono al pasar el mouse */
+    background-color: #2F8C8C;
+    /* Cambio de tono al pasar el mouse */
     color: #fff;
 }
 
 /* Estilos al enfocar o hacer clic en el botón */
 .titulo .btn-custom-add:focus,
 .titulo .btn-custom-add:active {
-    background-color: #2F8C8C; /* Mantiene el tono al interactuar */
+    background-color: #2F8C8C;
+    /* Mantiene el tono al interactuar */
     color: #fff;
-    box-shadow: 0 0 0 0.2rem rgba(60, 166, 166, 0.5); /* Sombra al enfocar */
+    box-shadow: 0 0 0 0.2rem rgba(60, 166, 166, 0.5);
+    /* Sombra al enfocar */
 }
 
 /* Estilos para los íconos dentro del botón */
 .titulo .btn-custom-add i {
-    margin-right: 8px; /* Espacio entre ícono y texto */
+    margin-right: 8px;
+    /* Espacio entre ícono y texto */
 }
 
 /* [Nota: Los siguientes estilos son nuevos, no estaban en tu versión original] */
 /* Nuevos estilos para el modal */
 .grupo-formulario .d-flex {
     display: flex;
-    justify-content: space-between; /* Distribuye elementos con espacio entre ellos */
+    justify-content: space-between;
+    /* Distribuye elementos con espacio entre ellos */
     margin-bottom: 10px;
 }
 
@@ -127,29 +150,38 @@
 /* Media queries para responsividad en pantallas pequeñas */
 @media (max-width: 768px) {
     .grupo-formulario .d-flex {
-        flex-direction: column; /* Cambia a diseño vertical */
-        align-items: flex-start; /* Alinea al inicio */
-        gap: 10px; /* Espacio entre elementos */
+        flex-direction: column;
+        /* Cambia a diseño vertical */
+        align-items: flex-start;
+        /* Alinea al inicio */
+        gap: 10px;
+        /* Espacio entre elementos */
     }
 
     .grupo-formulario label {
-        margin-right: 0; /* Elimina margen en diseño vertical */
+        margin-right: 0;
+        /* Elimina margen en diseño vertical */
     }
 
     .modal-contenido {
-        padding: 15px; /* Reduce padding en pantallas pequeñas */
+        padding: 15px;
+        /* Reduce padding en pantallas pequeñas */
     }
 
     .grupo-formulario .form-control {
-        font-size: 12px; /* Reduce tamaño de fuente */
-        padding: 6px; /* Reduce padding interno */
+        font-size: 12px;
+        /* Reduce tamaño de fuente */
+        padding: 6px;
+        /* Reduce padding interno */
     }
 }
 
 @media (max-width: 480px) {
     .grupo-formulario .form-control {
-        font-size: 10px; /* Más reducción de fuente */
-        padding: 4px; /* Más reducción de padding */
+        font-size: 10px;
+        /* Más reducción de fuente */
+        padding: 4px;
+        /* Más reducción de padding */
     }
 }
 
@@ -158,4 +190,3 @@
     justify-content: space-evenly;
     flex-wrap: wrap;
 }
-

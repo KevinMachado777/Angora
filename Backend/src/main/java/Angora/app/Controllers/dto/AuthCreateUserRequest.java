@@ -11,6 +11,5 @@ public record AuthCreateUserRequest(
         @NotBlank String correo,
         @NotBlank String telefono,
         @NotBlank String direccion,
-        @NotBlank String foto,
         @Valid AuthCreatePermissionRequest permissions
 ) {}

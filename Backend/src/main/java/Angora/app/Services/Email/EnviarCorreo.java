@@ -1,6 +1,6 @@
 package Angora.app.Services.Email;
 
-import Angora.app.Utils.EmailTemplateProcessor;
+import Angora.app.Services.Email.EmailTemplateProcessor;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;

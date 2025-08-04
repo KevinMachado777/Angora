@@ -3,9 +3,6 @@ import axios from 'axios';
 // instancia de axios para manejar las solicitudes HTTP
 const api = axios.create({
   baseURL: 'http://localhost:8080/angora/api/v1',
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Interceptores para manejar solicitudes y respuestas
