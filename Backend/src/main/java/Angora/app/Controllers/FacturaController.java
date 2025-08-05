@@ -6,21 +6,25 @@ import Angora.app.Entities.Producto;
 import Angora.app.Entities.Cliente;
 import Angora.app.Entities.Usuario;
 import Angora.app.Entities.Cartera;
+import Angora.app.Controllers.dto.ConfirmarFacturaDTO;
+import Angora.app.Controllers.dto.FacturaPendienteDTO;
 import Angora.app.Repositories.FacturaRepository;
 import Angora.app.Repositories.FacturaProductoRepository;
 import Angora.app.Repositories.ProductoRepository;
 import Angora.app.Repositories.ClienteRepository;
 import Angora.app.Repositories.UsuarioRepository;
 import Angora.app.Repositories.CarteraRepository;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/ventas")
@@ -72,20 +76,16 @@ public class FacturaController {
                 factura.setCajero(null);
             }
 
-            // Validar y actualizar cartera si existe
+            // Validar y asignar cartera si existe, sin actualizar deudas
             if (factura.getIdCartera() != null) {
                 Cartera cartera = carteraRepository.findById(factura.getIdCartera().getIdCartera())
                         .orElseThrow(() -> new RuntimeException("Cartera no encontrada: " + factura.getIdCartera().getIdCartera()));
-
-                // Sumar la deuda de esta factura a la cartera
-                Float deudaActual = cartera.getDeudas() != null ? cartera.getDeudas() : 0f;
-                Float nuevaDeuda = deudaActual + factura.getSaldoPendiente();
-                cartera.setDeudas(nuevaDeuda);
-
-                carteraRepository.save(cartera); // Importante: guardar antes de asignar a la factura
-
                 factura.setIdCartera(cartera);
             }
+
+            // Establecer estado inicial como PENDIENTE
+            factura.setEstado("PENDIENTE");
+            factura.setSaldoPendiente(factura.getTotal() != null ? factura.getTotal().floatValue() : 0.0f);
 
             // Guardar la factura
             Factura savedFactura = facturaRepository.save(factura);
@@ -96,7 +96,5 @@ public class FacturaController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
         }
     }
-
-
 
 }

@@ -44,5 +44,8 @@ public interface FacturaRepository extends JpaRepository<Factura, Long> {
     @Query("SELECT f FROM Factura f WHERE f.cliente.idCliente = :idCliente")
     List<Factura> findByIdCliente(@Param("idCliente") Long idCliente);
 
+    @Query("SELECT f FROM Factura f JOIN FETCH f.cliente JOIN FETCH f.cajero WHERE f.estado = :estado")
+    List<Factura> findByEstado(String estado);
+
 
 }
