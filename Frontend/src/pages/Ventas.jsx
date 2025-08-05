@@ -58,7 +58,7 @@ const Ventas = () => {
 
     // Cargar productos
     axios
-      .get("http://localhost:8080/angora/api/v1/inventarioProducto", {
+      .get("http://localhost:8080/angora/api/v1/inventarioProducto/listado", {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,

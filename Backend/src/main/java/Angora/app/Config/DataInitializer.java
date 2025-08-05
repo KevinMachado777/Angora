@@ -43,6 +43,9 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private ProductoService productoService;
 
+    @Autowired
+    private ProveedorRepository proveedorRepository;
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
@@ -95,7 +98,6 @@ public class DataInitializer implements CommandLineRunner {
                 .build();
 
         crearYAsignarPermiso("HOME", List.of(samuel, kevin, johan), permisosToCreate);
-        crearYAsignarPermiso("PERFIL", List.of(samuel, kevin, johan), permisosToCreate);
         crearYAsignarPermiso("DASHBOARD", List.of(kevin, johan), permisosToCreate);
         crearYAsignarPermiso("PERSONAL", List.of(kevin, johan), permisosToCreate);
         crearYAsignarPermiso("INVENTARIOS", List.of(samuel, kevin, johan), permisosToCreate);

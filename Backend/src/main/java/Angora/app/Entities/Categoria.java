@@ -27,7 +27,7 @@ public class Categoria {
     private String nombre;
 
     @OneToMany(mappedBy = "idCategoria", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference("categoria-productos")
     @ToString.Exclude
     private List<Producto> productos;
 

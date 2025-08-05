@@ -27,6 +27,18 @@ public class InventarioProductoController {
         return new ResponseEntity<>(productos, HttpStatus.OK);
     }
 
+    // Endpoint para listar en ventas
+    @GetMapping("/listado")
+    public List<Producto> listarProductos(){
+        var productos = productoService.listarProductos();
+        return productos;
+    }
+
+    @PutMapping("/{cantidadComprada}")
+    public void actualizarStock(@RequestBody Producto producto, @PathVariable int cantidadComprada){
+        productoService.disminuirStock(producto, cantidadComprada);
+    }
+
     // Obtener producto por un ID
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id){

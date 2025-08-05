@@ -62,9 +62,8 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET, "/auth/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/user/{correo}").permitAll();
 
-
                     // Rutas protegidas de Portafolio
-                    http.requestMatchers(HttpMethod.GET, "/clientes/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.GET, "/clientes/**").hasAnyAuthority("CLIENTES", "VENTAS");
                     http.requestMatchers(HttpMethod.POST, "/clientes").hasAuthority("CLIENTES");
                     http.requestMatchers(HttpMethod.PUT, "/clientes/**").hasAuthority("CLIENTES");
                     http.requestMatchers(HttpMethod.OPTIONS, "/clientes/**").hasAuthority("CLIENTES");
@@ -80,7 +79,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.DELETE, "/user/**").hasAuthority("PERSONAL");
 
                     // Rutas protegidas de Cartera
-                    http.requestMatchers(HttpMethod.GET, "/carteras/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.GET, "/carteras/**").hasAnyAuthority("CLIENTES", "VENTAS");
                     http.requestMatchers(HttpMethod.POST, "/carteras/**").hasAuthority("CLIENTES");
                     http.requestMatchers(HttpMethod.PUT, "/carteras/**").hasAuthority("CLIENTES");
                     http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").hasAuthority("CLIENTES");
@@ -88,15 +87,22 @@ public class SecurityConfig {
                     // Rutas de reportes
                     http.requestMatchers(HttpMethod.GET, "/reportes/**").hasAuthority("REPORTES");
 
-                    // Rutas de producto
-                    http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/**").permitAll();
-                    http.requestMatchers(HttpMethod.GET, "/inventarioProducto").permitAll();
+                    // Rutas de los inventarios
+                    http.requestMatchers(HttpMethod.GET, "/inventarioProducto/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.POST, "/inventarioProducto").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.PUT, "/inventarioProducto").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.DELETE, "/inventarioProducto/**").hasAuthority("INVENTARIOS");
 
                     // Rutas de ventas
                     http.requestMatchers(HttpMethod.POST, "/ventas/**").permitAll();
-                    http.requestMatchers(HttpMethod.GET,"/activos-con-cartera/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET,"/activos-con-cartera/**").hasAnyAuthority("CLIENTES", "VENTAS");
 
+                    // Rutas de pedidos
+                    http.requestMatchers(HttpMethod.DELETE,"/pedidos/**").hasAuthority("PEDIDOS");
+                    http.requestMatchers(HttpMethod.GET,"/pedidos/pendientes").hasAuthority("PEDIDOS");
+                    http.requestMatchers(HttpMethod.PUT,"/pedidos/confirmar/**").hasAuthority("PEDIDOS");
 
+                    // El resto necesita autenticacion
                     http.anyRequest().denyAll();
                 })
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), UsernamePasswordAuthenticationFilter.class)

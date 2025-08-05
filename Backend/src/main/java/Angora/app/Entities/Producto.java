@@ -34,14 +34,14 @@ public class Producto implements Inventariable {
 
     @ManyToOne
     @JoinColumn(name = "id_categoria")
-    @JsonBackReference
+    @JsonBackReference("categoria-productos")
     private Categoria idCategoria;
 
     private String nombre;
     private Float stock;
 
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference("materias-productos")
     private List<MateriaProducto> materias;
 
     @Override

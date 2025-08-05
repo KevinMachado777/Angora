@@ -2,7 +2,7 @@ package Angora.app.Entities;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,7 +29,7 @@ public class MateriaProducto {
 
     @ManyToOne
     @JoinColumn(name = "id_producto", referencedColumnName = "id_producto", nullable = false)
-    @JsonIgnore
+    @JsonBackReference("materias-productos")
     private Producto producto;
 
     // MateriaProducto.java

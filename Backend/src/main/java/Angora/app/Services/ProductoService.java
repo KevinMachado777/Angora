@@ -115,6 +115,10 @@ public class ProductoService {
         return productoDto;
     }
 
+    public List<Producto> listarProductos() {
+        return productoRepository.findAll();
+    }
+
     // Crear un producto recibiendo los datos en dto,
     // Luego se construye el objeto de Producto y se guarda en la base de datos
     @Transactional
@@ -359,11 +363,12 @@ public class ProductoService {
 
     // Método que elimina un producto
     @Transactional
-    public void delete(Long id){
+    public void delete(Long id) {
         materiaProductoRepository.deleteByProducto_IdProducto(id);
         productoRepository.deleteById(id);
 
-    @Override
+    }
+
     public void disminuirStock(Producto producto, int cantidadComprada) {
         producto.setStock(producto.getStock() - cantidadComprada);
         productoRepository.save(producto);
