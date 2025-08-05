@@ -1,6 +1,7 @@
 package Angora.app.Entities;
 
 import Angora.app.Contract.Inventariable;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,10 +22,17 @@ public class MateriaPrima implements Inventariable {
     @Column(name = "id_materia")
     private Long idMateria;
 
+    @Column(nullable = false)
     private String nombre;
+
+    @Column(nullable = false)
     private Float costo;
+
+    @Column(nullable = false)
     private Float venta;
-    private Integer cantidad;
+
+    @Column(nullable = false)
+    private Float cantidad;
 
     @Override
     public Long getId() {
