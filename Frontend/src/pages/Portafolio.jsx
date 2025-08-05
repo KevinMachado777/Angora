@@ -84,7 +84,7 @@ const Portafolio = () => {
             try {
                 // Obtiene los clientes activos desde el backend
                 const respuestaClientes = await axios.get(`${urlBackend}/clientes`, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -96,7 +96,7 @@ const Portafolio = () => {
                         try {
                             // Obtiene la cartera del cliente
                             const respuestaCartera = await axios.get(`${urlBackend}/carteras/${cliente.idCliente}`, {
-                                headers: { 
+                                headers: {
                                     'Accept': 'application/json',
                                     'Authorization': `Bearer ${token}`
                                 }
@@ -145,12 +145,12 @@ const Portafolio = () => {
                 try {
                     // Obtiene la cartera del cliente
                     const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
                     });
-                    
+
                     console.log(`Respuesta GET /api/carteras/${clienteId}:`, JSON.stringify(respuesta.data, null, 2));
                     // Filtra las facturas con saldo pendiente
                     const facturas = Array.isArray(respuesta.data.facturas)
@@ -250,7 +250,7 @@ const Portafolio = () => {
             try {
                 // Envía la solicitud para desactivar el cliente
                 const response = await axios.put(`${urlBackend}/clientes/${personaDesactivar.id}/desactivar`, {}, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -296,7 +296,7 @@ const Portafolio = () => {
             console.log("Iniciando mostrarModalCarteras...");
             // Obtiene las carteras activas desde el backend
             const respuesta = await axios.get(`${urlBackend}/carteras?estado=true`, {
-                headers: { 
+                headers: {
                     'Accept': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
@@ -388,7 +388,7 @@ const Portafolio = () => {
             console.log("Iniciando mostrarModalInactivos...");
             // Obtiene los clientes inactivos desde el backend
             const respuesta = await axios.get(`${urlBackend}/clientes/inactivos`, {
-                headers: { 
+                headers: {
                     'Accept': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
@@ -444,7 +444,7 @@ const Portafolio = () => {
             try {
                 // Envía la solicitud para reactivar el cliente
                 const response = await axios.put(`${urlBackend}/clientes/${clienteReactivar.idCliente}/activar`, {}, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -454,7 +454,7 @@ const Portafolio = () => {
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 try {
                     const respuestaCartera = await axios.get(`${urlBackend}/carteras/${clienteReactivar.idCliente}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -541,7 +541,7 @@ const Portafolio = () => {
                 // Actualiza un cliente existente
                 console.log(`Enviando PUT /api/clientes/${personaSelect.id} con datos:`, clienteData);
                 const respuesta = await axios.put(`${urlBackend}/clientes/${personaSelect.id}`, clienteData, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -551,7 +551,7 @@ const Portafolio = () => {
                 if (creditoActivo !== (personaSelect.cartera === "Activa")) {
                     console.log(`Enviando PUT /api/carteras/${personaSelect.id}/estado con estado:`, creditoActivo);
                     await axios.put(`${urlBackend}/carteras/${personaSelect.id}/estado`, { estado: creditoActivo }, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -561,7 +561,7 @@ const Portafolio = () => {
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
                     const respuestaCartera = await axios.get(`${urlBackend}/carteras/${personaSelect.id}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -592,7 +592,7 @@ const Portafolio = () => {
                 // Crea un nuevo cliente
                 console.log("Enviando POST /api/clientes con datos:", clienteData);
                 const respuesta = await axios.post(`${urlBackend}/clientes`, clienteData, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -612,7 +612,7 @@ const Portafolio = () => {
                 if (creditoActivo) {
                     console.log(`Enviando PUT /api/carteras/${respuesta.data.cliente.idCliente}/estado con estado: true`);
                     await axios.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/estado`, { estado: true }, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -622,7 +622,7 @@ const Portafolio = () => {
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
                     const respuestaCartera = await axios.get(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -706,7 +706,7 @@ const Portafolio = () => {
                 fecha: new Date().toISOString().split('T')[0],
                 idFactura: facturaSeleccionadaParaAbono.idFactura
             }, {
-                headers: { 
+                headers: {
                     'Accept': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
@@ -745,36 +745,38 @@ const Portafolio = () => {
     };
 
     // Abre la modal de detalles de una factura
-    const abrirModalDetalles = (facturaRow) => {
+    const abrirModalDetalles = async (facturaRow) => {
         try {
             console.log("facturaRow recibida en abrirModalDetalles:", facturaRow);
-            // Extrae el objeto de la factura
-            let facturaObj;
-            if (Array.isArray(facturaRow)) {
-                facturaObj = facturaRow[facturaRow.length - 1]?._factura;
-            } else {
-                facturaObj = facturaRow._factura || facturaRow;
-            }
-            console.log("facturaObj extraída:", facturaObj);
-            // Valida el ID de la factura
-            if (!facturaObj || !facturaObj.idFactura) {
+
+            // Extraer el ID de la factura
+            const idFactura = facturaRow.idFactura;
+
+            if (!idFactura) {
                 throw new Error("ID de factura no válido.");
             }
-            const clienteId = personaCartera?.id || personaSelect?.id;
-            console.log("creditosPorCliente:", creditosPorCliente);
-            console.log("Buscando factura con idFactura:", facturaObj.idFactura, "para clienteId:", clienteId);
-            // Busca la factura en los créditos del cliente
-            const factura = creditosPorCliente[clienteId]?.facturas?.find(f => f.idFactura === facturaObj.idFactura);
-            if (!factura) {
-                throw new Error("Factura no encontrada en creditosPorCliente.");
-            }
-            console.log("Factura seleccionada para detalles:", factura);
-            // Actualiza la factura seleccionada
+
+            // Hacer solicitud al backend para obtener la factura completa
+            const respuesta = await axios.get(`${urlBackend}/carteras/facturas/${idFactura}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const facturaCompleta = respuesta.data;
+
+            // Asegurarse de que la factura tenga los datos necesarios
+            const factura = {
+                ...facturaCompleta,
+                cajero: facturaCompleta.cajero || { id: "Desconocido" }, // Fallback si el cajero no está presente
+                productos: Array.isArray(facturaCompleta.productos) ? facturaCompleta.productos : []
+            };
+
+            console.log("Factura completa cargada para detalles:", factura);
             setFacturaSeleccionada(factura);
-            // Abre la modal de detalles
             setModalDetallesAbierta(true);
         } catch (error) {
-            // Maneja errores al cargar los detalles de la factura
             setModalError(error.message || "Error al cargar los detalles de la factura.");
             console.error("Error al cargar los detalles de la factura:", error);
         }
@@ -1146,7 +1148,7 @@ const Portafolio = () => {
                             <p><strong>Factura #{facturaSeleccionada.idFactura}</strong></p>
                             <p>Fecha: {new Date(facturaSeleccionada.fecha).toLocaleDateString('es-CO')}</p>
                             <p>Cliente: {personaCartera?.nombre || personaSelect?.nombre} {personaCartera?.apellido || personaSelect?.apellido}</p>
-                            <p>Cajero: {facturaSeleccionada.cajero}</p>
+                            <p>Cajero: {facturaSeleccionada.cajero?.nombre || 'Desconocido'}</p>
                             <p>Estado: {facturaSeleccionada.estado}</p>
                             <hr />
                             <table>
@@ -1160,15 +1162,15 @@ const Portafolio = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {facturaSeleccionada.producto && Array.isArray(facturaSeleccionada.producto) && facturaSeleccionada.producto.length > 0 ? (
-                                        facturaSeleccionada.producto.map((item, i) => (
+                                    {facturaSeleccionada.productos && facturaSeleccionada.productos.length > 0 ? (
+                                        facturaSeleccionada.productos.map((item, i) => (
                                             <tr key={i}>
-                                                <td>{item.idProducto || 'N/A'}</td>
+                                                <td>{item.id || 'N/A'}</td>
                                                 <td>{item.nombre || 'Desconocido'}</td>
-                                                <td>{facturaSeleccionada.cantidad || 1}</td>
+                                                <td>{item.cantidad || 1}</td>
                                                 <td>
                                                     <NumericFormat
-                                                        value={item.precio || facturaSeleccionada.subtotal || 0}
+                                                        value={item.precio || 0}
                                                         displayType="text"
                                                         thousandSeparator
                                                         prefix="$"
@@ -1176,7 +1178,7 @@ const Portafolio = () => {
                                                 </td>
                                                 <td>
                                                     <NumericFormat
-                                                        value={(facturaSeleccionada.cantidad || 1) * (item.precio || facturaSeleccionada.subtotal || 0)}
+                                                        value={(item.cantidad || 1) * (item.precio || 0)}
                                                         displayType="text"
                                                         thousandSeparator
                                                         prefix="$"
@@ -1225,7 +1227,6 @@ const Portafolio = () => {
                         </div>
                     )}
                     <div className="pie-modal">
-                        {/* Botón para cerrar la modal */}
                         <BotonAceptar type="button" onClick={cerrarModalDetalles} />
                     </div>
                 </Modal>
