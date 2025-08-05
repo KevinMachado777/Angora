@@ -1,6 +1,7 @@
 package Angora.app.Entities;
 
 import Angora.app.Contract.Inventariable;
+import Angora.app.Contract.InventariableMateria;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 // Listener para que la tabla de movimientos le pueda hacer seguimiento a esta entidad
 // @EntityListeners(Angora.app.Entities.MovimientoListener.class)
-public class MateriaPrima implements Inventariable {
+public class MateriaPrima implements InventariableMateria {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

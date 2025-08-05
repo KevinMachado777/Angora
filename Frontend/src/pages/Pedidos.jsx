@@ -29,6 +29,7 @@ const Pedidos = () => {
     mensaje: "",
     visible: false,
   });
+  const [isLoading, setIsLoading] = useState(true); // Estado para indicador de carga
 
   const abrirModal = (tipo, mensaje) => {
     setModalMensaje({ tipo, mensaje, visible: true });
@@ -42,43 +43,52 @@ const Pedidos = () => {
 
     if (!token) {
       abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      setIsLoading(false);
       return;
     }
 
-    // Cargar inventario
-    axios
-      .get("http://localhost:8080/angora/api/v1/inventarioProducto", {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      .then((res) => {
-        console.log("Productos recibidos:", res.data);
-        setInventario(res.data);
-      })
-      .catch((err) => {
-        console.error("Error al cargar productos:", err.response?.status, err.response?.data);
-        abrirModal("error", `Error al cargar productos: ${err.response?.data?.message || err.message}`);
-      });
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
 
-    // Cargar facturas pendientes
-    axios
-      .get("http://localhost:8080/angora/api/v1/pedidos/pendientes", {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      .then((res) => {
-        console.log("Facturas pendientes recibidas:", res.data);
-        setPedidosPendiente(res.data);
-      })
-      .catch((err) => {
-        console.error("Error al cargar facturas pendientes:", err.response?.status, err.response?.data);
-        abrirModal("error", `Error al cargar facturas pendientes: ${err.response?.data?.message || err.message}`);
-      });
+        // Cargar inventario
+        const inventarioResponse = await axios.get("http://localhost:8080/angora/api/v1/inventarioProducto/listado", {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("Productos recibidos:", inventarioResponse.data);
+        setInventario(inventarioResponse.data);
+
+        // Cargar facturas pendientes
+        const pedidosResponse = await axios.get("http://localhost:8080/angora/api/v1/pedidos/pendientes", {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("Facturas pendientes recibidas:", pedidosResponse.data);
+        setPedidosPendiente(pedidosResponse.data);
+      } catch (err) {
+        console.error("Error al cargar datos:", err.response?.status, err.response?.data);
+        abrirModal("error", `Error al cargar datos: ${err.response?.data?.message || err.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, [token]);
+
+  useEffect(() => {
+    console.log("Producción pendiente calculada:", produccionPendiente);
+    console.log("Registros enviados a TablaDetalles:", produccionPendiente.map((p) => ({
+      idProducto: p.idProducto,
+      nombre: p.nombre,
+      cantidad: p.cantidad,
+    })));
+  }, [inventario, pedidosPendiente]);
 
   const confirmarVenta = async (imprimir) => {
     if (!pedidoAConfirmar || productosAConfirmar.length === 0) {
@@ -86,10 +96,9 @@ const Pedidos = () => {
       return;
     }
 
-    // Preparar datos para confirmar la factura
     const actualizarCartera = pedidoAConfirmar.saldoPendiente > 0 && pedidoAConfirmar.saldoPendiente === pedidoAConfirmar.total;
     const productosDTO = productosAConfirmar.map((p) => ({
-      idProducto: p.id,
+      idProducto: p.idProducto || p.id, // Maneja idProducto o id
       cantidad: p.cantidad,
     }));
 
@@ -106,9 +115,8 @@ const Pedidos = () => {
         },
       });
 
-      // Actualizar inventario localmente
       const nuevoInventario = inventario.map((prod) => {
-        const encontrado = productosAConfirmar.find((p) => p.id === prod.id);
+        const encontrado = productosAConfirmar.find((p) => (p.idProducto || p.id) === prod.idProducto);
         if (encontrado) {
           return { ...prod, stock: prod.stock - encontrado.cantidad };
         }
@@ -116,10 +124,8 @@ const Pedidos = () => {
       });
       setInventario(nuevoInventario);
 
-      // Eliminar factura de la lista de pendientes
       setPedidosPendiente(pedidosPendiente.filter((p) => p.idFactura !== pedidoAConfirmar.idFactura));
 
-      // Generar PDF si se solicita
       if (imprimir) {
         generarPDF({
           ...pedidoAConfirmar,
@@ -142,12 +148,13 @@ const Pedidos = () => {
     doc.setFontSize(12);
     doc.text(`Factura - Ticket #${pedido.idFactura}`, 10, 10);
     doc.text(`Cliente: ${pedido.cliente.nombre}`, 10, 20);
-    doc.text(`Fecha: ${pedido.fecha.toLocaleString()}`, 10, 30);
+    doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 30);
     let y = 45;
     doc.text("Productos:", 10, y);
     y += 10;
     pedido.productos.forEach((p, i) => {
-      doc.text(`- ${p.nombre} x${p.cantidad} ($${p.precio})`, 10, y);
+      const precioConIva = p.iva ? p.precio * 1.19 : p.precio;
+      doc.text(`- ${p.nombre} x${p.cantidad} ($${precioConIva.toFixed(2)})`, 10, y);
       y += 10;
     });
     doc.text(`Total: $${pedido.total}`, 10, y + 10);
@@ -167,11 +174,16 @@ const Pedidos = () => {
   const produccionPendiente = inventario
     .map((producto) => {
       const cantidadTotal = pedidosPendiente.reduce((total, pedido) => {
-        const encontrado = pedido.productos.find((p) => p.id === producto.id);
+        const encontrado = pedido.productos.find((p) => {
+          const match = (p.idProducto || p.id) === producto.idProducto;
+          console.log(`Comparando producto ${producto.idProducto} con pedido producto ${p.idProducto || p.id}: ${match}`);
+          return match;
+        });
         return encontrado ? total + encontrado.cantidad : total;
       }, 0);
+      console.log(`Producto ${producto.idProducto} (${producto.nombre}): ${cantidadTotal} unidades pendientes`);
       return {
-        id: producto.id,
+        idProducto: producto.idProducto,
         nombre: producto.nombre,
         cantidad: cantidadTotal,
       };
@@ -182,7 +194,7 @@ const Pedidos = () => {
   const abrirModalClientesProducto = (producto) => {
     const resultado = pedidosPendiente
       .map((ticket) => {
-        const productoEnFactura = ticket.productos.find((p) => p.id === producto.id);
+        const productoEnFactura = ticket.productos.find((p) => (p.idProducto || p.id) === producto.idProducto);
         if (productoEnFactura) {
           return {
             cliente: ticket.cliente.nombre,
@@ -193,6 +205,7 @@ const Pedidos = () => {
         return null;
       })
       .filter(Boolean);
+    console.log("Clientes con producto pendiente:", resultado);
     setClientesProducto(resultado);
     setProductoSeleccionado(producto);
     setMostrarClientesProducto(true);
@@ -241,57 +254,85 @@ const Pedidos = () => {
       <div className="container-tablas">
         <div>
           <h4 className="text-center">Producción Pendiente</h4>
-          <TablaDetalles
-            encabezados={["ID", "Nombre", "Cantidad", "Detalles"]}
-            registros={produccionPendiente.map((p) => ({
-              id: p.id,
-              nombre: p.nombre,
-              cantidad: p.cantidad,
-            }))}
-            onIconClick={abrirModalClientesProducto}
-          />
+          {isLoading ? (
+            <p className="text-center text-muted">Cargando producción pendiente...</p>
+          ) : produccionPendiente.length === 0 ? (
+            <p className="text-center text-muted">No hay producción pendiente.</p>
+          ) : (
+            <TablaDetalles
+              encabezados={["ID", "Nombre", "Cantidad", "Detalles"]}
+              registros={produccionPendiente.map((p) => ({
+                idProducto: p.idProducto,
+                nombre: p.nombre,
+                cantidad: p.cantidad,
+              }))}
+              onIconClick={abrirModalClientesProducto}
+            />
+          )}
         </div>
 
         <div>
           <h4 className="text-center">Pedidos Pendientes</h4>
-          <table className="table table-sm table-bordered">
-            <thead>
-              <tr>
-                <th># Ticket</th>
-                <th>Cliente</th>
-                <th>Precio Total</th>
-                <th>Opciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pedidosPendiente.map((pedido, i) => (
-                <tr key={i}>
-                  <td>{pedido.idFactura}</td>
-                  <td>{pedido.cliente.nombre}</td>
-                  <td>
-                    <NumericFormat
-                      value={pedido.total}
-                      displayType="text"
-                      thousandSeparator="."
-                      decimalSeparator=","
-                      prefix="$"
-                    />
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-success btn-sm me-2"
-                      onClick={() => abrirModalConfirmar(pedido)}
-                    >
-                      Confirmar
-                    </button>
-                    <BotonEliminar
-                      onClick={() => abrirModalEliminarPedido(pedido)}
-                    />
+          {isLoading ? (
+            <p className="text-center text-muted">Cargando pedidos pendientes...</p>
+          ) : pedidosPendiente.length === 0 ? (
+            <table className="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th># Ticket</th>
+                  <th>Cliente</th>
+                  <th>Precio Total</th>
+                  <th>Opciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan="4" className="text-center text-muted">
+                    No hay pedidos pendientes.
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          ) : (
+            <table className="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th># Ticket</th>
+                  <th>Cliente</th>
+                  <th>Precio Total</th>
+                  <th>Opciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pedidosPendiente.map((pedido, i) => (
+                  <tr key={i}>
+                    <td>{pedido.idFactura}</td>
+                    <td>{pedido.cliente.nombre}</td>
+                    <td>
+                      <NumericFormat
+                        value={pedido.total}
+                        displayType="text"
+                        thousandSeparator="."
+                        decimalSeparator=","
+                        prefix="$"
+                      />
+                    </td>
+                    <td>
+                      <button
+                        className="btn btn-success btn-sm me-2"
+                        onClick={() => abrirModalConfirmar(pedido)}
+                      >
+                        Confirmar
+                      </button>
+                      <BotonEliminar
+                        onClick={() => abrirModalEliminarPedido(pedido)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -309,26 +350,30 @@ const Pedidos = () => {
           </h6>
         </div>
         <div className="row tarjetas-ajuste">
-          {clientesProducto.map((c, i) => (
-            <div key={i}>
-              <div className="card card-cliente shadow-sm">
-                <div className="card-body">
-                  <p>
-                    <i className="bi bi-person-circle text-primary"></i>
-                    <strong>{c.cliente}</strong>
-                  </p>
-                  <p>
-                    <i className="bi bi-receipt-cutoff text-dark"></i>
-                    Ticket #{c.ticketId}
-                  </p>
-                  <p>
-                    <i className="bi bi-box2-heart-fill text-success"></i>
-                    Cantidad: {c.cantidad}
-                  </p>
+          {clientesProducto.length === 0 ? (
+            <p className="text-center text-muted">No hay clientes con este producto pendiente.</p>
+          ) : (
+            clientesProducto.map((c, i) => (
+              <div key={i}>
+                <div className="card card-cliente shadow-sm">
+                  <div className="card-body">
+                    <p>
+                      <i className="bi bi-person-circle text-primary"></i>
+                      <strong>{c.cliente}</strong>
+                    </p>
+                    <p>
+                      <i className="bi bi-receipt-cutoff text-dark"></i>
+                      Ticket #{c.ticketId}
+                    </p>
+                    <p>
+                      <i className="bi bi-box2-heart-fill text-success"></i>
+                      Cantidad: {c.cantidad}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
         <div className="pie-modal mt-2">
           <BotonAceptar onClick={() => setMostrarClientesProducto(false)} />
@@ -356,7 +401,7 @@ const Pedidos = () => {
         </p>
         <div className="ticket">
           <h3 style={{ textAlign: "center" }}>Fragancey´s</h3>
-          <p>Fecha: {pedidoAConfirmar && pedidoAConfirmar.fecha.toLocaleString()}</p>
+          <p>Fecha: {pedidoAConfirmar && new Date(pedidoAConfirmar.fecha).toLocaleString()}</p>
           <p>Cajero: {user?.nombre}</p>
           <p>Cliente: {pedidoAConfirmar?.cliente.nombre}</p>
           <hr />
@@ -373,12 +418,12 @@ const Pedidos = () => {
             <tbody>
               {productosAConfirmar.map((item, i) => (
                 <tr key={i}>
-                  <td>{item.id}</td>
+                  <td>{item.idProducto || item.id}</td>
                   <td>{item.nombre}</td>
                   <td>{item.cantidad}</td>
                   <td>
                     <NumericFormat
-                      value={item.precio}
+                      value={item.iva ? item.precio * 1.19 : item.precio}
                       displayType="text"
                       thousandSeparator="."
                       decimalSeparator=","
@@ -387,7 +432,7 @@ const Pedidos = () => {
                   </td>
                   <td>
                     <NumericFormat
-                      value={item.cantidad * item.precio}
+                      value={item.cantidad * (item.iva ? item.precio * 1.19 : item.precio)}
                       displayType="text"
                       thousandSeparator="."
                       decimalSeparator=","

@@ -244,7 +244,7 @@ public class DataInitializer implements CommandLineRunner {
         dto.setNombre("Detergente en polvo");
         dto.setCosto(6000f);
         dto.setPrecio(8500f);
-        dto.setStock(50f);
+        dto.setStock(50);
         dto.setIva(true);
 
         CategoriaIdDTO catDto = new CategoriaIdDTO();

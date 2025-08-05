@@ -14,7 +14,7 @@ public class ProductoDTO {
     private String nombre;
     private Float costo;
     private Float precio;
-    private Float stock;
+    private Integer stock;
     private Boolean iva;
     private CategoriaIdDTO idCategoria;
     private List<MateriaProductoDTO> materias;
