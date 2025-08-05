@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 // Listener para que la tabla de movimientos le pueda hacer seguimiento a esta entidad
-@EntityListeners(Angora.app.Entities.MovimientoListener.class)
+// @EntityListeners(Angora.app.Entities.MovimientoListener.class)
 public class MateriaPrima implements Inventariable {
 
     @Id
@@ -24,7 +24,7 @@ public class MateriaPrima implements Inventariable {
     private String nombre;
     private Float costo;
     private Float venta;
-    private Float cantidad;
+    private Integer cantidad;
 
     @Override
     public Long getId() {

@@ -64,7 +64,7 @@ const Pedidos = () => {
 
     // Cargar facturas pendientes
     axios
-      .get("http://localhost:8080/angora/api/v1/ventas/pendientes", {
+      .get("http://localhost:8080/angora/api/v1/pedidos/pendientes", {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
@@ -99,7 +99,7 @@ const Pedidos = () => {
     };
 
     try {
-      await axios.put(`http://localhost:8080/angora/api/v1/ventas/confirmar/${pedidoAConfirmar.idFactura}`, confirmarFacturaDTO, {
+      await axios.put(`http://localhost:8080/angora/api/v1/pedidos/confirmar/${pedidoAConfirmar.idFactura}`, confirmarFacturaDTO, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
@@ -205,7 +205,7 @@ const Pedidos = () => {
 
   const eliminarPedido = async () => {
     try {
-      await axios.delete(`http://localhost:8080/angora/api/v1/ventas/${pedidoAEliminar.idFactura}`, {
+      await axios.delete(`http://localhost:8080/angora/api/v1/pedidos/${pedidoAEliminar.idFactura}`, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`,
