@@ -48,4 +48,7 @@ public class Factura {
     @JoinColumn(name = "id_cartera")
     @JsonBackReference("cartera-facturas")
     private Cartera idCartera;
+
+    @Column(name = "notas", length = 255)
+    private String notas;
 }

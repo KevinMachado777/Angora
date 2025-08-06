@@ -34,6 +34,7 @@ const Ventas = () => {
   const [modoEdicion, setModoEdicion] = useState(false);
   const [idEditando, setIdEditando] = useState(null);
   const [carteraCliente, setCarteraCliente] = useState(null);
+  const [errorNotas, setErrorNotas] = useState(false);
 
   const [modalMensaje, setModalMensaje] = useState({
     tipo: "",
@@ -45,12 +46,10 @@ const Ventas = () => {
     setModalMensaje({ tipo, mensaje, visible: true });
     setTimeout(() => {
       setModalMensaje({ tipo: "", mensaje: "", visible: false });
-    }, 3000);
+    }, 1500);
   };
 
   useEffect(() => {
-    console.log("Token enviado:", token);
-
     if (!token) {
       abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
       return;
@@ -83,7 +82,8 @@ const Ventas = () => {
       })
       .then((res) => {
         console.log("Clientes recibidos:", res.data);
-        setClientes(res.data);
+        const consumidorFinal = { idCliente: 0, nombre: "Consumidor final", carteraActiva: false };
+        setClientes([consumidorFinal, ...res.data]);
       })
       .catch((err) => {
         console.error("Error al cargar clientes:", err.response?.status, err.response?.data);
@@ -94,6 +94,16 @@ const Ventas = () => {
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormulario((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleNotasChange = (e) => {
+    const value = e.target.value;
+    setNotas(value);
+    if (!clienteSeleccionado || clienteSeleccionado.idCliente === 0) {
+      setErrorNotas(!value.trim());
+    } else {
+      setErrorNotas(false);
+    }
   };
 
   const handleAgregar = () => {
@@ -115,14 +125,12 @@ const Ventas = () => {
     }
 
     const precio = parseInt(producto.precio);
-    const total = cantidadNueva * precio;
 
     if (modoEdicion) {
       const actualizado = {
         ...formulario,
         cantidad: cantidadNueva,
         precio,
-        total,
       };
       setRegistros((prev) =>
         prev.map((item) => (item.id === idEditando ? actualizado : item))
@@ -136,7 +144,6 @@ const Ventas = () => {
         const actualizado = {
           ...productoExistente,
           cantidad: cantidadTotal,
-          total: cantidadTotal * precio,
         };
         setRegistros((prev) =>
           prev.map((item) => (item.id === formulario.id ? actualizado : item))
@@ -149,7 +156,6 @@ const Ventas = () => {
             nombre: formulario.nombre,
             cantidad: cantidadNueva,
             precio,
-            total,
           },
         ]);
       }
@@ -180,10 +186,24 @@ const Ventas = () => {
     }
   };
 
-  const total = registros.reduce((acu, item) => acu + item.total, 0);
-  const cambio = pagoCon - total;
+  const calculateInvoiceSummary = () => {
+    let subtotal = 0;
+    let totalWithIVA = 0;
+    registros.forEach((item) => {
+      const producto = productos.find((p) => p.id === item.id);
+      const precioUnitario = producto ? (producto.iva ? item.precio * 1.19 : item.precio) : item.precio;
+      subtotal += item.cantidad * item.precio;
+      totalWithIVA += item.cantidad * precioUnitario;
+    });
+    const roundedTotal = roundToNearest50(totalWithIVA);
+    return { subtotal, total: roundedTotal };
+  };
 
   const handleGuardar = () => {
+    if (registros.length === 0) {
+      abrirModal("advertencia", "Agrega al menos un producto.");
+      return;
+    }
     setMostrarModal(true);
   };
 
@@ -192,6 +212,8 @@ const Ventas = () => {
       abrirModal("advertencia", "Selecciona un método de pago");
       return;
     }
+
+    const { total } = calculateInvoiceSummary();
 
     if (
       metodoPago === "efectivo" &&
@@ -204,26 +226,29 @@ const Ventas = () => {
       return;
     }
 
-    if (!clienteSeleccionado) {
-      abrirModal("error", "Selecciona un cliente válido.");
-      return;
+    if (!clienteSeleccionado || clienteSeleccionado.idCliente === 0) {
+      if (!notas.trim()) {
+        setErrorNotas(true);
+        abrirModal("error", "Debes ingresar una nota cuando no hay cliente seleccionado o es Consumidor final.");
+        return;
+      }
     }
 
-    if (registros.length === 0) {
-      abrirModal("advertencia", "Agrega al menos un producto.");
-      return;
-    }
+    const { subtotal } = calculateInvoiceSummary();
 
     const productosCompletos = registros.map((r) => ({
       producto: { idProducto: r.id },
       cantidad: r.cantidad,
     }));
 
-    const clienteCompleto = { idCliente: clienteSeleccionado.idCliente };
+    const clienteCompleto = clienteSeleccionado && clienteSeleccionado.idCliente !== 0
+      ? { idCliente: clienteSeleccionado.idCliente }
+      : null;
+
     const cajeroCompleto = { id: user.id };
 
     const carteraCompleta =
-      metodoPago === "credito" && carteraCliente?.idCartera
+      metodoPago === "credito" && clienteSeleccionado?.idCliente !== 0 && carteraCliente?.idCartera
         ? {
             idCartera: carteraCliente.idCartera,
             abono: 0,
@@ -236,12 +261,13 @@ const Ventas = () => {
       fecha: new Date().toISOString(),
       cliente: clienteCompleto,
       productos: productosCompletos,
-      subtotal: total,
+      subtotal: subtotal,
       total: total,
-      saldoPendiente: metodoPago === "credito" ? total * 1.0 : 0.0,
+      saldoPendiente: metodoPago === "credito" ? total : 0.0,
       cajero: cajeroCompleto,
       estado: metodoPago === "credito" ? "PENDIENTE" : "PAGADO",
       idCartera: carteraCompleta,
+      notas: notas.trim() || null,
     };
 
     try {
@@ -260,6 +286,8 @@ const Ventas = () => {
       setClienteSeleccionado(null);
       setRegistros([]);
       setFormulario({ id: "", nombre: "", cantidad: "", precio: "" });
+      setCarteraCliente(null);
+      setErrorNotas(false);
     } catch (err) {
       console.error("Error al registrar venta:", err.response?.status, err.response?.data);
       abrirModal("error", `Error al registrar la venta: ${err.response?.data?.message || err.message}`);
@@ -276,6 +304,10 @@ const Ventas = () => {
     exito: "¡Éxito!",
     error: "Error",
     advertencia: "Advertencia",
+  };
+
+  const roundToNearest50 = (value) => {
+    return Math.round(value / 50) * 50;
   };
 
   return (
@@ -335,7 +367,7 @@ const Ventas = () => {
       </form>
 
       <CreadorTabla
-        cabeceros={["ID", "Nombre", "Cantidad", "Precio unitario", "Total"]}
+        cabeceros={["ID", "Nombre", "Cantidad", "Precio unitario"]}
         registros={registros}
         onEditar={handleEditar}
         onEliminar={handleEliminar}
@@ -365,47 +397,43 @@ const Ventas = () => {
                 : null
             }
             onChange={async (selected) => {
-              const nuevoCliente = {
-                idCliente: selected.value,
-                nombre: selected.label,
-                carteraActiva: selected.carteraActiva,
-              };
-              setClienteSeleccionado(nuevoCliente);
-
-              try {
-                const res = await axios.get(
-                  `http://localhost:8080/angora/api/v1/carteras/${selected.value}`,
-                  {
-                    headers: {
-                      Accept: "application/json",
-                      Authorization: `Bearer ${token}`,
-                    },
+              const nuevoCliente = selected
+                ? {
+                    idCliente: selected.value,
+                    nombre: selected.label,
+                    carteraActiva: selected.carteraActiva,
                   }
-                );
-                setCarteraCliente(res.data);
-              } catch (error) {
-                console.error("Error al cargar cartera:", error.response?.status, error.response?.data);
+                : null;
+              setClienteSeleccionado(nuevoCliente);
+              setErrorNotas(!nuevoCliente || nuevoCliente.idCliente === 0 && !notas.trim());
+
+              if (selected && selected.value !== 0) {
+                try {
+                  const res = await axios.get(
+                    `http://localhost:8080/angora/api/v1/carteras/${selected.value}`,
+                    {
+                      headers: {
+                        Accept: "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                    }
+                  );
+                  setCarteraCliente(res.data);
+                } catch (error) {
+                  console.error("Error al cargar cartera:", error.response?.status, error.response?.data);
+                  setCarteraCliente(null);
+                  abrirModal("error", "No se pudo cargar la cartera del cliente.");
+                }
+              } else {
                 setCarteraCliente(null);
-                abrirModal("error", "No se pudo cargar la cartera del cliente.");
               }
             }}
             placeholder="Seleccionar cliente"
+            isClearable
             menuPortalTarget={document.body}
             styles={{
               menuPortal: (base) => ({ ...base, zIndex: 9999 }),
             }}
-          />
-        </div>
-
-        <div>
-          <label>Total</label>
-          <NumericFormat
-            value={total}
-            displayType="text"
-            thousandSeparator="."
-            decimalSeparator=","
-            prefix="$"
-            className="input-readonly"
           />
         </div>
 
@@ -417,58 +445,82 @@ const Ventas = () => {
       <Modal isOpen={mostrarModal} onClose={() => setMostrarModal(false)}>
         <div className="modal-flex">
           <div className="ticket">
-            <h2 style={{ textAlign: "center" }}>Fragancey´s</h2>
+            <h2 style={{ textAlign: "center" }}>Fragancey's</h2>
             <p>
               <strong>Ticket</strong>
             </p>
-            <p>Fecha: {new Date().toLocaleDateString()}</p>
-            <p>Cajero: {user?.nombre}</p>
-            <p>Cliente: {clienteSeleccionado?.nombre}</p>
+            <p>Fecha: {new Date().toLocaleString()}</p>
+            <p>Cajero: {user?.nombre} {user?.apellido || ""}</p>
+            <p>Cliente: {clienteSeleccionado?.nombre || "Consumidor final"}</p>
             <p>Método de pago: {metodoPago}</p>
+            {notas && (
+              <p>
+                <strong>Notas:</strong> {notas}
+              </p>
+            )}
             <hr />
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
                   <th>Nombre</th>
                   <th>Cant.</th>
                   <th>Precio</th>
+                  <th>IVA</th>
                   <th>Total</th>
                 </tr>
               </thead>
               <tbody>
-                {registros.map((item, i) => (
-                  <tr key={i}>
-                    <td>{item.id}</td>
-                    <td>{item.nombre}</td>
-                    <td>{item.cantidad}</td>
-                    <td>
-                      <NumericFormat
-                        value={item.precio}
-                        displayType="text"
-                        thousandSeparator
-                        prefix="$"
-                      />
-                    </td>
-                    <td>
-                      <NumericFormat
-                        value={item.total}
-                        displayType="text"
-                        thousandSeparator
-                        prefix="$"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {registros.map((item, i) => {
+                  const producto = productos.find((p) => p.id === item.id);
+                  const iva = producto ? producto.iva : false;
+                  const precioUnitario = iva ? item.precio * 1.19 : item.precio;
+                  const totalProducto = item.cantidad * precioUnitario;
+                  return (
+                    <tr key={i}>
+                      <td>{item.nombre}</td>
+                      <td>{item.cantidad}</td>
+                      <td>
+                        <NumericFormat
+                          value={item.precio}
+                          displayType="text"
+                          thousandSeparator="."
+                          decimalSeparator=","
+                          prefix="$"
+                        />
+                      </td>
+                      <td>{iva ? "Sí" : "No"}</td>
+                      <td>
+                        <NumericFormat
+                          value={totalProducto}
+                          displayType="text"
+                          thousandSeparator="."
+                          decimalSeparator=","
+                          prefix="$"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             <hr />
             <p>
+              <strong>Subtotal (sin IVA): </strong>
+              <NumericFormat
+                value={calculateInvoiceSummary().subtotal}
+                displayType="text"
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="$"
+              />
+            </p>
+            <p>
               <strong>Total a pagar: </strong>
               <NumericFormat
-                value={total}
+                value={calculateInvoiceSummary().total}
                 displayType="text"
-                thousandSeparator
+                thousandSeparator="."
+                decimalSeparator=","
                 prefix="$"
               />
             </p>
@@ -479,25 +531,22 @@ const Ventas = () => {
                   <NumericFormat
                     value={pagoCon}
                     displayType="text"
-                    thousandSeparator
+                    thousandSeparator="."
+                    decimalSeparator=","
                     prefix="$"
                   />
                 </p>
                 <p>
                   <strong>Cambio: </strong>
                   <NumericFormat
-                    value={cambio}
+                    value={pagoCon - calculateInvoiceSummary().total}
                     displayType="text"
-                    thousandSeparator
+                    thousandSeparator="."
+                    decimalSeparator=","
                     prefix="$"
                   />
                 </p>
               </>
-            )}
-            {notas && (
-              <p>
-                <strong>Notas:</strong> {notas}
-              </p>
             )}
             <p style={{ textAlign: "center", marginTop: "1em" }}>
               ¡Gracias por tu compra!
@@ -521,7 +570,7 @@ const Ventas = () => {
                 name="metodoPago"
                 checked={metodoPago === "credito"}
                 onChange={() => setMetodoPago("credito")}
-                disabled={!clienteSeleccionado?.carteraActiva}
+                disabled={!clienteSeleccionado || clienteSeleccionado.idCliente === 0}
               />
               Crédito
             </label>
@@ -531,18 +580,21 @@ const Ventas = () => {
               disabled={metodoPago === "credito"}
               value={pagoCon}
               onValueChange={(val) => setPagoCon(val.floatValue || "")}
-              thousandSeparator
+              thousandSeparator="."
+              decimalSeparator=","
               prefix="$"
               allowNegative={false}
               placeholder="Ingrese el valor"
             />
 
-            <h4>Notas</h4>
+            <h4>Notas{!clienteSeleccionado || clienteSeleccionado.idCliente === 0 ? " (obligatorio)" : " (opcional)"}</h4>
             <textarea
               rows="4"
               value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder="Escribe una nota..."
+              onChange={handleNotasChange}
+              placeholder={!clienteSeleccionado || clienteSeleccionado.idCliente === 0 ? "Ingresa una nota (obligatorio)" : "Escribe una nota (opcional)..."}
+              className={errorNotas ? "error-input" : ""}
+              aria-invalid={errorNotas}
             ></textarea>
 
             <div className="acciones">

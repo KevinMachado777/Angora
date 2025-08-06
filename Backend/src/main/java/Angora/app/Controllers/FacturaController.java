@@ -62,10 +62,14 @@ public class FacturaController {
             }
             factura.setProductos(facturaProductos);
 
-            // Validar cliente
-            Cliente cliente = clienteRepository.findById(factura.getCliente().getIdCliente())
-                    .orElseThrow(() -> new RuntimeException("Cliente no encontrado: " + factura.getCliente().getIdCliente()));
-            factura.setCliente(cliente);
+            // Manejar cliente nulo
+            if (factura.getCliente() != null && factura.getCliente().getIdCliente() != null) {
+                Cliente cliente = clienteRepository.findById(factura.getCliente().getIdCliente())
+                        .orElseThrow(() -> new RuntimeException("Cliente no encontrado: " + factura.getCliente().getIdCliente()));
+                factura.setCliente(cliente);
+            } else {
+                factura.setCliente(null); // Permitir cliente nulo
+            }
 
             // Validar cajero solo si se envía
             if (factura.getCajero() != null) {

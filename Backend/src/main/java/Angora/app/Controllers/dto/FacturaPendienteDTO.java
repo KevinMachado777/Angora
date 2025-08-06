@@ -1,19 +1,23 @@
 package Angora.app.Controllers.dto;
 
+import lombok.Data;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Data
 public class FacturaPendienteDTO {
     private Long idFactura;
     private LocalDateTime fecha;
     private ClienteDTO cliente;
     private List<ProductoDTO> productos;
-    private Integer subtotal;
-    private Integer total;
+    private Float subtotal; // Changed to Float
+    private Float total; // Changed to Float
     private Float saldoPendiente;
     private String estado;
     private CarteraDTO idCartera;
     private UsuarioDTO cajero;
+    private String notas;
 
     // Getters y setters
     public Long getIdFactura() {
@@ -48,19 +52,19 @@ public class FacturaPendienteDTO {
         this.productos = productos;
     }
 
-    public Integer getSubtotal() {
+    public Float getSubtotal() {
         return subtotal;
     }
 
-    public void setSubtotal(Integer subtotal) {
+    public void setSubtotal(Float subtotal) {
         this.subtotal = subtotal;
     }
 
-    public Integer getTotal() {
+    public Float getTotal() {
         return total;
     }
 
-    public void setTotal(Integer total) {
+    public void setTotal(Float total) {
         this.total = total;
     }
 
@@ -99,6 +103,8 @@ public class FacturaPendienteDTO {
     public static class ClienteDTO {
         private Long idCliente;
         private String nombre;
+        private String apellido;
+        private String correo; // Changed from email to correo
 
         public Long getIdCliente() {
             return idCliente;
@@ -115,6 +121,22 @@ public class FacturaPendienteDTO {
         public void setNombre(String nombre) {
             this.nombre = nombre;
         }
+
+        public String getCorreo() {
+            return correo;
+        }
+
+        public void setCorreo(String correo) {
+            this.correo = correo;
+        }
+
+        public String getApellido() {
+            return apellido;
+        }
+
+        public void setApellido(String apellido) {
+            this.apellido = apellido;
+        }
     }
 
     public static class ProductoDTO {
@@ -122,6 +144,7 @@ public class FacturaPendienteDTO {
         private String nombre;
         private Integer cantidad;
         private Float precio;
+        private Boolean iva; // Added to support IVA calculation
 
         public Long getId() {
             return id;
@@ -154,13 +177,21 @@ public class FacturaPendienteDTO {
         public void setPrecio(Float precio) {
             this.precio = precio;
         }
+
+        public Boolean getIva() {
+            return iva;
+        }
+
+        public void setIva(Boolean iva) {
+            this.iva = iva;
+        }
     }
 
     public static class CarteraDTO {
         private Long idCartera;
         private Float abono;
         private Float deudas;
-        private Boolean estado; // Cambiado de Integer a Boolean
+        private Boolean estado;
 
         public Long getIdCartera() {
             return idCartera;
@@ -198,6 +229,7 @@ public class FacturaPendienteDTO {
     public static class UsuarioDTO {
         private Long id;
         private String nombre;
+        private String apellido;
 
         public Long getId() {
             return id;
@@ -213,6 +245,14 @@ public class FacturaPendienteDTO {
 
         public void setNombre(String nombre) {
             this.nombre = nombre;
+        }
+
+        public String getApellido() {
+            return apellido;
+        }
+
+        public void setApellido(String apellido){
+            this.apellido = apellido;
         }
     }
 }
