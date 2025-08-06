@@ -74,7 +74,7 @@ public class UserDetailService implements UserDetailsService{
     public String uploadImage(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             // URL de la imagen por defecto subida a Cloudinary
-            return "https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg";
+            return "https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754451121/Perfil_xtqub7.jpg";
         }
         Map uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.emptyMap());
         return uploadResult.get("url").toString();
