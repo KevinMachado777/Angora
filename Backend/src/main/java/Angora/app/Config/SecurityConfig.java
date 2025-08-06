@@ -101,6 +101,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.DELETE,"/pedidos/**").hasAuthority("PEDIDOS");
                     http.requestMatchers(HttpMethod.GET,"/pedidos/pendientes").hasAuthority("PEDIDOS");
                     http.requestMatchers(HttpMethod.PUT,"/pedidos/confirmar/**").hasAuthority("PEDIDOS");
+                    http.requestMatchers(HttpMethod.POST,"/pedidos/enviar-factura/**").hasAuthority("PEDIDOS");
 
                     // El resto necesita autenticacion
                     http.anyRequest().denyAll();
