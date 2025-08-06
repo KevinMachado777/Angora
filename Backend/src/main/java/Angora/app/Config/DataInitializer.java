@@ -69,7 +69,7 @@ public class DataInitializer implements CommandLineRunner {
                 .contraseña("1234")
                 .telefono("3196382919")
                 .direccion("Urrao")
-                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg")
+                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754451121/Perfil_xtqub7.jpg")
                 .permisos(new ArrayList<>()) // <-- lista inicializada
                 .build();
 
@@ -81,7 +81,7 @@ public class DataInitializer implements CommandLineRunner {
                 .contraseña("1234")
                 .telefono("3002950000")
                 .direccion("Versalles")
-                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg")
+                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754451121/Perfil_xtqub7.jpg")
                 .permisos(new ArrayList<>())
                 .build();
 
@@ -93,7 +93,7 @@ public class DataInitializer implements CommandLineRunner {
                 .contraseña("1234")
                 .telefono("3002955138")
                 .direccion("Tamesis")
-                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754246870/Perfil_sa1uug.jpg")
+                .foto("https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754451121/Perfil_xtqub7.jpg")
                 .permisos(new ArrayList<>())
                 .build();
 
