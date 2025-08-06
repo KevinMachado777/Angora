@@ -58,7 +58,7 @@ public class CarteraService implements ICarteraService {
 
     // Procesa un abono para una factura específica de un cliente
     @Override
-    public Cartera procesarAbono(Long idCliente, Double cantidad, String fecha, Long idFactura) {
+    public Cartera procesarAbono(Long idCliente, Integer cantidad, String fecha, Long idFactura) {
         logger.info("Procesando abono de " + cantidad + " para cliente con ID: " + idCliente + ", factura ID: " + idFactura);
         // Verifica que el cliente exista
         clienteRepository.findById(idCliente)
@@ -109,11 +109,11 @@ public class CarteraService implements ICarteraService {
                     return new RecursoNoEncontrado("Factura no encontrada con ID: " + idFactura);
                 });
         // Aplica el abono a la factura seleccionada
-        double cantidadRestante = cantidad;
-        float nuevoSaldo = facturaInicial.getSaldoPendiente() - (float) cantidadRestante;
+        Integer cantidadRestante = cantidad;
+        Integer nuevoSaldo = facturaInicial.getSaldoPendiente() - cantidadRestante;
         if (nuevoSaldo < 0) {
             cantidadRestante = -nuevoSaldo;
-            facturaInicial.setSaldoPendiente(0f);
+            facturaInicial.setSaldoPendiente(0);
         } else {
             facturaInicial.setSaldoPendiente(nuevoSaldo);
             cantidadRestante = 0;
@@ -123,10 +123,10 @@ public class CarteraService implements ICarteraService {
         if (cantidadRestante > 0) {
             for (Factura factura : facturas) {
                 if (!factura.getIdFactura().equals(idFactura) && factura.getSaldoPendiente() > 0) {
-                    nuevoSaldo = factura.getSaldoPendiente() - (float) cantidadRestante;
+                    nuevoSaldo = factura.getSaldoPendiente() - cantidadRestante;
                     if (nuevoSaldo < 0) {
                         cantidadRestante = -nuevoSaldo;
-                        factura.setSaldoPendiente(0f);
+                        factura.setSaldoPendiente(0);
                     } else {
                         factura.setSaldoPendiente(nuevoSaldo);
                         cantidadRestante = 0;
@@ -139,7 +139,7 @@ public class CarteraService implements ICarteraService {
         // Actualiza el total de deudas y abonos en la cartera
         float nuevasDeudas = facturas.stream()
                 .map(Factura::getSaldoPendiente)
-                .reduce(0f, Float::sum);
+                .reduce(0, Integer::sum);
         Float nuevoAbono = (float) (cartera.getAbono() + cantidad);
         cartera.setAbono(nuevoAbono);
         cartera.setDeudas(nuevasDeudas);

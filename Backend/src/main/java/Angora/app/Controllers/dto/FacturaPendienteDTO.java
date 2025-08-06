@@ -11,9 +11,9 @@ public class FacturaPendienteDTO {
     private LocalDateTime fecha;
     private ClienteDTO cliente;
     private List<ProductoDTO> productos;
-    private Float subtotal; // Changed to Float
-    private Float total; // Changed to Float
-    private Float saldoPendiente;
+    private Integer subtotal; // Changed to Float
+    private Integer total; // Changed to Float
+    private Integer saldoPendiente;
     private String estado;
     private CarteraDTO idCartera;
     private UsuarioDTO cajero;
@@ -52,27 +52,27 @@ public class FacturaPendienteDTO {
         this.productos = productos;
     }
 
-    public Float getSubtotal() {
+    public Integer getSubtotal() {
         return subtotal;
     }
 
-    public void setSubtotal(Float subtotal) {
+    public void setSubtotal(Integer subtotal) {
         this.subtotal = subtotal;
     }
 
-    public Float getTotal() {
+    public Integer getTotal() {
         return total;
     }
 
-    public void setTotal(Float total) {
+    public void setTotal(Integer total) {
         this.total = total;
     }
 
-    public Float getSaldoPendiente() {
+    public Integer getSaldoPendiente() {
         return saldoPendiente;
     }
 
-    public void setSaldoPendiente(Float saldoPendiente) {
+    public void setSaldoPendiente(Integer saldoPendiente) {
         this.saldoPendiente = saldoPendiente;
     }
 

@@ -82,7 +82,7 @@ public class CarteraController {
     @PostMapping(value = "/{idCliente}/abonos", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Cartera> procesarAbono(@PathVariable Long idCliente, @RequestBody Map<String, Object> body) {
         // Extrae la cantidad del abono del cuerpo
-        Double cantidad = ((Number) body.get("cantidad")).doubleValue();
+        Integer cantidad = ((Integer) body.get("cantidad"));
         // Extrae la fecha del abono
         String fecha = (String) body.get("fecha");
         // Extrae el ID de la factura, si existe
