@@ -89,7 +89,7 @@ public class FacturaController {
 
             // Establecer estado inicial como PENDIENTE
             factura.setEstado("PENDIENTE");
-            factura.setSaldoPendiente(factura.getTotal() != null ? factura.getTotal().floatValue() : 0.0f);
+            factura.setSaldoPendiente(factura.getTotal() != null ? factura.getTotal() : 0);
 
             // Guardar la factura
             Factura savedFactura = facturaRepository.save(factura);

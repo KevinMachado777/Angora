@@ -144,13 +144,7 @@ const Personal = () => {
   // Función para cerrar el modal de confirmación de eliminación
   const cerrarModalConfirmacion = async (aceptar) => {
     if (aceptar && personaEliminar) {
-      if (personaEliminar.foto && personaEliminar.foto !== imagenPorDefecto) {
-        try {
-          await api.delete(`/cloudinary/delete/${personaEliminar.foto.split("/").pop().split(".")[0]}`);
-        } catch (err) {
-          console.error("Error al eliminar imagen de Cloudinary:", err);
-        }
-      }
+
       api
         .delete(`${urlBackend}/user/${personaEliminar.id}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -204,7 +198,22 @@ const Personal = () => {
         : formulario.permisos.filter((p) => p.name !== permiso);
       setFormulario({ ...formulario, permisos: nuevosPermisos });
     } else {
-      setFormulario({ ...formulario, [name]: value });
+      // Validaciones en tiempo real
+      let nuevoValor = value;
+      if (name === "id" || name === "telefono") {
+        // Solo permitir números
+        nuevoValor = value.replace(/[^0-9]/g, "");
+        if (name === "id" && nuevoValor.length > 10) {
+          nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+        }
+        if (name === "telefono" && nuevoValor.length > 10) {
+          nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+        }
+      } else if (name === "nombre" || name === "apellido") {
+        // Solo permitir letras, tildes, ñ y espacios (excluir números y otros caracteres)
+        nuevoValor = value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "");
+      }
+      setFormulario({ ...formulario, [name]: nuevoValor });
     }
   };
 
@@ -217,27 +226,33 @@ const Personal = () => {
       return;
     }
 
-    // Validación: Asegurar que el nombre tenga al menos 3 caracteres
-    if (formulario.nombre.length < 3) {
-      abrirModalMensaje("advertencia", "El nombre debe tener al menos 3 caracteres.");
+    // Validación: Asegurar que el nombre tenga al menos 3 caracteres y solo letras (incluyendo tildes y ñ)
+    if (formulario.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formulario.nombre)) {
+      abrirModalMensaje("advertencia", "El nombre debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
       return;
     }
 
-    // Validación: Asegurar que el apellido tenga al menos 3 caracteres
-    if (formulario.apellido.length < 3) {
-      abrirModalMensaje("advertencia", "El apellido debe tener al menos 3 caracteres.");
+    // Validación: Asegurar que el apellido tenga al menos 3 caracteres y solo letras (incluyendo tildes y ñ)
+    if (formulario.apellido.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formulario.apellido)) {
+      abrirModalMensaje("advertencia", "El apellido debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
       return;
     }
 
-    // Validación: Asegurar que el teléfono tenga exactamente 10 dígitos
+    // Validación: Asegurar que el ID tenga entre 6 y 10 dígitos y solo números (solo al agregar)
+    if (!modalEdicion && (!/^\d{6,10}$/.test(formulario.id) || formulario.id.length < 6)) {
+      abrirModalMensaje("advertencia", "El ID debe tener entre 6 y 10 dígitos y solo números.");
+      return;
+    }
+
+    // Validación: Asegurar que el teléfono tenga exactamente 10 dígitos y solo números
     if (!/^\d{10}$/.test(formulario.telefono)) {
-      abrirModalMensaje("advertencia", "El teléfono debe tener exactamente 10 dígitos.");
+      abrirModalMensaje("advertencia", "El teléfono debe tener exactamente 10 dígitos y solo números.");
       return;
     }
 
-    // Validación: Asegurar que la dirección tenga al menos 3 caracteres
-    if (formulario.direccion.length < 3) {
-      abrirModalMensaje("advertencia", "La dirección debe tener al menos 3 caracteres.");
+    // Validación: Asegurar que la dirección tenga al menos 3 caracteres y no sea solo números
+    if (formulario.direccion.length < 3 || /^\d+$/.test(formulario.direccion)) {
+      abrirModalMensaje("advertencia", "La dirección debe tener al menos 3 caracteres y no puede ser solo números.");
       return;
     }
 
@@ -246,6 +261,15 @@ const Personal = () => {
     if (correoExistente) {
       abrirModalMensaje("advertencia", "El correo ya está en uso.");
       return;
+    }
+
+    // Validación: Verificar que el ID no esté duplicado al agregar un nuevo empleado
+    if (!modalEdicion) {
+      const idExistente = personas.find((p) => p.id === parseInt(formulario.id));
+      if (idExistente) {
+        abrirModalMensaje("advertencia", "El ID ya está en uso por otro empleado.");
+        return;
+      }
     }
 
     const formData = new FormData();
@@ -540,10 +564,10 @@ const Personal = () => {
           <div className="encabezado-modal">
             <i
               className={`bi ${modalMensaje.tipo === "exito"
-                  ? "bi-check-circle-fill text-success"
-                  : modalMensaje.tipo === "error"
-                    ? "bi-x-circle-fill text-danger"
-                    : "bi-exclamation-triangle-fill text-warning"
+                ? "bi-check-circle-fill text-success"
+                : modalMensaje.tipo === "error"
+                  ? "bi-x-circle-fill text-danger"
+                  : "bi-exclamation-triangle-fill text-warning"
                 } display-4 mb-2`}
             ></i>
             <h2>{modalMensaje.tipo.charAt(0).toUpperCase() + modalMensaje.tipo.slice(1)}</h2>

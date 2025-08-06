@@ -78,8 +78,8 @@ public class PedidosController {
                 }).collect(Collectors.toList()));
 
                 // Convertir Integer a Float para subtotal y total
-                dto.setSubtotal(factura.getSubtotal() != null ? factura.getSubtotal().floatValue() : 0.0f);
-                dto.setTotal(factura.getTotal() != null ? factura.getTotal().floatValue() : 0.0f);
+                dto.setSubtotal(factura.getSubtotal() != null ? factura.getSubtotal() : 0);
+                dto.setTotal(factura.getTotal() != null ? factura.getTotal() : 0);
                 dto.setSaldoPendiente(factura.getSaldoPendiente());
                 dto.setEstado(factura.getEstado());
                 dto.setNotas(factura.getNotas());
@@ -167,7 +167,7 @@ public class PedidosController {
                 carteraRepository.save(cartera);
             } else {
                 factura.setIdCartera(null);
-                factura.setSaldoPendiente(0.0f);
+                factura.setSaldoPendiente(0);
             }
 
             // Guardar la factura actualizada

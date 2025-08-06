@@ -35,7 +35,7 @@ public class Factura {
 
     private Integer subtotal;
     private Integer total;
-    private Float saldoPendiente;
+    private Integer saldoPendiente;
 
     @ManyToOne
     @JoinColumn(name = "id_cajero")
