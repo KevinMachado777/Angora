@@ -160,6 +160,7 @@ public class CarteraController {
                 productoDTO.setNombre(fp.getProducto().getNombre());
                 productoDTO.setCantidad(fp.getCantidad());
                 productoDTO.setPrecio(fp.getProducto().getPrecio());
+                productoDTO.setIva(fp.getProducto().getIva());
                 return productoDTO;
             }).collect(Collectors.toList()));
 
@@ -184,6 +185,7 @@ public class CarteraController {
                 FacturaPendienteDTO.UsuarioDTO cajeroDTO = new FacturaPendienteDTO.UsuarioDTO();
                 cajeroDTO.setId(factura.getCajero().getId());
                 cajeroDTO.setNombre(factura.getCajero().getNombre());
+                cajeroDTO.setApellido(factura.getCajero().getApellido());
                 dto.setCajero(cajeroDTO);
             }
 

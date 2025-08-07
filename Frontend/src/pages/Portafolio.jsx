@@ -76,7 +76,21 @@ const Portafolio = () => {
     // Estado para indicar si la reactivación es por ID
     const [reactivacionPorId, setReactivacionPorId] = useState(false);
 
+    // Obtiene el token de acceso del almacenamiento local
     const token = localStorage.getItem("accessToken");
+
+    // Estado para manejar los datos del formulario
+    const [formData, setFormData] = useState({
+        idCliente: "",
+        nombre: "",
+        apellido: "",
+        correo: "",
+        telefono: "",
+        direccion: ""
+    });
+
+    // Estado para manejar mensajes de validación
+    const [modalMensaje, setModalMensaje] = useState({ abierto: false, tipo: "", mensaje: "" });
 
     // Carga los clientes activos y sus carteras al montar el componente
     useEffect(() => {
@@ -209,6 +223,14 @@ const Portafolio = () => {
 
     // Abre la modal para agregar un cliente nuevo
     const abrirModalAgregar = () => {
+        setFormData({
+            idCliente: "",
+            nombre: "",
+            apellido: "",
+            correo: "",
+            telefono: "",
+            direccion: ""
+        });
         setPersonaSelect(null);
         setModalAbierta(true);
         setCreditoActivo(false);
@@ -217,6 +239,14 @@ const Portafolio = () => {
 
     // Abre la modal para editar un cliente existente
     const abrirModalEditar = (persona) => {
+        setFormData({
+            idCliente: persona.id.toString(),
+            nombre: persona.nombre,
+            apellido: persona.apellido,
+            correo: persona.correo,
+            telefono: persona.telefono.toString(),
+            direccion: persona.direccion
+        });
         setPersonaSelect(persona);
         setModalAbierta(true);
         setCreditoActivo(persona.cartera === "Activa");
@@ -505,33 +535,100 @@ const Portafolio = () => {
         setPersonaDesactivar(null);
     };
 
+    // Función para manejar los cambios en el formulario
+    const manejarCambioFormulario = (evento) => {
+        const { name, value } = evento.target;
+        let nuevoValor = value;
+
+        // Validaciones en tiempo real
+        if (name === "idCliente" || name === "telefono") {
+            // Solo permitir números
+            nuevoValor = value.replace(/[^0-9]/g, "");
+            if (name === "idCliente" && nuevoValor.length > 10) {
+                nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+            }
+            if (name === "telefono" && nuevoValor.length > 10) {
+                nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+            }
+        } else if (name === "nombre" || name === "apellido") {
+            // Solo permitir letras, tildes, ñ y espacios
+            nuevoValor = value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "");
+        } else if (name === "direccion") {
+            // Permitir cualquier carácter, pero no hacer limpieza adicional aquí (se valida al guardar)
+            nuevoValor = value;
+        } else if (name === "correo") {
+            // Permitir cualquier entrada, validación estricta al guardar
+            nuevoValor = value;
+        }
+
+        setFormData((prev) => ({ ...prev, [name]: nuevoValor }));
+    };
+
     // Guarda o actualiza un cliente
     const guardarCliente = async (e) => {
         e.preventDefault();
-        const form = e.target;
-        const idCliente = form.idCliente?.value ? parseInt(form.idCliente.value) : personaSelect?.id;
-        const telefono = form.telefono.value ? parseInt(form.telefono.value) : personaSelect?.telefono;
-        const email = form.correo.value.trim();
 
-        // Valida el ID del cliente
+        // Validaciones básicas
+        const idCliente = parseInt(formData.idCliente) || personaSelect?.id;
+        const telefono = parseInt(formData.telefono) || personaSelect?.telefono;
+        const email = formData.correo.trim();
+
         if (!idCliente || isNaN(idCliente)) {
             setModalError("El ID del cliente debe ser un número válido.");
             return;
         }
-        // Valida el teléfono
         if (!telefono || isNaN(telefono)) {
             setModalError("El teléfono debe ser un número válido.");
             return;
         }
 
+        // Validación: Asegurar que el ID tenga entre 6 y 10 dígitos y solo números (solo al agregar)
+        if (!personaSelect && (!/^\d{6,10}$/.test(formData.idCliente) || formData.idCliente.length < 6)) {
+            setModalError("El ID debe tener entre 6 y 10 dígitos y solo números.");
+            return;
+        }
+
+        // Validación: Asegurar que el teléfono tenga exactamente 10 dígitos y solo números
+        if (!/^\d{10}$/.test(formData.telefono)) {
+            setModalError("El teléfono debe tener exactamente 10 dígitos y solo números.");
+            return;
+        }
+
+        // Validación: Asegurar que el nombre tenga al menos 3 caracteres y solo letras
+        if (formData.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formData.nombre)) {
+            setModalError("El nombre debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+            return;
+        }
+
+        // Validación: Asegurar que el apellido tenga al menos 3 caracteres y solo letras
+        if (formData.apellido.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formData.apellido)) {
+            setModalError("El apellido debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+            return;
+        }
+
+        // Validación: Asegurar que la dirección tenga al menos 3 caracteres y no sea solo números
+        if (formData.direccion.length < 3 || /^\d+$/.test(formData.direccion)) {
+            setModalError("La dirección debe tener al menos 3 caracteres y no puede ser solo números.");
+            return;
+        }
+
+        // Validación: Verificar que el ID no esté duplicado al agregar
+        if (!personaSelect) {
+            const idExistente = registros.find((r) => r.id === idCliente);
+            if (idExistente) {
+                setModalError("El ID ya está en uso por otro cliente.");
+                return;
+            }
+        }
+
         // Prepara los datos del cliente
         const clienteData = {
             idCliente,
-            nombre: form.nombre.value.trim(),
-            apellido: form.apellido.value.trim(),
+            nombre: formData.nombre.trim(),
+            apellido: formData.apellido.trim(),
             email,
             telefono,
-            direccion: form.direccion.value.trim()
+            direccion: formData.direccion.trim()
         };
 
         console.log("Datos enviados en guardarCliente:", clienteData);
@@ -669,6 +766,16 @@ const Portafolio = () => {
             setModalError(errorMessage);
             console.error("Error en guardarCliente:", error, error.response?.data);
         }
+    };
+
+    // Función para abrir el modal de mensajes de validación
+    const abrirModalMensaje = (tipo, mensaje) => {
+        setModalMensaje({ abierto: true, tipo, mensaje });
+    };
+
+    // Función para cerrar el modal de mensajes de validación
+    const cerrarModalMensaje = () => {
+        setModalMensaje({ abierto: false, tipo: "", mensaje: "" });
     };
 
     // Procesa un abono para una factura
@@ -915,11 +1022,12 @@ const Portafolio = () => {
                             <div className="grupo-formulario">
                                 <label>ID Cliente:</label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     name="idCliente"
+                                    value={formData.idCliente}
+                                    onChange={manejarCambioFormulario}
                                     className="form-control mb-2"
                                     required
-                                    min="1"
                                 />
                             </div>
                         )}
@@ -928,7 +1036,8 @@ const Portafolio = () => {
                             <input
                                 type="text"
                                 name="nombre"
-                                defaultValue={personaSelect ? personaSelect.nombre : ""}
+                                value={formData.nombre}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -938,7 +1047,8 @@ const Portafolio = () => {
                             <input
                                 type="text"
                                 name="apellido"
-                                defaultValue={personaSelect ? personaSelect.apellido : ""}
+                                value={formData.apellido}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -948,7 +1058,8 @@ const Portafolio = () => {
                             <input
                                 type="email"
                                 name="correo"
-                                defaultValue={personaSelect ? personaSelect.correo : ""}
+                                value={formData.correo}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -956,12 +1067,12 @@ const Portafolio = () => {
                         <div className="grupo-formulario">
                             <label>Teléfono:</label>
                             <input
-                                type="number"
+                                type="text"
                                 name="telefono"
-                                defaultValue={personaSelect ? personaSelect.telefono : ""}
+                                value={formData.telefono}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
-                                min="0"
                             />
                         </div>
                         <div className="grupo-formulario">
@@ -969,7 +1080,8 @@ const Portafolio = () => {
                             <input
                                 type="text"
                                 name="direccion"
-                                defaultValue={personaSelect ? personaSelect.direccion : ""}
+                                value={formData.direccion}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -990,7 +1102,6 @@ const Portafolio = () => {
                             </label>
                         </div>
 
-                        {/* Muestra las facturas del cliente si tiene crédito activo */}
                         {creditoActivo && personaSelect && (
                             <div>
                                 <h3>Facturas por crédito</h3>
@@ -1015,9 +1126,7 @@ const Portafolio = () => {
                         )}
 
                         <div className="pie-modal">
-                            {/* Botón para cancelar la acción */}
                             <BotonCancelar type="button" onClick={cerrarModalPrincipal} />
-                            {/* Botón para guardar el cliente */}
                             <BotonGuardar type="submit" />
                         </div>
                     </form>
@@ -1148,16 +1257,16 @@ const Portafolio = () => {
                             <p><strong>Factura #{facturaSeleccionada.idFactura}</strong></p>
                             <p>Fecha: {new Date(facturaSeleccionada.fecha).toLocaleDateString('es-CO')}</p>
                             <p>Cliente: {personaCartera?.nombre || personaSelect?.nombre} {personaCartera?.apellido || personaSelect?.apellido}</p>
-                            <p>Cajero: {facturaSeleccionada.cajero?.nombre || 'Desconocido'}</p>
+                            <p>Cajero: {`${facturaSeleccionada.cajero?.nombre || 'Desconocido'} ${facturaSeleccionada.cajero?.apellido || ''}`.trim() || 'Desconocido'}</p>
                             <p>Estado: {facturaSeleccionada.estado}</p>
                             <hr />
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
                                         <th>Nombre</th>
                                         <th>Cant.</th>
-                                        <th>Precio</th>
+                                        <th>Precio Unitario</th>
+                                        <th>IVA</th>
                                         <th>Total</th>
                                     </tr>
                                 </thead>
@@ -1165,22 +1274,24 @@ const Portafolio = () => {
                                     {facturaSeleccionada.productos && facturaSeleccionada.productos.length > 0 ? (
                                         facturaSeleccionada.productos.map((item, i) => (
                                             <tr key={i}>
-                                                <td>{item.id || 'N/A'}</td>
                                                 <td>{item.nombre || 'Desconocido'}</td>
                                                 <td>{item.cantidad || 1}</td>
                                                 <td>
                                                     <NumericFormat
                                                         value={item.precio || 0}
                                                         displayType="text"
-                                                        thousandSeparator
+                                                        thousandSeparator="."
+                                                        decimalSeparator=","
                                                         prefix="$"
                                                     />
                                                 </td>
+                                                <td>{item.iva ? 'Sí' : 'No'}</td>
                                                 <td>
                                                     <NumericFormat
-                                                        value={(item.cantidad || 1) * (item.precio || 0)}
+                                                        value={(item.cantidad || 1) * (item.iva ? (item.precio || 0) * 1.19 : (item.precio || 0))}
                                                         displayType="text"
-                                                        thousandSeparator
+                                                        thousandSeparator="."
+                                                        decimalSeparator=","
                                                         prefix="$"
                                                     />
                                                 </td>
@@ -1195,7 +1306,7 @@ const Portafolio = () => {
                             </table>
                             <hr />
                             <p>
-                                <strong>Subtotal: </strong>
+                                <strong>Subtotal (sin IVA): </strong>
                                 <NumericFormat
                                     value={facturaSeleccionada.subtotal || 0}
                                     displayType="text"
@@ -1270,6 +1381,18 @@ const Portafolio = () => {
                     <div className="pie-modal">
                         {/* Botón para cerrar la modal */}
                         <BotonAceptar type="button" onClick={() => setModalError(null)} />
+                    </div>
+                </Modal>
+            )}
+
+            {modalMensaje.abierto && (
+                <Modal isOpen={modalMensaje.abierto} onClose={cerrarModalMensaje}>
+                    <div className="encabezado-modal">
+                        <h2>{modalMensaje.tipo.charAt(0).toUpperCase() + modalMensaje.tipo.slice(1)}</h2>
+                    </div>
+                    <p>{modalMensaje.mensaje}</p>
+                    <div className="pie-modal">
+                        <BotonAceptar type="button" onClick={cerrarModalMensaje} />
                     </div>
                 </Modal>
             )}
