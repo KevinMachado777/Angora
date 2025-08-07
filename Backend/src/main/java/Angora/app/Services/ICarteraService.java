@@ -12,7 +12,7 @@ public interface ICarteraService {
     List<Cartera> obtenerCarterasActivas();
 
     // Procesa un abono para una cartera
-    Cartera procesarAbono(Long idCliente, Double cantidad, String fecha, Long idFactura);
+    Cartera procesarAbono(Long idCliente, Integer cantidad, String fecha, Long idFactura);
 
     // Actualizar el estado de una cartera
     Cartera actualizarEstadoCartera(Long idCliente, Boolean estado);

@@ -76,7 +76,21 @@ const Portafolio = () => {
     // Estado para indicar si la reactivación es por ID
     const [reactivacionPorId, setReactivacionPorId] = useState(false);
 
+    // Obtiene el token de acceso del almacenamiento local
     const token = localStorage.getItem("accessToken");
+
+    // Estado para manejar los datos del formulario
+    const [formData, setFormData] = useState({
+        idCliente: "",
+        nombre: "",
+        apellido: "",
+        correo: "",
+        telefono: "",
+        direccion: ""
+    });
+
+    // Estado para manejar mensajes de validación
+    const [modalMensaje, setModalMensaje] = useState({ abierto: false, tipo: "", mensaje: "" });
 
     // Carga los clientes activos y sus carteras al montar el componente
     useEffect(() => {
@@ -84,7 +98,7 @@ const Portafolio = () => {
             try {
                 // Obtiene los clientes activos desde el backend
                 const respuestaClientes = await axios.get(`${urlBackend}/clientes`, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -96,7 +110,7 @@ const Portafolio = () => {
                         try {
                             // Obtiene la cartera del cliente
                             const respuestaCartera = await axios.get(`${urlBackend}/carteras/${cliente.idCliente}`, {
-                                headers: { 
+                                headers: {
                                     'Accept': 'application/json',
                                     'Authorization': `Bearer ${token}`
                                 }
@@ -145,12 +159,12 @@ const Portafolio = () => {
                 try {
                     // Obtiene la cartera del cliente
                     const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
                     });
-                    
+
                     console.log(`Respuesta GET /api/carteras/${clienteId}:`, JSON.stringify(respuesta.data, null, 2));
                     // Filtra las facturas con saldo pendiente
                     const facturas = Array.isArray(respuesta.data.facturas)
@@ -209,6 +223,14 @@ const Portafolio = () => {
 
     // Abre la modal para agregar un cliente nuevo
     const abrirModalAgregar = () => {
+        setFormData({
+            idCliente: "",
+            nombre: "",
+            apellido: "",
+            correo: "",
+            telefono: "",
+            direccion: ""
+        });
         setPersonaSelect(null);
         setModalAbierta(true);
         setCreditoActivo(false);
@@ -217,6 +239,14 @@ const Portafolio = () => {
 
     // Abre la modal para editar un cliente existente
     const abrirModalEditar = (persona) => {
+        setFormData({
+            idCliente: persona.id.toString(),
+            nombre: persona.nombre,
+            apellido: persona.apellido,
+            correo: persona.correo,
+            telefono: persona.telefono.toString(),
+            direccion: persona.direccion
+        });
         setPersonaSelect(persona);
         setModalAbierta(true);
         setCreditoActivo(persona.cartera === "Activa");
@@ -250,7 +280,7 @@ const Portafolio = () => {
             try {
                 // Envía la solicitud para desactivar el cliente
                 const response = await axios.put(`${urlBackend}/clientes/${personaDesactivar.id}/desactivar`, {}, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -296,7 +326,7 @@ const Portafolio = () => {
             console.log("Iniciando mostrarModalCarteras...");
             // Obtiene las carteras activas desde el backend
             const respuesta = await axios.get(`${urlBackend}/carteras?estado=true`, {
-                headers: { 
+                headers: {
                     'Accept': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
@@ -388,7 +418,7 @@ const Portafolio = () => {
             console.log("Iniciando mostrarModalInactivos...");
             // Obtiene los clientes inactivos desde el backend
             const respuesta = await axios.get(`${urlBackend}/clientes/inactivos`, {
-                headers: { 
+                headers: {
                     'Accept': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
@@ -444,7 +474,7 @@ const Portafolio = () => {
             try {
                 // Envía la solicitud para reactivar el cliente
                 const response = await axios.put(`${urlBackend}/clientes/${clienteReactivar.idCliente}/activar`, {}, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -454,7 +484,7 @@ const Portafolio = () => {
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 try {
                     const respuestaCartera = await axios.get(`${urlBackend}/carteras/${clienteReactivar.idCliente}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -505,33 +535,100 @@ const Portafolio = () => {
         setPersonaDesactivar(null);
     };
 
+    // Función para manejar los cambios en el formulario
+    const manejarCambioFormulario = (evento) => {
+        const { name, value } = evento.target;
+        let nuevoValor = value;
+
+        // Validaciones en tiempo real
+        if (name === "idCliente" || name === "telefono") {
+            // Solo permitir números
+            nuevoValor = value.replace(/[^0-9]/g, "");
+            if (name === "idCliente" && nuevoValor.length > 10) {
+                nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+            }
+            if (name === "telefono" && nuevoValor.length > 10) {
+                nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+            }
+        } else if (name === "nombre" || name === "apellido") {
+            // Solo permitir letras, tildes, ñ y espacios
+            nuevoValor = value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "");
+        } else if (name === "direccion") {
+            // Permitir cualquier carácter, pero no hacer limpieza adicional aquí (se valida al guardar)
+            nuevoValor = value;
+        } else if (name === "correo") {
+            // Permitir cualquier entrada, validación estricta al guardar
+            nuevoValor = value;
+        }
+
+        setFormData((prev) => ({ ...prev, [name]: nuevoValor }));
+    };
+
     // Guarda o actualiza un cliente
     const guardarCliente = async (e) => {
         e.preventDefault();
-        const form = e.target;
-        const idCliente = form.idCliente?.value ? parseInt(form.idCliente.value) : personaSelect?.id;
-        const telefono = form.telefono.value ? parseInt(form.telefono.value) : personaSelect?.telefono;
-        const email = form.correo.value.trim();
 
-        // Valida el ID del cliente
+        // Validaciones básicas
+        const idCliente = parseInt(formData.idCliente) || personaSelect?.id;
+        const telefono = parseInt(formData.telefono) || personaSelect?.telefono;
+        const email = formData.correo.trim();
+
         if (!idCliente || isNaN(idCliente)) {
             setModalError("El ID del cliente debe ser un número válido.");
             return;
         }
-        // Valida el teléfono
         if (!telefono || isNaN(telefono)) {
             setModalError("El teléfono debe ser un número válido.");
             return;
         }
 
+        // Validación: Asegurar que el ID tenga entre 6 y 10 dígitos y solo números (solo al agregar)
+        if (!personaSelect && (!/^\d{6,10}$/.test(formData.idCliente) || formData.idCliente.length < 6)) {
+            setModalError("El ID debe tener entre 6 y 10 dígitos y solo números.");
+            return;
+        }
+
+        // Validación: Asegurar que el teléfono tenga exactamente 10 dígitos y solo números
+        if (!/^\d{10}$/.test(formData.telefono)) {
+            setModalError("El teléfono debe tener exactamente 10 dígitos y solo números.");
+            return;
+        }
+
+        // Validación: Asegurar que el nombre tenga al menos 3 caracteres y solo letras
+        if (formData.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formData.nombre)) {
+            setModalError("El nombre debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+            return;
+        }
+
+        // Validación: Asegurar que el apellido tenga al menos 3 caracteres y solo letras
+        if (formData.apellido.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formData.apellido)) {
+            setModalError("El apellido debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+            return;
+        }
+
+        // Validación: Asegurar que la dirección tenga al menos 3 caracteres y no sea solo números
+        if (formData.direccion.length < 3 || /^\d+$/.test(formData.direccion)) {
+            setModalError("La dirección debe tener al menos 3 caracteres y no puede ser solo números.");
+            return;
+        }
+
+        // Validación: Verificar que el ID no esté duplicado al agregar
+        if (!personaSelect) {
+            const idExistente = registros.find((r) => r.id === idCliente);
+            if (idExistente) {
+                setModalError("El ID ya está en uso por otro cliente.");
+                return;
+            }
+        }
+
         // Prepara los datos del cliente
         const clienteData = {
             idCliente,
-            nombre: form.nombre.value.trim(),
-            apellido: form.apellido.value.trim(),
+            nombre: formData.nombre.trim(),
+            apellido: formData.apellido.trim(),
             email,
             telefono,
-            direccion: form.direccion.value.trim()
+            direccion: formData.direccion.trim()
         };
 
         console.log("Datos enviados en guardarCliente:", clienteData);
@@ -541,7 +638,7 @@ const Portafolio = () => {
                 // Actualiza un cliente existente
                 console.log(`Enviando PUT /api/clientes/${personaSelect.id} con datos:`, clienteData);
                 const respuesta = await axios.put(`${urlBackend}/clientes/${personaSelect.id}`, clienteData, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -551,7 +648,7 @@ const Portafolio = () => {
                 if (creditoActivo !== (personaSelect.cartera === "Activa")) {
                     console.log(`Enviando PUT /api/carteras/${personaSelect.id}/estado con estado:`, creditoActivo);
                     await axios.put(`${urlBackend}/carteras/${personaSelect.id}/estado`, { estado: creditoActivo }, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -561,7 +658,7 @@ const Portafolio = () => {
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
                     const respuestaCartera = await axios.get(`${urlBackend}/carteras/${personaSelect.id}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -592,7 +689,7 @@ const Portafolio = () => {
                 // Crea un nuevo cliente
                 console.log("Enviando POST /api/clientes con datos:", clienteData);
                 const respuesta = await axios.post(`${urlBackend}/clientes`, clienteData, {
-                    headers: { 
+                    headers: {
                         'Accept': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
@@ -612,7 +709,7 @@ const Portafolio = () => {
                 if (creditoActivo) {
                     console.log(`Enviando PUT /api/carteras/${respuesta.data.cliente.idCliente}/estado con estado: true`);
                     await axios.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/estado`, { estado: true }, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -622,7 +719,7 @@ const Portafolio = () => {
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
                     const respuestaCartera = await axios.get(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`, {
-                        headers: { 
+                        headers: {
                             'Accept': 'application/json',
                             'Authorization': `Bearer ${token}`
                         }
@@ -671,6 +768,16 @@ const Portafolio = () => {
         }
     };
 
+    // Función para abrir el modal de mensajes de validación
+    const abrirModalMensaje = (tipo, mensaje) => {
+        setModalMensaje({ abierto: true, tipo, mensaje });
+    };
+
+    // Función para cerrar el modal de mensajes de validación
+    const cerrarModalMensaje = () => {
+        setModalMensaje({ abierto: false, tipo: "", mensaje: "" });
+    };
+
     // Procesa un abono para una factura
     const procesarAbono = async () => {
         const cantidad = parseFloat(cantidadAbonar) || 0;
@@ -706,7 +813,7 @@ const Portafolio = () => {
                 fecha: new Date().toISOString().split('T')[0],
                 idFactura: facturaSeleccionadaParaAbono.idFactura
             }, {
-                headers: { 
+                headers: {
                     'Accept': 'application/json',
                     'Authorization': `Bearer ${token}`
                 }
@@ -745,36 +852,38 @@ const Portafolio = () => {
     };
 
     // Abre la modal de detalles de una factura
-    const abrirModalDetalles = (facturaRow) => {
+    const abrirModalDetalles = async (facturaRow) => {
         try {
             console.log("facturaRow recibida en abrirModalDetalles:", facturaRow);
-            // Extrae el objeto de la factura
-            let facturaObj;
-            if (Array.isArray(facturaRow)) {
-                facturaObj = facturaRow[facturaRow.length - 1]?._factura;
-            } else {
-                facturaObj = facturaRow._factura || facturaRow;
-            }
-            console.log("facturaObj extraída:", facturaObj);
-            // Valida el ID de la factura
-            if (!facturaObj || !facturaObj.idFactura) {
+
+            // Extraer el ID de la factura
+            const idFactura = facturaRow.idFactura;
+
+            if (!idFactura) {
                 throw new Error("ID de factura no válido.");
             }
-            const clienteId = personaCartera?.id || personaSelect?.id;
-            console.log("creditosPorCliente:", creditosPorCliente);
-            console.log("Buscando factura con idFactura:", facturaObj.idFactura, "para clienteId:", clienteId);
-            // Busca la factura en los créditos del cliente
-            const factura = creditosPorCliente[clienteId]?.facturas?.find(f => f.idFactura === facturaObj.idFactura);
-            if (!factura) {
-                throw new Error("Factura no encontrada en creditosPorCliente.");
-            }
-            console.log("Factura seleccionada para detalles:", factura);
-            // Actualiza la factura seleccionada
+
+            // Hacer solicitud al backend para obtener la factura completa
+            const respuesta = await axios.get(`${urlBackend}/carteras/facturas/${idFactura}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const facturaCompleta = respuesta.data;
+
+            // Asegurarse de que la factura tenga los datos necesarios
+            const factura = {
+                ...facturaCompleta,
+                cajero: facturaCompleta.cajero || { id: "Desconocido" }, // Fallback si el cajero no está presente
+                productos: Array.isArray(facturaCompleta.productos) ? facturaCompleta.productos : []
+            };
+
+            console.log("Factura completa cargada para detalles:", factura);
             setFacturaSeleccionada(factura);
-            // Abre la modal de detalles
             setModalDetallesAbierta(true);
         } catch (error) {
-            // Maneja errores al cargar los detalles de la factura
             setModalError(error.message || "Error al cargar los detalles de la factura.");
             console.error("Error al cargar los detalles de la factura:", error);
         }
@@ -913,11 +1022,12 @@ const Portafolio = () => {
                             <div className="grupo-formulario">
                                 <label>ID Cliente:</label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     name="idCliente"
+                                    value={formData.idCliente}
+                                    onChange={manejarCambioFormulario}
                                     className="form-control mb-2"
                                     required
-                                    min="1"
                                 />
                             </div>
                         )}
@@ -926,7 +1036,8 @@ const Portafolio = () => {
                             <input
                                 type="text"
                                 name="nombre"
-                                defaultValue={personaSelect ? personaSelect.nombre : ""}
+                                value={formData.nombre}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -936,7 +1047,8 @@ const Portafolio = () => {
                             <input
                                 type="text"
                                 name="apellido"
-                                defaultValue={personaSelect ? personaSelect.apellido : ""}
+                                value={formData.apellido}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -946,7 +1058,8 @@ const Portafolio = () => {
                             <input
                                 type="email"
                                 name="correo"
-                                defaultValue={personaSelect ? personaSelect.correo : ""}
+                                value={formData.correo}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -954,12 +1067,12 @@ const Portafolio = () => {
                         <div className="grupo-formulario">
                             <label>Teléfono:</label>
                             <input
-                                type="number"
+                                type="text"
                                 name="telefono"
-                                defaultValue={personaSelect ? personaSelect.telefono : ""}
+                                value={formData.telefono}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
-                                min="0"
                             />
                         </div>
                         <div className="grupo-formulario">
@@ -967,7 +1080,8 @@ const Portafolio = () => {
                             <input
                                 type="text"
                                 name="direccion"
-                                defaultValue={personaSelect ? personaSelect.direccion : ""}
+                                value={formData.direccion}
+                                onChange={manejarCambioFormulario}
                                 className="form-control mb-2"
                                 required
                             />
@@ -988,7 +1102,6 @@ const Portafolio = () => {
                             </label>
                         </div>
 
-                        {/* Muestra las facturas del cliente si tiene crédito activo */}
                         {creditoActivo && personaSelect && (
                             <div>
                                 <h3>Facturas por crédito</h3>
@@ -1013,9 +1126,7 @@ const Portafolio = () => {
                         )}
 
                         <div className="pie-modal">
-                            {/* Botón para cancelar la acción */}
                             <BotonCancelar type="button" onClick={cerrarModalPrincipal} />
-                            {/* Botón para guardar el cliente */}
                             <BotonGuardar type="submit" />
                         </div>
                     </form>
@@ -1146,39 +1257,41 @@ const Portafolio = () => {
                             <p><strong>Factura #{facturaSeleccionada.idFactura}</strong></p>
                             <p>Fecha: {new Date(facturaSeleccionada.fecha).toLocaleDateString('es-CO')}</p>
                             <p>Cliente: {personaCartera?.nombre || personaSelect?.nombre} {personaCartera?.apellido || personaSelect?.apellido}</p>
-                            <p>Cajero: {facturaSeleccionada.cajero}</p>
+                            <p>Cajero: {`${facturaSeleccionada.cajero?.nombre || 'Desconocido'} ${facturaSeleccionada.cajero?.apellido || ''}`.trim() || 'Desconocido'}</p>
                             <p>Estado: {facturaSeleccionada.estado}</p>
                             <hr />
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
                                         <th>Nombre</th>
                                         <th>Cant.</th>
-                                        <th>Precio</th>
+                                        <th>Precio Unitario</th>
+                                        <th>IVA</th>
                                         <th>Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {facturaSeleccionada.producto && Array.isArray(facturaSeleccionada.producto) && facturaSeleccionada.producto.length > 0 ? (
-                                        facturaSeleccionada.producto.map((item, i) => (
+                                    {facturaSeleccionada.productos && facturaSeleccionada.productos.length > 0 ? (
+                                        facturaSeleccionada.productos.map((item, i) => (
                                             <tr key={i}>
-                                                <td>{item.idProducto || 'N/A'}</td>
                                                 <td>{item.nombre || 'Desconocido'}</td>
-                                                <td>{facturaSeleccionada.cantidad || 1}</td>
+                                                <td>{item.cantidad || 1}</td>
                                                 <td>
                                                     <NumericFormat
-                                                        value={item.precio || facturaSeleccionada.subtotal || 0}
+                                                        value={item.precio || 0}
                                                         displayType="text"
-                                                        thousandSeparator
+                                                        thousandSeparator="."
+                                                        decimalSeparator=","
                                                         prefix="$"
                                                     />
                                                 </td>
+                                                <td>{item.iva ? 'Sí' : 'No'}</td>
                                                 <td>
                                                     <NumericFormat
-                                                        value={(facturaSeleccionada.cantidad || 1) * (item.precio || facturaSeleccionada.subtotal || 0)}
+                                                        value={(item.cantidad || 1) * (item.iva ? (item.precio || 0) * 1.19 : (item.precio || 0))}
                                                         displayType="text"
-                                                        thousandSeparator
+                                                        thousandSeparator="."
+                                                        decimalSeparator=","
                                                         prefix="$"
                                                     />
                                                 </td>
@@ -1193,7 +1306,7 @@ const Portafolio = () => {
                             </table>
                             <hr />
                             <p>
-                                <strong>Subtotal: </strong>
+                                <strong>Subtotal (sin IVA): </strong>
                                 <NumericFormat
                                     value={facturaSeleccionada.subtotal || 0}
                                     displayType="text"
@@ -1225,7 +1338,6 @@ const Portafolio = () => {
                         </div>
                     )}
                     <div className="pie-modal">
-                        {/* Botón para cerrar la modal */}
                         <BotonAceptar type="button" onClick={cerrarModalDetalles} />
                     </div>
                 </Modal>
@@ -1269,6 +1381,18 @@ const Portafolio = () => {
                     <div className="pie-modal">
                         {/* Botón para cerrar la modal */}
                         <BotonAceptar type="button" onClick={() => setModalError(null)} />
+                    </div>
+                </Modal>
+            )}
+
+            {modalMensaje.abierto && (
+                <Modal isOpen={modalMensaje.abierto} onClose={cerrarModalMensaje}>
+                    <div className="encabezado-modal">
+                        <h2>{modalMensaje.tipo.charAt(0).toUpperCase() + modalMensaje.tipo.slice(1)}</h2>
+                    </div>
+                    <p>{modalMensaje.mensaje}</p>
+                    <div className="pie-modal">
+                        <BotonAceptar type="button" onClick={cerrarModalMensaje} />
                     </div>
                 </Modal>
             )}

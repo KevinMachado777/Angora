@@ -1,5 +1,6 @@
 package Angora.app.Controllers;
 
+import Angora.app.Controllers.dto.FacturaPendienteDTO;
 import Angora.app.Entities.Cartera;
 import Angora.app.Entities.Cliente;
 import Angora.app.Entities.Factura;
@@ -8,12 +9,15 @@ import Angora.app.Repositories.ClienteRepository;
 import Angora.app.Repositories.FacturaRepository;
 import Angora.app.Services.CarteraService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 // Controlador para manejar las peticiones de carteras
 @RestController
@@ -78,7 +82,7 @@ public class CarteraController {
     @PostMapping(value = "/{idCliente}/abonos", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Cartera> procesarAbono(@PathVariable Long idCliente, @RequestBody Map<String, Object> body) {
         // Extrae la cantidad del abono del cuerpo
-        Double cantidad = ((Number) body.get("cantidad")).doubleValue();
+        Integer cantidad = ((Integer) body.get("cantidad"));
         // Extrae la fecha del abono
         String fecha = (String) body.get("fecha");
         // Extrae el ID de la factura, si existe
@@ -121,5 +125,75 @@ public class CarteraController {
         List<Factura> facturas = facturaRepository.findByIdCarteraIdCartera(cartera.getIdCartera());
         cartera.setFacturas(facturas);
         return ResponseEntity.ok(cartera);
+    }
+
+    // Metodo para listar las facturas con todos sus detalles
+    @GetMapping("/facturas/{id}")
+    public ResponseEntity<FacturaPendienteDTO> obtenerFacturaPorId(@PathVariable Long id) {
+        try {
+            // Buscar la factura por ID
+            Optional<Factura> optionalFactura = facturaRepository.findById(id);
+
+            // Verificar si la factura existe
+            if (!optionalFactura.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            }
+
+            // Obtener la factura encontrada
+            Factura factura = optionalFactura.get();
+
+            // Mapear la factura a FacturaPendienteDTO
+            FacturaPendienteDTO dto = new FacturaPendienteDTO();
+            dto.setIdFactura(factura.getIdFactura());
+            dto.setFecha(factura.getFecha());
+
+            // Mapear el cliente
+            FacturaPendienteDTO.ClienteDTO clienteDTO = new FacturaPendienteDTO.ClienteDTO();
+            clienteDTO.setIdCliente(factura.getCliente().getIdCliente());
+            clienteDTO.setNombre(factura.getCliente().getNombre());
+            dto.setCliente(clienteDTO);
+
+            // Mapear los productos
+            dto.setProductos(factura.getProductos().stream().map(fp -> {
+                FacturaPendienteDTO.ProductoDTO productoDTO = new FacturaPendienteDTO.ProductoDTO();
+                productoDTO.setId(fp.getProducto().getId());
+                productoDTO.setNombre(fp.getProducto().getNombre());
+                productoDTO.setCantidad(fp.getCantidad());
+                productoDTO.setPrecio(fp.getProducto().getPrecio());
+                productoDTO.setIva(fp.getProducto().getIva());
+                return productoDTO;
+            }).collect(Collectors.toList()));
+
+            // Mapear otros campos
+            dto.setSubtotal(factura.getSubtotal());
+            dto.setTotal(factura.getTotal());
+            dto.setSaldoPendiente(factura.getSaldoPendiente());
+            dto.setEstado(factura.getEstado());
+
+            // Mapear la cartera si existe
+            if (factura.getIdCartera() != null) {
+                FacturaPendienteDTO.CarteraDTO carteraDTO = new FacturaPendienteDTO.CarteraDTO();
+                carteraDTO.setIdCartera(factura.getIdCartera().getIdCartera());
+                carteraDTO.setAbono(factura.getIdCartera().getAbono());
+                carteraDTO.setDeudas(factura.getIdCartera().getDeudas());
+                carteraDTO.setEstado(factura.getIdCartera().getEstado());
+                dto.setIdCartera(carteraDTO);
+            }
+
+            // Mapear el cajero si existe
+            if (factura.getCajero() != null) {
+                FacturaPendienteDTO.UsuarioDTO cajeroDTO = new FacturaPendienteDTO.UsuarioDTO();
+                cajeroDTO.setId(factura.getCajero().getId());
+                cajeroDTO.setNombre(factura.getCajero().getNombre());
+                cajeroDTO.setApellido(factura.getCajero().getApellido());
+                dto.setCajero(cajeroDTO);
+            }
+
+            // Devolver el DTO en la respuesta
+            return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            // Manejar errores y devolver una respuesta adecuada
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 }

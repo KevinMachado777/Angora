@@ -1,20 +1,22 @@
 import { useState, useEffect, useContext } from "react";
-import "bootstrap-icons/font/bootstrap-icons.css";
-import Modal from "../components/Modal";
-import perfil from "../assets/images/perfil.jpg";
-import "../styles/personal.css";
-import BotonAgregar from "../components/BotonAgregar";
-import BotonEditar from "../components/BotonEditar";
-import BotonEliminar from "../components/BotonEliminar";
-import BotonCancelar from "../components/BotonCancelar";
-import BotonGuardar from "../components/BotonGuardar";
-import BotonAceptar from "../components/BotonAceptar";
-import { AuthContext } from "../context/AuthContext";
-import api from "../api/axiosInstance";
+import "bootstrap-icons/font/bootstrap-icons.css"; // Importar íconos de Bootstrap
+import Modal from "../components/Modal"; // Importar componente Modal
+import "../styles/personal.css"; // Estilos específicos para la vista de personal
+import BotonAgregar from "../components/BotonAgregar"; // Botón para agregar
+import BotonEditar from "../components/BotonEditar"; // Botón para editar
+import BotonEliminar from "../components/BotonEliminar"; // Botón para eliminar
+import BotonCancelar from "../components/BotonCancelar"; // Botón para cancelar
+import BotonGuardar from "../components/BotonGuardar"; // Botón para guardar
+import BotonAceptar from "../components/BotonAceptar"; // Botón para aceptar
+import { AuthContext } from "../context/AuthContext"; // Contexto de autenticación
+import api from "../api/axiosInstance"; // Instancia de Axios para peticiones
 
 const Personal = () => {
   // URL del backend
   const urlBackend = "http://localhost:8080/angora/api/v1";
+
+  // Imagen por defecto para los perfiles
+  const imagenPorDefecto = "https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754451121/Perfil_xtqub7.jpg";
 
   // Permisos disponibles
   const permisosDisponibles = [
@@ -79,7 +81,14 @@ const Personal = () => {
       .get(`${urlBackend}/user`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((res) => setPersonas(res.data))
+      .then((res) => {
+        // Filtrar solo objetos con id válido
+        const usuariosValidos = Array.isArray(res.data)
+          ? res.data.filter((item) => item && item.id && typeof item.id === "number")
+          : [];
+        setPersonas(usuariosValidos);
+        console.log("Usuarios cargados:", usuariosValidos); // Para depuración
+      })
       .catch((err) => console.error("Error al cargar usuarios:", err));
   };
 
@@ -94,14 +103,14 @@ const Personal = () => {
       direccion: "",
       foto: "",
       // Asignar permisos por defecto al agregar un nuevo usuario
-      permisos: permisosPorDefecto.map(permiso => ({ name: permiso })),
+      permisos: permisosPorDefecto.map((permiso) => ({ name: permiso })),
     });
     setPersonaSelect(null);
     setModalEdicion(false);
     setModalAbierta(true);
   };
 
-  // Funciones para abrir la modal de edicion
+  // Funciones para abrir la modal de edición
   const abrirModalEditar = (persona) => {
     // Convertir los permisos a minúsculas para que coincidan con el formato esperado
     const permisosUsuario = persona.permisos ? persona.permisos.map((p) => ({ name: p.name.toLowerCase() })) : [];
@@ -133,8 +142,9 @@ const Personal = () => {
   };
 
   // Función para cerrar el modal de confirmación de eliminación
-  const cerrarModalConfirmacion = (aceptar) => {
+  const cerrarModalConfirmacion = async (aceptar) => {
     if (aceptar && personaEliminar) {
+
       api
         .delete(`${urlBackend}/user/${personaEliminar.id}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -161,92 +171,137 @@ const Personal = () => {
   };
 
   // Función para manejar los cambios en el formulario
-const manejarCambioFormulario = (evento) => {
-  const { name, value, type, checked, files } = evento.target;
-  if (type === "file") {
-    const archivo = files[0];
-    if (archivo) {
-      // Validar tamaño (12MB máximo)
-      const maxSize = 12 * 1024 * 1024; // 12MB en bytes
-      if (archivo.size > maxSize) {
-        abrirModalMensaje("advertencia", "La imagen debe ser menor a 12MB.");
-        return;
+  const manejarCambioFormulario = (evento) => {
+    const { name, value, type, checked, files } = evento.target;
+    if (type === "file") {
+      const archivo = files[0];
+      if (archivo) {
+        // Validar tamaño (12MB máximo)
+        const maxSize = 12 * 1024 * 1024; // 12MB en bytes
+        if (archivo.size > maxSize) {
+          abrirModalMensaje("advertencia", "La imagen debe ser menor a 12MB.");
+          return;
+        }
+        const lector = new FileReader();
+        lector.onloadend = () => {
+          setFormulario({ ...formulario, foto: lector.result });
+        };
+        lector.readAsDataURL(archivo);
+      } else {
+        // Si no seleccionan nuevo archivo, mantener la foto existente
+        setFormulario({ ...formulario, foto: personaSelect ? personaSelect.foto : "" });
       }
-      const lector = new FileReader();
-      lector.onloadend = () => {
-        setFormulario({ ...formulario, foto: lector.result });
-      };
-      lector.readAsDataURL(archivo);
+    } else if (type === "checkbox") {
+      const permiso = value.toLowerCase();
+      const nuevosPermisos = checked
+        ? [...formulario.permisos, { name: permiso }]
+        : formulario.permisos.filter((p) => p.name !== permiso);
+      setFormulario({ ...formulario, permisos: nuevosPermisos });
     } else {
-      // Si no seleccionan nuevo archivo, mantener la foto existente
-      setFormulario({ ...formulario, foto: personaSelect ? personaSelect.foto : "" });
+      // Validaciones en tiempo real
+      let nuevoValor = value;
+      if (name === "id" || name === "telefono") {
+        // Solo permitir números
+        nuevoValor = value.replace(/[^0-9]/g, "");
+        if (name === "id" && nuevoValor.length > 10) {
+          nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+        }
+        if (name === "telefono" && nuevoValor.length > 10) {
+          nuevoValor = nuevoValor.slice(0, 10); // Limitar a 10 dígitos
+        }
+      } else if (name === "nombre" || name === "apellido") {
+        // Solo permitir letras, tildes, ñ y espacios (excluir números y otros caracteres)
+        nuevoValor = value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "");
+      }
+      setFormulario({ ...formulario, [name]: nuevoValor });
     }
-  } else if (type === "checkbox") {
-    const permiso = value.toLowerCase();
-    const nuevosPermisos = checked
-      ? [...formulario.permisos, { name: permiso }]
-      : formulario.permisos.filter((p) => p.name !== permiso);
-    setFormulario({ ...formulario, permisos: nuevosPermisos });
-  } else {
-    setFormulario({ ...formulario, [name]: value });
-  }
-};
+  };
 
   // Función para guardar el empleado (agregar o editar)
   const guardarEmpleado = async (evento) => {
     evento.preventDefault();
 
-    // Validación: Asegurar que el nombre tenga al menos 3 caracteres
-    if (formulario.nombre.length < 3) {
-      abrirModalMensaje("advertencia", "El nombre debe tener al menos 3 caracteres.");
+    if (!token) {
+      abrirModalMensaje("error", "No hay token de acceso. Por favor, inicia sesión nuevamente.");
       return;
     }
 
-    // Validación: Asegurar que el apellido tenga al menos 3 caracteres
-    if (formulario.apellido.length < 3) {
-      abrirModalMensaje("advertencia", "El apellido debe tener al menos 3 caracteres.");
+    // Validación: Asegurar que el nombre tenga al menos 3 caracteres y solo letras (incluyendo tildes y ñ)
+    if (formulario.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formulario.nombre)) {
+      abrirModalMensaje("advertencia", "El nombre debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
       return;
     }
 
-    // Validación: Asegurar que el teléfono tenga exactamente 10 dígitos
+    // Validación: Asegurar que el apellido tenga al menos 3 caracteres y solo letras (incluyendo tildes y ñ)
+    if (formulario.apellido.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formulario.apellido)) {
+      abrirModalMensaje("advertencia", "El apellido debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+      return;
+    }
+
+    // Validación: Asegurar que el ID tenga entre 6 y 10 dígitos y solo números (solo al agregar)
+    if (!modalEdicion && (!/^\d{6,10}$/.test(formulario.id) || formulario.id.length < 6)) {
+      abrirModalMensaje("advertencia", "El ID debe tener entre 6 y 10 dígitos y solo números.");
+      return;
+    }
+
+    // Validación: Asegurar que el teléfono tenga exactamente 10 dígitos y solo números
     if (!/^\d{10}$/.test(formulario.telefono)) {
-      abrirModalMensaje("advertencia", "El teléfono debe tener exactamente 10 dígitos.");
+      abrirModalMensaje("advertencia", "El teléfono debe tener exactamente 10 dígitos y solo números.");
       return;
     }
 
-    // Validación: Asegurar que la dirección tenga al menos 3 caracteres
-    if (formulario.direccion.length < 3) {
-      abrirModalMensaje("advertencia", "La dirección debe tener al menos 3 caracteres.");
+    // Validación: Asegurar que la dirección tenga al menos 3 caracteres y no sea solo números
+    if (formulario.direccion.length < 3 || /^\d+$/.test(formulario.direccion)) {
+      abrirModalMensaje("advertencia", "La dirección debe tener al menos 3 caracteres y no puede ser solo números.");
       return;
     }
 
     // Validación: Verificar que el correo no esté duplicado
-    const correoExistente = personas.find(p => p.correo === formulario.correo);
-    if (correoExistente && (!modalEdicion || correoExistente.id !== parseInt(formulario.id))) {
+    const correoExistente = personas.find((p) => p.correo === formulario.correo && (!modalEdicion || p.id !== parseInt(formulario.id)));
+    if (correoExistente) {
       abrirModalMensaje("advertencia", "El correo ya está en uso.");
       return;
     }
 
-    // Peticiones
-    const url = modalEdicion
-      ? `${urlBackend}/user/personal/${formulario.id}`
-      : `${urlBackend}/user/register`;
-    const method = modalEdicion ? "put" : "post";
+    // Validación: Verificar que el ID no esté duplicado al agregar un nuevo empleado
+    if (!modalEdicion) {
+      const idExistente = personas.find((p) => p.id === parseInt(formulario.id));
+      if (idExistente) {
+        abrirModalMensaje("advertencia", "El ID ya está en uso por otro empleado.");
+        return;
+      }
+    }
 
     const formData = new FormData();
-    const body = {
-      id: formulario.id || null,
-      nombre: formulario.nombre,
-      apellido: formulario.apellido,
-      correo: formulario.correo,
-      telefono: formulario.telefono,
-      direccion: formulario.direccion || "",
-      permisos: formulario.permisos,
-    };
-    formData.append("usuario", new Blob([JSON.stringify(body)], { type: "application/json" }));
-    if (modalEdicion && !formulario.foto.startsWith("data:")) {
-      formData.append("foto", ""); // Mantener foto existente si no cambia
-    } else if (formulario.foto.startsWith("data:")) {
+    let body;
+
+    if (modalEdicion) {
+      // Modificar empleado
+      body = {
+        id: formulario.id,
+        nombre: formulario.nombre,
+        apellido: formulario.apellido,
+        correo: formulario.correo,
+        telefono: formulario.telefono,
+        direccion: formulario.direccion || "",
+        permisos: formulario.permisos,
+      };
+      formData.append("usuario", new Blob([JSON.stringify(body)], { type: "application/json" }));
+    } else {
+      // Agrear empleado
+      body = {
+        id: formulario.id || null,
+        nombre: formulario.nombre,
+        apellido: formulario.apellido,
+        correo: formulario.correo,
+        telefono: formulario.telefono,
+        direccion: formulario.direccion || "",
+        permissions: { listPermissions: formulario.permisos.map((p) => p.name) },
+      };
+      formData.append("authCreateUser", new Blob([JSON.stringify(body)], { type: "application/json" }));
+    }
+
+    if (formulario.foto && formulario.foto.startsWith("data:")) {
       const byteString = atob(formulario.foto.split(",")[1]);
       const mimeString = formulario.foto.split(",")[0].split(":")[1].split(";")[0];
       const ab = new ArrayBuffer(byteString.length);
@@ -256,34 +311,45 @@ const manejarCambioFormulario = (evento) => {
       }
       const blob = new Blob([ab], { type: mimeString });
       formData.append("foto", blob, "image.jpg");
+      // Borrar imagen anterior solo si no es la por defecto
+      if (personaSelect && personaSelect.foto && personaSelect.foto !== imagenPorDefecto) {
+        try {
+          await api.delete(`/cloudinary/delete/${personaSelect.foto.split("/").pop().split(".")[0]}`);
+        } catch (err) {
+          console.error("Error al eliminar imagen de Cloudinary:", err);
+        }
+      }
+    } else if (modalEdicion && !formulario.foto.startsWith("data:")) {
+      formData.append("foto", "");
     }
 
     try {
+      const url = modalEdicion
+        ? `${urlBackend}/user/personal/${formulario.id}`
+        : `${urlBackend}/user/register`;
+      const method = modalEdicion ? "put" : "post";
+
+      console.log("Enviando datos al backend:", { method, url, body });
+
       const res = await api({
         method,
         url,
-        headers: {
-          "Content-Type": "multipart/form-data",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         data: formData,
       });
-      if (res.status === 200 || res.status === 201) {
-        const updatedPersona = res.data;
-        if (!modalEdicion) {
-          setPersonas([...personas, updatedPersona]);
-        } else {
-          setPersonas(personas.map((p) => (p.id === updatedPersona.id ? updatedPersona : p)));
-        }
-        cargarUsuarios(); // Forzar recarga para asegurar datos actualizados
+
+      if (res.status === 200 || res.status === 201 || res.status === 204) {
+        cargarUsuarios();
         cerrarModal();
       }
     } catch (err) {
-      let errorMessage = "Error al guardar el empleado, verifica el ID.";
+      let errorMessage = `Error al ${modalEdicion ? "actualizar" : "agregar"} el empleado.`;
       if (err.response?.status === 400) {
-        errorMessage = err.response.data?.message || "El ID o correo ya está en uso.";
+        errorMessage = err.response.data?.message || "Datos inválidos.";
+      } else if (err.response?.status === 401) {
+        errorMessage = "No autorizado. Verifica tu sesión.";
       }
-      abrirModalMensaje("advertencia", errorMessage);
+      abrirModalMensaje("error", errorMessage);
       console.error("Error al guardar:", err);
     }
   };
@@ -297,54 +363,68 @@ const manejarCambioFormulario = (evento) => {
     }
   };
 
-  // Filtrar personas según el texto de búsqueda
-  const personasFiltradas = personas.filter(persona =>
-    persona.nombre.toLowerCase().includes(filtro.toLowerCase()) ||
-    persona.apellido?.toLowerCase().includes(filtro.toLowerCase()) ||
-    persona.correo.toLowerCase().includes(filtro.toLowerCase())
+  // Filtrar personas según el texto de búsqueda, manejando casos undefined
+  const personasFiltradas = personas.filter((persona) =>
+    persona &&
+    ((persona.nombre && persona.nombre.toLowerCase().includes(filtro.toLowerCase())) ||
+      (persona.apellido && persona.apellido.toLowerCase().includes(filtro.toLowerCase())) ||
+      (persona.correo && persona.correo.toLowerCase().includes(filtro.toLowerCase())))
   );
 
   return (
     <main>
-      <div className="titulo" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div
+        className="titulo"
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
         <h1>Personal</h1>
+        {/* Botón de agregar, visible solo si el usuario tiene permiso "PERSONAL" */}
+        {user && user.permisos.some((p) => p.name === "PERSONAL") && (
+          <BotonAgregar onClick={abrirModalAgregar} />
+        )}
       </div>
 
       {/* Mostrar mensaje si no hay personal registrado */}
       <div className="cards-container">
-        {personasFiltradas.map((persona) => (
-          <div key={persona.id} className="personal" onClick={clicTarjeta}>
-            <div className="card-front">
-              <img src={persona.foto || perfil} alt="imagen_perfil" />
-              <p>{`${persona.nombre} ${persona.apellido || ""}`.trim()}</p>
-              {persona.permisos && persona.permisos.length > 0 && (
-                <div className="permisos-lista mt-2">
-                  {persona.permisos.map((permiso, i) => (
-                    <span key={i} className="badge bg-secondary me-1">
-                      {permiso.name}
-                    </span>
-                  ))}
+        {personasFiltradas.map((persona, index) => {
+          if (!persona || !persona.id || typeof persona.id !== "number") {
+            console.warn(`Persona inválida en índice ${index}:`, persona);
+            return null;
+          }
+          return (
+            <div key={persona.id} className="personal" onClick={clicTarjeta}>
+              <div className="card-front">
+                <img src={persona.foto || imagenPorDefecto} alt="imagen_perfil" />
+                <p>{`${persona.nombre || ""} ${persona.apellido || ""}`.trim()}</p>
+                {persona.permisos && persona.permisos.length > 0 && (
+                  <div className="permisos-lista mt-2">
+                    {persona.permisos.map((permiso, i) => (
+                      <span key={`${persona.id}-${i}`} className="badge bg-secondary me-1">
+                        {permiso.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="card-back">
+                <p>Correo: {persona.correo || "Sin correo"}</p>
+                <p>Teléfono: {persona.telefono || "Sin teléfono"}</p>
+                <p>Dirección: {persona.direccion || "Sin dirección"}</p>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <BotonEditar onClick={() => abrirModalEditar(persona)} />
+                  <BotonEliminar onClick={() => abrirModalEliminacion(persona)} />
                 </div>
-              )}
-            </div>
-            <div className="card-back">
-              <p>Correo: {persona.correo}</p>
-              <p>Teléfono: {persona.telefono}</p>
-              <p>Dirección: {persona.direccion || "Sin dirección"}</p>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <BotonEditar onClick={() => abrirModalEditar(persona)} />
-                <BotonEliminar onClick={() => abrirModalEliminacion(persona)} />
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Modal de agregar o edicion */}
+      {/* Modal de agregar o edición */}
       {modalAbierta && (
         <Modal isOpen={modalAbierta} onClose={cerrarModal}>
           <div className="encabezado-modal">
-            <h2>{personaSelect ? "Modificar Personal" : "Agregar Personal"}</h2>
+            <h2>{modalEdicion ? "Modificar Personal" : "Agregar Personal"}</h2>
           </div>
           <form onSubmit={guardarEmpleado}>
             {!modalEdicion && (
@@ -357,7 +437,6 @@ const manejarCambioFormulario = (evento) => {
                   onChange={manejarCambioFormulario}
                   className="form-control mb-2"
                   required
-                  disabled={modalEdicion}
                 />
               </div>
             )}
@@ -380,6 +459,7 @@ const manejarCambioFormulario = (evento) => {
                 value={formulario.apellido}
                 onChange={manejarCambioFormulario}
                 className="form-control mb-2"
+                required
               />
             </div>
             <div className="grupo-formulario">
@@ -426,7 +506,7 @@ const manejarCambioFormulario = (evento) => {
             </div>
             <div className="grupo-formulario text-center">
               <img
-                src={formulario.foto || perfil}
+                src={formulario.foto || imagenPorDefecto}
                 alt="Vista previa"
                 style={{
                   width: "100px",
@@ -447,10 +527,11 @@ const manejarCambioFormulario = (evento) => {
                       type="checkbox"
                       name="permisos"
                       value={permiso}
-                      checked={formulario.permisos.some(p => p.name === permiso)}
+                      checked={formulario.permisos.some((p) => p.name === permiso)}
                       onChange={manejarCambioFormulario}
                     />{" "}
-                    {permiso.charAt(0).toUpperCase() + permiso.slice(1)} {/* Capitalizar para mostrar */}
+                    {permiso.charAt(0).toUpperCase() + permiso.slice(1)}{" "}
+                    {/* Capitalizar para mostrar */}
                   </label>
                 ))}
               </div>
@@ -481,7 +562,14 @@ const manejarCambioFormulario = (evento) => {
       {modalMensaje.abierto && (
         <Modal isOpen={modalMensaje.abierto} onClose={cerrarModalMensaje}>
           <div className="encabezado-modal">
-            <i className={`bi ${modalMensaje.tipo === "exito" ? "bi-check-circle-fill text-success" : modalMensaje.tipo === "error" ? "bi-x-circle-fill text-danger" : "bi-exclamation-triangle-fill text-warning"} display-4 mb-2`}></i>
+            <i
+              className={`bi ${modalMensaje.tipo === "exito"
+                ? "bi-check-circle-fill text-success"
+                : modalMensaje.tipo === "error"
+                  ? "bi-x-circle-fill text-danger"
+                  : "bi-exclamation-triangle-fill text-warning"
+                } display-4 mb-2`}
+            ></i>
             <h2>{modalMensaje.tipo.charAt(0).toUpperCase() + modalMensaje.tipo.slice(1)}</h2>
           </div>
           <p>{modalMensaje.mensaje}</p>

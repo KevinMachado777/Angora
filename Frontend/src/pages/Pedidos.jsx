@@ -29,7 +29,8 @@ const Pedidos = () => {
     mensaje: "",
     visible: false,
   });
-  const [isLoading, setIsLoading] = useState(true); // Estado para indicador de carga
+  const [isLoading, setIsLoading] = useState(true);
+  const [enviarCorreo, setEnviarCorreo] = useState(false);
 
   const abrirModal = (tipo, mensaje) => {
     setModalMensaje({ tipo, mensaje, visible: true });
@@ -38,9 +39,17 @@ const Pedidos = () => {
     }, 3000);
   };
 
-  useEffect(() => {
-    console.log("Token enviado:", token);
+  const abrirModalEliminarPedido = (pedido) => {
+    setPedidoAEliminar(pedido);
+    setConfirmarEliminacion(true);
+  };
 
+  // Helper function to round to the nearest multiple of 50
+  const roundToNearest50 = (value) => {
+    return Math.round(value / 50) * 50;
+  };
+
+  useEffect(() => {
     if (!token) {
       abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
       setIsLoading(false);
@@ -52,27 +61,46 @@ const Pedidos = () => {
         setIsLoading(true);
 
         // Cargar inventario
-        const inventarioResponse = await axios.get("http://localhost:8080/angora/api/v1/inventarioProducto/listado", {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        console.log("Productos recibidos:", inventarioResponse.data);
+        const inventarioResponse = await axios.get(
+          "http://localhost:8080/angora/api/v1/inventarioProducto/listado",
+          {
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         setInventario(inventarioResponse.data);
 
         // Cargar facturas pendientes
-        const pedidosResponse = await axios.get("http://localhost:8080/angora/api/v1/pedidos/pendientes", {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const pedidosResponse = await axios.get(
+          "http://localhost:8080/angora/api/v1/pedidos/pendientes",
+          {
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         console.log("Facturas pendientes recibidas:", pedidosResponse.data);
+        pedidosResponse.data.forEach((pedido) => {
+          console.log(
+            `Factura ID: ${pedido.idFactura}, Cliente: ${
+              pedido.cliente ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}` : "Consumidor final"
+            }, Notas: ${pedido.notas || "Sin notas"}`
+          );
+        });
         setPedidosPendiente(pedidosResponse.data);
       } catch (err) {
-        console.error("Error al cargar datos:", err.response?.status, err.response?.data);
-        abrirModal("error", `Error al cargar datos: ${err.response?.data?.message || err.message}`);
+        console.error(
+          "Error al cargar datos:",
+          err.response?.status,
+          err.response?.data
+        );
+        abrirModal(
+          "error",
+          `Error al cargar datos: ${err.response?.data?.message || err.message}`
+        );
       } finally {
         setIsLoading(false);
       }
@@ -81,24 +109,17 @@ const Pedidos = () => {
     fetchData();
   }, [token]);
 
-  useEffect(() => {
-    console.log("Producción pendiente calculada:", produccionPendiente);
-    console.log("Registros enviados a TablaDetalles:", produccionPendiente.map((p) => ({
-      idProducto: p.idProducto,
-      nombre: p.nombre,
-      cantidad: p.cantidad,
-    })));
-  }, [inventario, pedidosPendiente]);
-
   const confirmarVenta = async (imprimir) => {
     if (!pedidoAConfirmar || productosAConfirmar.length === 0) {
       abrirModal("advertencia", "No hay productos para confirmar la factura.");
       return;
     }
 
-    const actualizarCartera = pedidoAConfirmar.saldoPendiente > 0 && pedidoAConfirmar.saldoPendiente === pedidoAConfirmar.total;
+    const actualizarCartera =
+      pedidoAConfirmar.saldoPendiente > 0 &&
+      pedidoAConfirmar.saldoPendiente === pedidoAConfirmar.total;
     const productosDTO = productosAConfirmar.map((p) => ({
-      idProducto: p.idProducto || p.id, // Maneja idProducto o id
+      idProducto: p.idProducto || p.id,
       cantidad: p.cantidad,
     }));
 
@@ -108,15 +129,39 @@ const Pedidos = () => {
     };
 
     try {
-      await axios.put(`http://localhost:8080/angora/api/v1/pedidos/confirmar/${pedidoAConfirmar.idFactura}`, confirmarFacturaDTO, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      // Confirmar la factura
+      await axios.put(
+        `http://localhost:8080/angora/api/v1/pedidos/confirmar/${pedidoAConfirmar.idFactura}`,
+        confirmarFacturaDTO,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Enviar correo si está habilitado
+      if (enviarCorreo && pedidoAConfirmar.cliente && pedidoAConfirmar.cliente.correo) {
+        await axios.post(
+          "http://localhost:8080/angora/api/v1/pedidos/enviar-factura",
+          {
+            idFactura: pedidoAConfirmar.idFactura,
+            enviarCorreo: true,
+          },
+          {
+            headers: {
+              Accept: "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
 
       const nuevoInventario = inventario.map((prod) => {
-        const encontrado = productosAConfirmar.find((p) => (p.idProducto || p.id) === prod.idProducto);
+        const encontrado = productosAConfirmar.find(
+          (p) => (p.idProducto || p.id) === prod.idProducto
+        );
         if (encontrado) {
           return { ...prod, stock: prod.stock - encontrado.cantidad };
         }
@@ -124,7 +169,11 @@ const Pedidos = () => {
       });
       setInventario(nuevoInventario);
 
-      setPedidosPendiente(pedidosPendiente.filter((p) => p.idFactura !== pedidoAConfirmar.idFactura));
+      setPedidosPendiente(
+        pedidosPendiente.filter(
+          (p) => p.idFactura !== pedidoAConfirmar.idFactura
+        )
+      );
 
       if (imprimir) {
         generarPDF({
@@ -137,9 +186,17 @@ const Pedidos = () => {
       setMostrarConfirmarVenta(false);
       setPedidoAConfirmar(null);
       setProductosAConfirmar([]);
+      setEnviarCorreo(false);
     } catch (err) {
-      console.error("Error al confirmar factura:", err.response?.status, err.response?.data);
-      abrirModal("error", `Error al confirmar la factura: ${err.response?.data || err.message}`);
+      console.error(
+        "Error al confirmar factura:",
+        err.response?.status,
+        err.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al confirmar la factura: ${err.response?.data || err.message}`
+      );
     }
   };
 
@@ -147,17 +204,33 @@ const Pedidos = () => {
     const doc = new jsPDF();
     doc.setFontSize(12);
     doc.text(`Factura - Ticket #${pedido.idFactura}`, 10, 10);
-    doc.text(`Cliente: ${pedido.cliente.nombre}`, 10, 20);
+    doc.text(
+      `Cliente: ${pedido.cliente ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}` : "Consumidor final"}`,
+      10,
+      20
+    );
     doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 30);
-    let y = 45;
+    doc.text(`Cajero: ${pedido.cajero ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}` : "Sin cajero asignado"}`, 10, 40);
+    let y = 50;
+    if (pedido.notas) {
+      doc.text(`Notas: ${pedido.notas}`, 10, y);
+      y += 10;
+    }
     doc.text("Productos:", 10, y);
     y += 10;
-    pedido.productos.forEach((p, i) => {
-      const precioConIva = p.iva ? p.precio * 1.19 : p.precio;
-      doc.text(`- ${p.nombre} x${p.cantidad} ($${precioConIva.toFixed(2)})`, 10, y);
+    pedido.productos.forEach((p) => {
+      const precioUnitario = p.iva ? p.precio * 1.19 : p.precio;
+      const totalProducto = p.cantidad * precioUnitario;
+      doc.text(
+        `- ${p.nombre} x${p.cantidad} ($${precioUnitario.toFixed(2)}) [IVA: ${p.iva ? "Sí" : "No"}] = $${totalProducto.toFixed(2)}`,
+        10,
+        y
+      );
       y += 10;
     });
-    doc.text(`Total: $${pedido.total}`, 10, y + 10);
+    doc.text(`Subtotal (sin IVA): $${pedido.subtotal.toFixed(2)}`, 10, y);
+    y += 10;
+    doc.text(`Total: $${roundToNearest50(pedido.total).toFixed(2)}`, 10, y);
     doc.save(`Factura_Ticket_${pedido.idFactura}.pdf`);
   };
 
@@ -168,6 +241,7 @@ const Pedidos = () => {
     }
     setPedidoAConfirmar(pedido);
     setProductosAConfirmar([...pedido.productos]);
+    setEnviarCorreo(false);
     setMostrarConfirmarVenta(true);
   };
 
@@ -176,12 +250,10 @@ const Pedidos = () => {
       const cantidadTotal = pedidosPendiente.reduce((total, pedido) => {
         const encontrado = pedido.productos.find((p) => {
           const match = (p.idProducto || p.id) === producto.idProducto;
-          console.log(`Comparando producto ${producto.idProducto} con pedido producto ${p.idProducto || p.id}: ${match}`);
           return match;
         });
         return encontrado ? total + encontrado.cantidad : total;
       }, 0);
-      console.log(`Producto ${producto.idProducto} (${producto.nombre}): ${cantidadTotal} unidades pendientes`);
       return {
         idProducto: producto.idProducto,
         nombre: producto.nombre,
@@ -194,42 +266,57 @@ const Pedidos = () => {
   const abrirModalClientesProducto = (producto) => {
     const resultado = pedidosPendiente
       .map((ticket) => {
-        const productoEnFactura = ticket.productos.find((p) => (p.idProducto || p.id) === producto.idProducto);
+        const productoEnFactura = ticket.productos.find(
+          (p) => (p.idProducto || p.id) === producto.idProducto
+        );
         if (productoEnFactura) {
           return {
-            cliente: ticket.cliente.nombre,
+            cliente: ticket.cliente
+              ? `${ticket.cliente.nombre} ${ticket.cliente.apellido || ""}`
+              : "Consumidor final",
             cantidad: productoEnFactura.cantidad,
             ticketId: ticket.idFactura,
+            notas: ticket.notas,
           };
         }
         return null;
       })
       .filter(Boolean);
-    console.log("Clientes con producto pendiente:", resultado);
     setClientesProducto(resultado);
     setProductoSeleccionado(producto);
     setMostrarClientesProducto(true);
   };
 
-  const abrirModalEliminarPedido = (pedido) => {
-    setPedidoAEliminar(pedido);
-    setConfirmarEliminacion(true);
-  };
-
   const eliminarPedido = async () => {
     try {
-      await axios.delete(`http://localhost:8080/angora/api/v1/pedidos/${pedidoAEliminar.idFactura}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setPedidosPendiente(pedidosPendiente.filter((p) => p.idFactura !== pedidoAEliminar.idFactura));
-      abrirModal("exito", "Factura eliminada correctamente.");
+      await axios.delete(
+        `http://localhost:8080/angora/api/v1/pedidos/${pedidoAEliminar.idFactura}`,
+        {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setPedidosPendiente(
+        pedidosPendiente.filter(
+          (p) => p.idFactura !== pedidoAEliminar.idFactura
+        )
+      );
       setConfirmarEliminacion(false);
+      abrirModal("exito", "Factura eliminada correctamente.");
     } catch (err) {
-      console.error("Error al eliminar factura:", err.response?.status, err.response?.data);
-      abrirModal("error", `Error al eliminar la factura: ${err.response?.data?.message || err.message}`);
+      console.error(
+        "Error al eliminar factura:",
+        err.response?.status,
+        err.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al eliminar la factura: ${
+          err.response?.data?.message || err.message
+        }`
+      );
     }
   };
 
@@ -255,9 +342,13 @@ const Pedidos = () => {
         <div>
           <h4 className="text-center">Producción Pendiente</h4>
           {isLoading ? (
-            <p className="text-center text-muted">Cargando producción pendiente...</p>
+            <p className="text-center text-muted">
+              Cargando producción pendiente...
+            </p>
           ) : produccionPendiente.length === 0 ? (
-            <p className="text-center text-muted">No hay producción pendiente.</p>
+            <p className="text-center text-muted">
+              No hay producción pendiente.
+            </p>
           ) : (
             <TablaDetalles
               encabezados={["ID", "Nombre", "Cantidad", "Detalles"]}
@@ -274,7 +365,9 @@ const Pedidos = () => {
         <div>
           <h4 className="text-center">Pedidos Pendientes</h4>
           {isLoading ? (
-            <p className="text-center text-muted">Cargando pedidos pendientes...</p>
+            <p className="text-center text-muted">
+              Cargando pedidos pendientes...
+            </p>
           ) : pedidosPendiente.length === 0 ? (
             <table className="table table-sm table-bordered">
               <thead>
@@ -307,10 +400,14 @@ const Pedidos = () => {
                 {pedidosPendiente.map((pedido, i) => (
                   <tr key={i}>
                     <td>{pedido.idFactura}</td>
-                    <td>{pedido.cliente.nombre}</td>
+                    <td>
+                      {pedido.cliente
+                        ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
+                        : "Consumidor final"}
+                    </td>
                     <td>
                       <NumericFormat
-                        value={pedido.total}
+                        value={roundToNearest50(pedido.total)}
                         displayType="text"
                         thousandSeparator="."
                         decimalSeparator=","
@@ -351,7 +448,9 @@ const Pedidos = () => {
         </div>
         <div className="row tarjetas-ajuste">
           {clientesProducto.length === 0 ? (
-            <p className="text-center text-muted">No hay clientes con este producto pendiente.</p>
+            <p className="text-center text-muted">
+              No hay clientes con este producto pendiente.
+            </p>
           ) : (
             clientesProducto.map((c, i) => (
               <div key={i}>
@@ -369,6 +468,12 @@ const Pedidos = () => {
                       <i className="bi bi-box2-heart-fill text-success"></i>
                       Cantidad: {c.cantidad}
                     </p>
+                    {c.notas && (
+                      <p>
+                        <i className="bi bi-chat-left-text text-info"></i>
+                        Notas: {c.notas}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -391,48 +496,63 @@ const Pedidos = () => {
           </h2>
         </div>
         <hr className="my-3" />
-        <p className="text-center">
-          ¿Desea confirmar la factura del cliente{" "}
-          <span className="fw-bold">{pedidoAConfirmar?.cliente.nombre}</span>?
-        </p>
         <p className="text-center text-muted">
           Seleccione una opción para finalizar la venta de la factura{" "}
           <strong>(Ticket #{pedidoAConfirmar?.idFactura})</strong>.
         </p>
         <div className="ticket">
-          <h3 style={{ textAlign: "center" }}>Fragancey´s</h3>
-          <p>Fecha: {pedidoAConfirmar && new Date(pedidoAConfirmar.fecha).toLocaleString()}</p>
-          <p>Cajero: {user?.nombre}</p>
-          <p>Cliente: {pedidoAConfirmar?.cliente.nombre}</p>
+          <h3 style={{ textAlign: "center" }}>Fraganceys</h3>
+          <p>
+            Fecha:{" "}
+            {pedidoAConfirmar &&
+              new Date(pedidoAConfirmar.fecha).toLocaleString()}
+          </p>
+          <p>
+            Cajero: {pedidoAConfirmar?.cajero
+              ? `${pedidoAConfirmar.cajero.nombre} ${pedidoAConfirmar.cajero.apellido || ""}`
+              : "Sin cajero asignado"}
+          </p>
+          <p>
+            Cliente: {pedidoAConfirmar?.cliente
+              ? `${pedidoAConfirmar.cliente.nombre} ${pedidoAConfirmar.cliente.apellido || ""}`
+              : "Consumidor final"}
+          </p>
+          {pedidoAConfirmar?.notas && (
+            <p>
+              <strong>Notas:</strong> {pedidoAConfirmar.notas}
+            </p>
+          )}
           <hr />
           <table>
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Nombre</th>
                 <th>Cant.</th>
                 <th>Precio</th>
+                <th>IVA</th>
                 <th>Total</th>
               </tr>
             </thead>
             <tbody>
               {productosAConfirmar.map((item, i) => (
                 <tr key={i}>
-                  <td>{item.idProducto || item.id}</td>
                   <td>{item.nombre}</td>
                   <td>{item.cantidad}</td>
                   <td>
                     <NumericFormat
-                      value={item.iva ? item.precio * 1.19 : item.precio}
+                      value={item.precio}
                       displayType="text"
                       thousandSeparator="."
                       decimalSeparator=","
                       prefix="$"
                     />
                   </td>
+                  <td>{item.iva ? "Sí" : "No"}</td>
                   <td>
                     <NumericFormat
-                      value={item.cantidad * (item.iva ? item.precio * 1.19 : item.precio)}
+                      value={
+                        item.cantidad * (item.iva ? item.precio * 1.19 : item.precio)
+                      }
                       displayType="text"
                       thousandSeparator="."
                       decimalSeparator=","
@@ -445,15 +565,38 @@ const Pedidos = () => {
           </table>
           <hr />
           <p>
-            <strong>Total a pagar: </strong>
+            <strong>Subtotal (sin IVA): </strong>
             <NumericFormat
-              value={pedidoAConfirmar?.total}
+              value={pedidoAConfirmar?.subtotal || 0}
               displayType="text"
               thousandSeparator="."
               decimalSeparator=","
               prefix="$"
             />
           </p>
+          <p>
+            <strong>Total a pagar: </strong>
+            <NumericFormat
+              value={roundToNearest50(pedidoAConfirmar?.total || 0)}
+              displayType="text"
+              thousandSeparator="."
+              decimalSeparator=","
+              prefix="$"
+            />
+          </p>
+        </div>
+        <div className="form-check mb-3">
+          <input
+            type="checkbox"
+            className="form-check-input"
+            id="enviarCorreo"
+            checked={enviarCorreo}
+            onChange={(e) => setEnviarCorreo(e.target.checked)}
+            disabled={!pedidoAConfirmar?.cliente?.correo}
+          />
+          <label className="form-check-label" htmlFor="enviarCorreo">
+            Enviar factura por correo electrónico
+          </label>
         </div>
         <div className="pie-modal">
           <BotonCancelar onClick={() => setMostrarConfirmarVenta(false)} />
@@ -481,13 +624,16 @@ const Pedidos = () => {
         </div>
         <p>
           ¿Desea eliminar la factura del cliente{" "}
-          <strong>{pedidoAEliminar?.cliente.nombre}</strong>?
+          <strong>
+            {pedidoAEliminar?.cliente
+              ? `${pedidoAEliminar.cliente.nombre} ${pedidoAEliminar.cliente.apellido || ""}`
+              : `Consumidor final${pedidoAEliminar?.notas ? ` (${pedidoAEliminar.notas})` : ""}`}
+          </strong>
+          ?
         </p>
         <div className="pie-modal">
           <BotonCancelar onClick={() => setConfirmarEliminacion(false)} />
-          <button className="btn btn-danger" onClick={eliminarPedido}>
-            Eliminar
-          </button>
+          <BotonAceptar onClick={eliminarPedido}></BotonAceptar>
         </div>
       </Modal>
 

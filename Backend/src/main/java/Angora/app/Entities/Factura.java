@@ -35,7 +35,7 @@ public class Factura {
 
     private Integer subtotal;
     private Integer total;
-    private Float saldoPendiente;
+    private Integer saldoPendiente;
 
     @ManyToOne
     @JoinColumn(name = "id_cajero")
@@ -48,4 +48,7 @@ public class Factura {
     @JoinColumn(name = "id_cartera")
     @JsonBackReference("cartera-facturas")
     private Cartera idCartera;
+
+    @Column(name = "notas", length = 255)
+    private String notas;
 }
