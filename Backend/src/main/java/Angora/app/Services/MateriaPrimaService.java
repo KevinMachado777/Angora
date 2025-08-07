@@ -1,5 +1,6 @@
 package Angora.app.Services;
 
+import Angora.app.Controllers.dto.MateriaDTO;
 import Angora.app.Entities.Lote;
 import Angora.app.Entities.MateriaPrima;
 import Angora.app.Repositories.LoteRepository;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,28 +24,54 @@ public class MateriaPrimaService {
     @Autowired
     private LoteRepository loteRepository;
 
-    public List<MateriaPrima> findAll() {
-        return materiaPrimaRepository.findAll();
+    public List<MateriaDTO> findAll() {
+
+        List<MateriaPrima> materiasEntity = materiaPrimaRepository.findAll();
+
+        List<MateriaDTO> materiasDto = new ArrayList<>();
+
+        materiasEntity.forEach(materia -> {
+            MateriaDTO materiaDto = new MateriaDTO();
+            materiaDto.setIdMateria(materia.getIdMateria());
+            materiaDto.setNombre(materia.getNombre());
+            materiaDto.setCantidad(materia.getCantidad());
+            materiaDto.setCosto(materia.getCosto());
+            materiaDto.setVenta(materia.getVenta());
+            materiasDto.add(materiaDto);
+        });
+
+        return materiasDto;
     }
 
-    public Optional<MateriaPrima> findById(Long id) {
-        return materiaPrimaRepository.findById(id);
+    public MateriaDTO findById(Long id) {
+
+        MateriaPrima materiaPrima = materiaPrimaRepository.findById(id).orElseThrow(() -> {
+            throw new RuntimeException("Materia prima no encontrada");
+        });
+
+        MateriaDTO materiaDto = new MateriaDTO();
+        materiaDto.setIdMateria(materiaPrima.getIdMateria());
+        materiaDto.setNombre(materiaPrima.getNombre());
+        materiaDto.setCantidad(materiaPrima.getCantidad());
+        materiaDto.setCosto(materiaPrima.getCosto());
+        materiaDto.setVenta(materiaPrima.getVenta());
+
+        return materiaDto;
     }
 
     @Transactional
-    public MateriaPrima save(MateriaPrima materia) {
-        MateriaPrima savedMateria = materiaPrimaRepository.save(materia);
-        if (materia.getCantidad() > 0) {
-            Lote lote = new Lote();
-            lote.setIdMateria(savedMateria.getIdMateria());
-            lote.setCostoUnitario(materia.getCosto());
-            lote.setCantidad(materia.getCantidad());
-            lote.setCantidadDisponible((float) materia.getCantidad());
-            lote.setFechaIngreso(LocalDateTime.now());
-            lote.setIdProveedor(null);
-            loteRepository.save(lote);
-        }
-        return savedMateria;
+    public MateriaDTO save(MateriaDTO materiaDto) {
+
+        MateriaPrima materiaPrima = new MateriaPrima();
+
+        materiaPrima.setNombre(materiaDto.getNombre());
+        materiaPrima.setCantidad(0f);
+        materiaPrima.setCosto(0);
+        materiaPrima.setVenta(0);
+
+        MateriaPrima savedMateria = materiaPrimaRepository.save(materiaPrima);
+
+        return materiaDto;
     }
 
     @Transactional

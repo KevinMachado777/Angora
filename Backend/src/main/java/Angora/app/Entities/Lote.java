@@ -25,7 +25,7 @@ public class Lote {
     private Long idMateria;
 
     @Column(nullable = false)
-    private Float costoUnitario;
+    private Integer costoUnitario;
 
     @Column(nullable = false)
     private Float cantidad; // cantidad inicial (la que me llega por la orden o ingreso manual

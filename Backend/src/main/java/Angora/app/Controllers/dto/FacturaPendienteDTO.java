@@ -121,7 +121,7 @@ public class FacturaPendienteDTO {
         private Long id;
         private String nombre;
         private Integer cantidad;
-        private Float precio;
+        private Integer precio;
 
         public Long getId() {
             return id;
@@ -147,11 +147,11 @@ public class FacturaPendienteDTO {
             this.cantidad = cantidad;
         }
 
-        public Float getPrecio() {
+        public Integer getPrecio() {
             return precio;
         }
 
-        public void setPrecio(Float precio) {
+        public void setPrecio(Integer precio) {
             this.precio = precio;
         }
     }

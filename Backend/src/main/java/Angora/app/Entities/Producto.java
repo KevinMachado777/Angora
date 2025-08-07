@@ -28,8 +28,8 @@ public class Producto implements Inventariable {
     @Column(name = "id_producto")
     private Long idProducto;
 
-    private Float costo;
-    private Float precio;
+    private Integer costo;
+    private Integer precio;
     private Boolean iva;
 
     @ManyToOne
