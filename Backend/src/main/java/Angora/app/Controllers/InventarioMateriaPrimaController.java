@@ -1,5 +1,6 @@
 package Angora.app.Controllers;
 
+import Angora.app.Controllers.dto.MateriaDTO;
 import Angora.app.Entities.MateriaPrima;
 import Angora.app.Services.MateriaPrimaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +12,7 @@ import java.util.List;
 
 // Controlador de materia prima
 @RestController
-@RequestMapping("/inventarioPrima")
+@RequestMapping("/inventarioMateria")
 public class InventarioMateriaPrimaController {
 
     // Servicio de inventario de materia prima
@@ -27,16 +28,14 @@ public class InventarioMateriaPrimaController {
     // Obtener una materia por ID
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id){
-        return new ResponseEntity<>(materiaPrimaService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build()), HttpStatus.OK);
+        return new ResponseEntity<>(materiaPrimaService.findById(id), HttpStatus.OK);
     }
 
     // Guardar una materia prima
     // ¡IMPORTANTE! crear otro método en el servicio si es para orden y otro metodo en el controlador!
     // Este método es exclusivo para guardar si la materia no tiene proveedor
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody MateriaPrima materia){
+    public ResponseEntity<?> create(@RequestBody MateriaDTO materia){
 
         return new ResponseEntity<>(materiaPrimaService.save(materia), HttpStatus.CREATED);
     }

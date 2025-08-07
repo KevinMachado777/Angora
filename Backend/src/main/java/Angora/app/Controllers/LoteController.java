@@ -1,7 +1,9 @@
 package Angora.app.Controllers;
 
+import Angora.app.Controllers.dto.LoteDTO;
 import Angora.app.Entities.Lote;
 import Angora.app.Repositories.LoteRepository;
+import Angora.app.Services.LoteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,9 @@ public class LoteController {
     @Autowired
     private LoteRepository loteRepository;
 
+    @Autowired
+    private LoteService loteService;
+
     // Obtener todos los lotes
     @GetMapping
     public ResponseEntity<?> getAll(){
@@ -27,16 +32,14 @@ public class LoteController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id){
 
-        return new ResponseEntity<>(loteRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build()), HttpStatus.OK);
+        return new ResponseEntity<>(loteService.findById(id), HttpStatus.OK);
     }
 
     // Guardar un lote
     // NOTA: Este método se puede usar para guardar la confirmacion de la orden de compra de los proveedores
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Lote lote){
-        return new ResponseEntity<>(loteRepository.save(lote), HttpStatus.CREATED);
+    public ResponseEntity<?> create(@RequestBody LoteDTO lote){
+        return new ResponseEntity<>(loteService.save(lote), HttpStatus.CREATED);
     }
 
     // Actualizar algun lote

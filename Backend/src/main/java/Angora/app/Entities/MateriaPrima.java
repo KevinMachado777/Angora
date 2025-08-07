@@ -27,10 +27,10 @@ public class MateriaPrima implements InventariableMateria {
     private String nombre;
 
     @Column(nullable = false)
-    private Float costo;
+    private Integer costo;
 
     @Column(nullable = false)
-    private Float venta;
+    private Integer venta;
 
     @Column(nullable = false)
     private Float cantidad;

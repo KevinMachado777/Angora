@@ -6,6 +6,7 @@ import Angora.app.Controllers.dto.ProductoDTO;
 import Angora.app.Entities.*;
 import Angora.app.Repositories.*;
 import Angora.app.Services.ProductoService;
+import Angora.app.Services.ProveedorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,6 +46,9 @@ public class DataInitializer implements CommandLineRunner {
 
     @Autowired
     private ProveedorRepository proveedorRepository;
+
+    @Autowired
+    private ProveedorService proveedorService;
 
     @Override
     @Transactional
@@ -125,9 +129,16 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initializeProveedores() {
+
+        Proveedor proveedorBuscado = proveedorService.buscarProveedorPorId(1L);
+
+        if(proveedorBuscado != null) {
+            System.out.println("Proveedor ya existente");
+            return;
+        }
+
         String nombre = "Proveedor de prueba";
         String correo = "proveedor@example.com";
-
 
         Proveedor proveedor = new Proveedor();
         proveedor.setNombre(nombre);
@@ -209,16 +220,16 @@ public class DataInitializer implements CommandLineRunner {
     private void initializeMateriasPrimas() {
         if (materiaPrimaRepository.count() == 0) {
             List<MateriaPrima> materiasPrimas = List.of(
-                    new MateriaPrima(null, "Ácido sulfónico", 3500f, 4200f, 50f),
-                    new MateriaPrima(null, "Glicerina", 2500f, 3000f, 40f),
-                    new MateriaPrima(null, "Carbonato de sodio", 1800f, 2200f, 60f),
-                    new MateriaPrima(null, "Lauril éter sulfato de sodio", 4200f, 4800f, 30f),
-                    new MateriaPrima(null, "Fragancia lavanda", 6000f, 7000f, 20f),
-                    new MateriaPrima(null, "Colorante azul", 1000f, 1200f, 10f),
-                    new MateriaPrima(null, "Formol", 1500f, 1800f, 15f),
-                    new MateriaPrima(null, "Agua destilada", 300f, 500f, 100f),
-                    new MateriaPrima(null, "Cloruro de amonio", 2000f, 2500f, 25f),
-                    new MateriaPrima(null, "Alcohol etílico", 4500f, 5200f, 35f)
+                    new MateriaPrima(null, "Ácido sulfónico", 3500, 4200, 50f),
+                    new MateriaPrima(null, "Glicerina", 2500, 3000, 40f),
+                    new MateriaPrima(null, "Carbonato de sodio", 1800, 2200, 60f),
+                    new MateriaPrima(null, "Lauril éter sulfato de sodio", 4200, 4800, 30f),
+                    new MateriaPrima(null, "Fragancia lavanda", 6000, 7000, 20f),
+                    new MateriaPrima(null, "Colorante azul", 1000, 1200, 10f),
+                    new MateriaPrima(null, "Formol", 1500, 1800, 15f),
+                    new MateriaPrima(null, "Agua destilada", 300, 500, 100f),
+                    new MateriaPrima(null, "Cloruro de amonio", 2000, 2500, 25f),
+                    new MateriaPrima(null, "Alcohol etílico", 4500, 5200, 35f)
             );
 
             materiaPrimaRepository.saveAll(materiasPrimas);
@@ -242,8 +253,8 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Creando DTO del producto...");
         ProductoDTO dto = new ProductoDTO();
         dto.setNombre("Detergente en polvo");
-        dto.setCosto(6000f);
-        dto.setPrecio(8500f);
+        dto.setCosto(6000);
+        dto.setPrecio(8500);
         dto.setStock(50);
         dto.setIva(true);
 
