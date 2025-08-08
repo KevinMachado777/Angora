@@ -1,34 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+import api from "../api/axiosInstance";
 import Modal from "../components/Modal";
 import BotonAceptar from "../components/BotonAceptar";
 import BotonCancelar from "../components/BotonCancelar";
 import { CreadorTabla } from "./CreadorTabla";
 import "../styles/proveedores.css";
-import axios from "axios";
 import Select from "react-select";
-
-// Componente de mensajes reutilizable
-const ModalMensaje = ({ tipo, mensaje }) => {
-  const iconos = {
-    exito: "bi bi-check-circle-fill text-success display-4 mb-2",
-    error: "bi bi-x-circle-fill text-danger display-4 mb-2",
-    advertencia: "bi bi-exclamation-triangle-fill text-warning display-4 mb-2",
-  };
-
-  const titulos = {
-    exito: "¡Éxito!",
-    error: "Error",
-    advertencia: "Advertencia",
-  };
-
-  return (
-    <div className="text-center p-3">
-      <i className={iconos[tipo]}></i>
-      <h2>{titulos[tipo]}</h2>
-      <p>{mensaje}</p>
-    </div>
-  );
-};
 
 const ModalProveedor = ({
   isOpen,
@@ -37,6 +15,8 @@ const ModalProveedor = ({
   onGuardar,
   datosIniciales,
 }) => {
+  const { user } = useContext(AuthContext);
+  const token = localStorage.getItem("accessToken");
   const esOrden = tipo === "orden";
 
   const [formulario, setFormulario] = useState({
@@ -50,53 +30,103 @@ const ModalProveedor = ({
   });
 
   const [proveedoresDisponibles, setProveedoresDisponibles] = useState([]);
-  const [nuevoItem, setNuevoItem] = useState({ nombre: "", cantidad: "" });
+  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState([]);
+  const [nuevoItem, setNuevoItem] = useState({ idMateria: "", nombre: "", cantidad: "" });
   const [modalEdicionProducto, setModalEdicionProducto] = useState(false);
   const [productoEditando, setProductoEditando] = useState(null);
-
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [modalTipo, setModalTipo] = useState("exito");
-  const [modalMensaje, setModalMensaje] = useState("");
+  const [modalMensaje, setModalMensaje] = useState({
+    tipo: "",
+    mensaje: "",
+    visible: false,
+  });
 
   const abrirModal = (tipo, mensaje) => {
-    setModalTipo(tipo);
-    setModalMensaje(mensaje);
-    setModalAbierto(true);
+    setModalMensaje({ tipo, mensaje, visible: true });
+    setTimeout(() => {
+      setModalMensaje({ tipo: "", mensaje: "", visible: false });
+    }, 1500);
+  };
+
+  const enviarCorreoOrden = async () => {
+    if (!formulario.id || !formulario.nombre || !proveedoresDisponibles.length) {
+      abrirModal("advertencia", "Debe seleccionar un proveedor válido.");
+      return;
+    }
+
+    const proveedor = proveedoresDisponibles.find(
+      (p) => p.idProveedor === parseInt(formulario.id)
+    );
+    if (!proveedor?.correo) {
+      abrirModal("advertencia", "El proveedor no tiene un correo registrado.");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("email", proveedor.correo);
+      formData.append("nombre", proveedor.nombre);
+      formData.append("ordenNumero", datosIniciales?.idOrden.toString() || "N/A");
+      formData.append("monto", formulario.total?.toFixed(2) || "0.00");
+
+      await api.post("/ordenes/enviar", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      abrirModal("exito", "Correo enviado correctamente al proveedor.");
+    } catch (error) {
+      console.error("Error al enviar correo:", error.response?.status, error.response?.data);
+      abrirModal("error", `Error al enviar correo: ${error.response?.data?.message || error.message}`);
+    }
   };
 
   const verificarCorreoExistente = async (correo) => {
     try {
-      const response = await fetch(
-        `http://localhost:8080/angora/api/v1/user/exists/${correo}`
-      );
-      if (!response.ok) return false;
-      const exists = await response.json();
-      return exists;
+      const response = await api.get(`/user/exists/${correo}`);
+      return response.data;
     } catch (error) {
-      console.error("Error al verificar correo:", error);
+      console.error("Error al verificar correo:", error.response?.status, error.response?.data);
+      abrirModal("error", `Error al verificar correo: ${error.response?.data?.message || error.message}`);
       return false;
     }
   };
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !token) {
+      if (!token) {
+        abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      }
+      return;
+    }
 
     if (esOrden) {
-      axios
-        .get("http://localhost:8080/angora/api/v1/proveedores")
+      api
+        .get("/proveedores")
         .then((res) => setProveedoresDisponibles(res.data))
-        .catch((err) => console.error("Error al cargar proveedores:", err));
+        .catch((err) => {
+          console.error("Error al cargar proveedores:", err.response?.status, err.response?.data);
+          abrirModal("error", `Error al cargar proveedores: ${err.response?.data?.message || err.message}`);
+        });
+
+      api
+        .get("/inventarioMateria")
+        .then((res) => setMateriasPrimasDisponibles(res.data))
+        .catch((err) => {
+          console.error("Error al cargar materias primas:", err.response?.status, err.response?.data);
+          abrirModal("error", `Error al cargar materias primas: ${err.response?.data?.message || err.message}`);
+        });
     }
 
     if (datosIniciales) {
       setFormulario({
-        id: datosIniciales.id || datosIniciales.idProveedor || "",
-        nombre: datosIniciales.nombre || "",
+        id: datosIniciales.idOrden || datosIniciales.idProveedor || "",
+        nombre: datosIniciales.nombre || datosIniciales.proveedor?.nombre || "",
         telefono: datosIniciales.telefono || "",
         correo: datosIniciales.correo || "",
         direccion: datosIniciales.direccion || "",
         notas: datosIniciales.notas || "",
-        items: datosIniciales.items || [],
+        items: datosIniciales.materiaPrima || datosIniciales.items || [],
       });
     } else {
       setFormulario({
@@ -110,30 +140,14 @@ const ModalProveedor = ({
       });
     }
 
-    setNuevoItem({ nombre: "", cantidad: "" });
-  }, [isOpen, datosIniciales, esOrden]);
+    setNuevoItem({ idMateria: "", nombre: "", cantidad: "" });
+  }, [isOpen, datosIniciales, esOrden, token]);
 
-  // Controla cuánto dura visible el mensaje modal (ModalMensaje)
   useEffect(() => {
-    if (modalAbierto) {
-      let duracion = 2000;
-      if (modalTipo === "advertencia") duracion = 2000;
-      if (modalTipo === "error") duracion = 2000;
-
-      const timer = setTimeout(() => {
-        setModalAbierto(false); // Solo cerramos el mensaje aquí
-      }, duracion);
-
-      return () => clearTimeout(timer);
+    if (!modalMensaje.visible && modalMensaje.tipo === "exito") {
+      onClose();
     }
-  }, [modalAbierto, modalTipo]);
-
-  // Cierra la modal principal solo cuando se haya cerrado el mensaje y haya sido de tipo 'exito'
-  useEffect(() => {
-    if (!modalAbierto && modalTipo === "exito") {
-      onClose(); // Ahora sí cerramos ModalProveedor después del mensaje de éxito
-    }
-  }, [modalAbierto, modalTipo]);
+  }, [modalMensaje.visible, modalMensaje.tipo, onClose]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -146,22 +160,19 @@ const ModalProveedor = ({
   };
 
   const agregarItem = () => {
-    if (!nuevoItem.nombre.trim()) {
-      abrirModal(
-        "advertencia",
-        "El nombre de la materia prima no puede estar vacío."
-      );
+    if (!nuevoItem.idMateria || !nuevoItem.nombre.trim()) {
+      abrirModal("advertencia", "Debe seleccionar una materia prima.");
       return;
     }
 
-    const cantidad = parseInt(nuevoItem.cantidad);
+    const cantidad = parseFloat(nuevoItem.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
       abrirModal("advertencia", "La cantidad debe ser mayor a 0.");
       return;
     }
 
     const repetido = formulario.items.some(
-      (item) => item.nombre.toLowerCase() === nuevoItem.nombre.toLowerCase()
+      (item) => item.idMateria === nuevoItem.idMateria
     );
     if (repetido) {
       abrirModal("advertencia", "Ya has agregado esa materia prima.");
@@ -169,6 +180,7 @@ const ModalProveedor = ({
     }
 
     const nuevo = {
+      idMateria: nuevoItem.idMateria,
       nombre: nuevoItem.nombre,
       cantidad: cantidad,
     };
@@ -178,32 +190,33 @@ const ModalProveedor = ({
       items: [...prev.items, nuevo],
     }));
 
-    setNuevoItem({ nombre: "", cantidad: "" });
+    setNuevoItem({ idMateria: "", nombre: "", cantidad: "" });
   };
 
   const editarProducto = (item) => {
     const index = formulario.items.findIndex(
-      (i) => i.nombre === item.nombre && i.cantidad === item.cantidad
+      (i) => i.idMateria === item.idMateria
     );
     if (index !== -1) {
       setProductoEditando({ ...item, index });
+      setModalEdicionProducto(true);
     }
-    setModalEdicionProducto(true);
   };
 
   const guardarProductoEditado = () => {
     if (
       !productoEditando ||
       !productoEditando.nombre ||
-      parseInt(productoEditando.cantidad) <= 0
+      parseFloat(productoEditando.cantidad) <= 0
     ) {
       abrirModal("advertencia", "La cantidad debe ser mayor a 0.");
       return;
     }
 
     const itemEditado = {
+      idMateria: productoEditando.idMateria,
       nombre: productoEditando.nombre,
-      cantidad: parseInt(productoEditando.cantidad),
+      cantidad: parseFloat(productoEditando.cantidad),
     };
 
     const nuevosItems = [...formulario.items];
@@ -214,26 +227,23 @@ const ModalProveedor = ({
   };
 
   const eliminarItem = (item) => {
-    const index = formulario.items.findIndex(
-      (i) => i.nombre === item.nombre && i.cantidad === item.cantidad
-    );
-    if (index !== -1) {
-      setFormulario((prev) => ({
-        ...prev,
-        items: prev.items.filter((_, i) => i !== index),
-      }));
-    }
+    setFormulario((prev) => ({
+      ...prev,
+      items: prev.items.filter((i) => i.idMateria !== item.idMateria),
+    }));
   };
 
   const guardar = async (e) => {
     e.preventDefault();
 
+    if (!token) {
+      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      return;
+    }
+
     if (esOrden) {
       if (!formulario.id) {
-        abrirModal(
-          "advertencia",
-          "Debe seleccionar un proveedor para la orden."
-        );
+        abrirModal("advertencia", "Debe seleccionar un proveedor para la orden.");
         return;
       }
 
@@ -242,68 +252,33 @@ const ModalProveedor = ({
         return;
       }
 
-      const cantidad = formulario.items.reduce(
-        (acc, item) => acc + (parseInt(item.cantidad) || 0),
-        0
-      );
-
       onGuardar({
-        ...formulario,
-        cantidadArticulos: cantidad,
+        id: formulario.id,
+        notas: formulario.notas,
+        items: formulario.items,
         total: 0,
       });
-
-      abrirModal("exito", "Orden registrada correctamente.");
-
-      setFormulario({
-        id: "",
-        nombre: "",
-        telefono: "",
-        correo: "",
-        direccion: "",
-        notas: "",
-        items: [],
-      });
-
-      if(modalAbierto == false){
-        onClose();
+    } else {
+      const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
+      if (!correoValido) {
+        abrirModal("advertencia", "Por favor ingresa un correo válido.");
+        return;
       }
+
+      const telefonoValido = /^\d{10}$/.test(formulario.telefono);
+      if (!telefonoValido) {
+        abrirModal("advertencia", "El teléfono debe tener exactamente 10 dígitos.");
+        return;
+      }
+
+      const existe = await verificarCorreoExistente(formulario.correo);
+      if (existe) {
+        abrirModal("advertencia", "Ya existe un usuario con ese correo.");
+        return;
+      }
+
+      onGuardar({ ...formulario });
     }
-
-    const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
-    if (!correoValido) {
-      abrirModal("advertencia", "Por favor ingresa un correo válido.");
-      return;
-    }
-
-    const telefonoValido = /^\d{10}$/.test(formulario.telefono);
-    if (!telefonoValido) {
-      abrirModal(
-        "advertencia",
-        "El teléfono debe tener exactamente 10 dígitos."
-      );
-      return;
-    }
-
-    const existe = await verificarCorreoExistente(formulario.correo);
-    if (existe) {
-      abrirModal("advertencia", "Ya existe un usuario con ese correo.");
-      return;
-    }
-
-    onGuardar({ ...formulario, idMateria: [] });
-
-    abrirModal("exito", "Proveedor guardado correctamente.");
-
-    setFormulario({
-      id: "",
-      nombre: "",
-      telefono: "",
-      correo: "",
-      direccion: "",
-      notas: "",
-      items: [],
-    });
   };
 
   if (!isOpen) return null;
@@ -322,7 +297,7 @@ const ModalProveedor = ({
             </h2>
           </div>
 
-          {datosIniciales && (
+          {datosIniciales && !esOrden && (
             <div className="grupo-formulario">
               <label>ID del proveedor:</label>
               <input
@@ -362,6 +337,7 @@ const ModalProveedor = ({
                     ...prev,
                     id: proveedor.idProveedor,
                     nombre: proveedor.nombre,
+                    correo: proveedor.correo,
                   }));
                 }}
                 placeholder="Seleccione un proveedor..."
@@ -427,12 +403,43 @@ const ModalProveedor = ({
                 <h3 className="proveedores subtitulo">
                   Registro de materia prima
                 </h3>
-                <input
-                  placeholder="Nombre"
-                  name="nombre"
-                  value={nuevoItem.nombre}
-                  onChange={handleItemChange}
-                  className="form-control"
+                <Select
+                  options={materiasPrimasDisponibles.map((m) => ({
+                    value: m.idMateria,
+                    label: m.nombre,
+                  }))}
+                  value={
+                    nuevoItem.idMateria
+                      ? {
+                          value: nuevoItem.idMateria,
+                          label:
+                            materiasPrimasDisponibles.find(
+                              (m) => m.idMateria === nuevoItem.idMateria
+                            )?.nombre || "Materia prima seleccionada",
+                        }
+                      : null
+                  }
+                  onChange={(selected) => {
+                    const materia = materiasPrimasDisponibles.find(
+                      (m) => m.idMateria === selected.value
+                    );
+                    setNuevoItem((prev) => ({
+                      ...prev,
+                      idMateria: materia.idMateria,
+                      nombre: materia.nombre,
+                    }));
+                  }}
+                  placeholder="Seleccione una materia prima..."
+                  classNamePrefix="select"
+                  styles={{
+                    control: (base) => ({
+                      ...base,
+                      minHeight: "38px",
+                      borderRadius: "6px",
+                      borderColor: "#ced4da",
+                      boxShadow: "none",
+                    }),
+                  }}
                 />
                 <input
                   placeholder="Cantidad"
@@ -441,6 +448,7 @@ const ModalProveedor = ({
                   value={nuevoItem.cantidad}
                   onChange={handleItemChange}
                   className="form-control"
+                  step="0.01"
                 />
                 <button
                   type="button"
@@ -471,6 +479,18 @@ const ModalProveedor = ({
                   rows="3"
                 />
               </div>
+
+              {datosIniciales && (
+                <div className="grupo-formulario">
+                  <button
+                    type="button"
+                    onClick={enviarCorreoOrden}
+                    className="btn btn-primary"
+                  >
+                    Enviar a proveedor por correo
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -515,6 +535,7 @@ const ModalProveedor = ({
                 }))
               }
               className="form-control"
+              step="0.01"
             />
           </div>
           <div className="pie-modal">
@@ -529,8 +550,29 @@ const ModalProveedor = ({
         </Modal>
       )}
 
-      <Modal isOpen={modalAbierto} onClose={() => setModalAbierto(false)}>
-        <ModalMensaje tipo={modalTipo} mensaje={modalMensaje} />
+      <Modal
+        isOpen={modalMensaje.visible}
+        onClose={() => setModalMensaje({ ...modalMensaje, visible: false })}
+      >
+        <div className="text-center p-3">
+          <i
+            className={
+              modalMensaje.tipo === "exito"
+                ? "bi bi-check-circle-fill text-success display-4 mb-2"
+                : modalMensaje.tipo === "error"
+                ? "bi bi-x-circle-fill text-danger display-4 mb-2"
+                : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
+            }
+          ></i>
+          <h2>
+            {modalMensaje.tipo === "exito"
+              ? "¡Éxito!"
+              : modalMensaje.tipo === "error"
+              ? "Error"
+              : "Advertencia"}
+          </h2>
+          <p>{modalMensaje.mensaje}</p>
+        </div>
       </Modal>
     </>
   );

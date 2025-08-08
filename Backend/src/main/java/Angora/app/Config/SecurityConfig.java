@@ -92,6 +92,8 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/inventarioProducto").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.PUT, "/inventarioProducto").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.DELETE, "/inventarioProducto/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.GET, "/inventarioMateria/**").hasAuthority("INVENTARIOS");
+
 
                     // Rutas de ventas
                     http.requestMatchers(HttpMethod.POST, "/ventas/**").permitAll();
@@ -102,6 +104,27 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET,"/pedidos/pendientes").hasAuthority("PEDIDOS");
                     http.requestMatchers(HttpMethod.PUT,"/pedidos/confirmar/**").hasAuthority("PEDIDOS");
                     http.requestMatchers(HttpMethod.POST,"/pedidos/enviar-factura/**").hasAuthority("PEDIDOS");
+
+                    // Proveedores
+                    http.requestMatchers(HttpMethod.GET,"/proveedores/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST,"/proveedores/**").permitAll();
+                    http.requestMatchers(HttpMethod.PUT,"/proveedores/**").permitAll();
+                    http.requestMatchers(HttpMethod.DELETE,"/proveedores/**").permitAll();
+
+                    // Ordenes
+                    http.requestMatchers(HttpMethod.GET,"/ordenes").permitAll();
+                    http.requestMatchers(HttpMethod.POST,"/ordenes/**").permitAll();
+                    http.requestMatchers(HttpMethod.DELETE,"/ordenes/**").permitAll();
+                    http.requestMatchers(HttpMethod.PUT,"/ordenes/**").permitAll();
+
+                    // Al principio de las requestMatchers (antes de anyRequest)
+                    http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").permitAll(); // o hasAuthority("INVENTARIOS")
+                    http.requestMatchers(HttpMethod.POST, "/ordenes/confirmar/**").hasAuthority("PEDIDOS"); // o permitAll según tu política
+// Si quieres permitir POST /lotes (creación directa)
+                    http.requestMatchers(HttpMethod.POST, "/lotes/**").hasAuthority("INVENTARIOS");
+
+
+
 
                     // El resto necesita autenticacion
                     http.anyRequest().denyAll();

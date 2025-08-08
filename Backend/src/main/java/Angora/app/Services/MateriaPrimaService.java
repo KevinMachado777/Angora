@@ -85,7 +85,6 @@ public class MateriaPrimaService {
 
     @Transactional
     public void delete(Long id) {
-        loteRepository.deleteByIdMateria(id);
         materiaPrimaRepository.deleteById(id);
     }
 }

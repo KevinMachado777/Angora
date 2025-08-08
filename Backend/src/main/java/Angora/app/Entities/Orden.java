@@ -1,5 +1,7 @@
 package Angora.app.Entities;
 
+import Angora.app.Entities.MateriaPrima;
+import Angora.app.Entities.Proveedor;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +14,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-
 public class Orden {
 
     @Id
@@ -25,9 +26,9 @@ public class Orden {
 
     @ManyToMany
     @JoinTable(
-            name = "orden-materia",
-            joinColumns = @JoinColumn(name = "idMateria"),
-            inverseJoinColumns = @JoinColumn(name = "idOrden")
+            name = "orden_materia",
+            joinColumns = @JoinColumn(name = "idOrden"),
+            inverseJoinColumns = @JoinColumn(name = "idMateria")
     )
     private List<MateriaPrima> materiaPrima;
     private String notas;

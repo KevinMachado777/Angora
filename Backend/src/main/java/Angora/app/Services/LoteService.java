@@ -26,13 +26,9 @@ public class LoteService {
         return loteRepository.findAll();
     }
 
-    // Busca un lote por sy ID
     public LoteDTO findById(Long id) {
-
         Lote loteEntity = loteRepository.findById(id).orElseThrow(() -> new RuntimeException("Lote no encontrado"));
-
         LoteDTO loteDto = new LoteDTO();
-
         loteDto.setIdLote(id);
         loteDto.setIdMateria(loteEntity.getIdMateria());
         loteDto.setCostoUnitario(loteEntity.getCostoUnitario());
@@ -40,7 +36,23 @@ public class LoteService {
         loteDto.setCantidadDisponible(loteEntity.getCantidadDisponible());
         loteDto.setFechaIngreso(loteEntity.getFechaIngreso());
         loteDto.setIdProveedor(loteEntity.getIdProveedor());
+        return loteDto;
+    }
 
+    public LoteDTO findUltimoLotePorMateria(Long idMateria) {
+        Optional<Lote> loteOptional = loteRepository.findTopByIdMateriaOrderByFechaIngresoDesc(idMateria);
+        if (loteOptional.isEmpty()) {
+            return null;
+        }
+        Lote loteEntity = loteOptional.get();
+        LoteDTO loteDto = new LoteDTO();
+        loteDto.setIdLote(loteEntity.getIdLote());
+        loteDto.setIdMateria(loteEntity.getIdMateria());
+        loteDto.setCostoUnitario(loteEntity.getCostoUnitario());
+        loteDto.setCantidad(loteEntity.getCantidad());
+        loteDto.setCantidadDisponible(loteEntity.getCantidadDisponible());
+        loteDto.setFechaIngreso(loteEntity.getFechaIngreso());
+        loteDto.setIdProveedor(loteEntity.getIdProveedor());
         return loteDto;
     }
 
