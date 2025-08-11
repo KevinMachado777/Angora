@@ -68,7 +68,7 @@ const ModalProveedor = ({
       formData.append("ordenNumero", datosIniciales?.idOrden.toString() || "N/A");
       formData.append("monto", formulario.total?.toFixed(2) || "0.00");
 
-      await api.post("/ordenes/enviar", formData, {
+      await api.post("/ordenes", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -460,8 +460,9 @@ const ModalProveedor = ({
               </div>
 
               <CreadorTabla
-                cabeceros={["Nombre", "Cantidad"]}
+                cabeceros={["Id", "Nombre", "Cantidad"]}
                 registros={formulario.items.map((item) => ({
+                  idMateria: item.idMateria,
                   nombre: item.nombre || "",
                   cantidad: item.cantidad || "",
                 }))}
