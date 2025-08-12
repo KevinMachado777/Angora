@@ -1,7 +1,5 @@
 package Angora.app.Entities;
 
-import Angora.app.Entities.MateriaPrima;
-import Angora.app.Entities.Proveedor;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,13 +22,11 @@ public class Orden {
     @JoinColumn(name = "idProveedor")
     private Proveedor proveedor;
 
-    @ManyToMany
-    @JoinTable(
-            name = "orden_materia",
-            joinColumns = @JoinColumn(name = "idOrden"),
-            inverseJoinColumns = @JoinColumn(name = "idMateria")
-    )
-    private List<MateriaPrima> materiaPrima;
+    // --- CAMBIO CLAVE: Relación OneToMany con la nueva entidad de unión ---
+    @OneToMany(mappedBy = "orden", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrdenMateriaPrima> ordenMateriaPrimas; // Cambio de nombre y tipo
+    // --- FIN CAMBIO CLAVE ---
+
     private String notas;
     private Boolean estado;
     private LocalDateTime fecha;

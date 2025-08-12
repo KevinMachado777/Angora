@@ -21,18 +21,18 @@ const ModalProveedor = ({
 
   const [formulario, setFormulario] = useState({
     id: "",
+    idOrden: "",
     nombre: "",
     telefono: "",
     correo: "",
     direccion: "",
     notas: "",
     items: [],
+    total: 0,
   });
 
   const [proveedoresDisponibles, setProveedoresDisponibles] = useState([]);
-  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState(
-    []
-  );
+  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState([]);
   const [nuevoItem, setNuevoItem] = useState({
     idMateria: "",
     nombre: "",
@@ -72,17 +72,13 @@ const ModalProveedor = ({
     }
 
     try {
-      // Dentro de enviarCorreoOrden en ModalProveedor.js
       const formData = new FormData();
       formData.append("email", proveedor.correo);
       formData.append("nombre", proveedor.nombre);
-      formData.append(
-        "ordenNumero",
-        datosIniciales?.idOrden.toString() || "N/A"
-      );
+      formData.append("ordenNumero", formulario.idOrden?.toString() || "N/A");
       formData.append("monto", formulario.total?.toFixed(2) || "0.00");
 
-      await api.post("/email/send", formData, {
+      await api.post("/api/email/enviar", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -105,14 +101,14 @@ const ModalProveedor = ({
   };
 
   const verificarCorreoExistente = async (correo, idProveedor = 0) => {
-  try {
-    const response = await api.get(`/proveedores/exists/${correo}/${idProveedor}`);
-    return response.data; // Debería ser un booleano (true si existe, false si no)
-  } catch (error) {
-    console.error("Error al verificar correo:", error);
-    return true;
-  }
-};
+    try {
+      const response = await api.get(`/proveedores/exists/${correo}/${idProveedor}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error al verificar correo:", error);
+      return true;
+    }
+  };
 
   useEffect(() => {
     if (!isOpen || !token) {
@@ -142,7 +138,10 @@ const ModalProveedor = ({
 
       api
         .get("/inventarioMateria")
-        .then((res) => setMateriasPrimasDisponibles(res.data))
+        .then((res) => {
+          console.log("Materias primas recibidas:", res.data);
+          setMateriasPrimasDisponibles(res.data);
+        })
         .catch((err) => {
           console.error(
             "Error al cargar materias primas:",
@@ -160,23 +159,34 @@ const ModalProveedor = ({
 
     if (datosIniciales) {
       setFormulario({
-        id: datosIniciales.idOrden || datosIniciales.idProveedor || "",
+        id: datosIniciales.idProveedor || datosIniciales.proveedor?.idProveedor || "",
+        idOrden: datosIniciales.idOrden || "",
         nombre: datosIniciales.nombre || datosIniciales.proveedor?.nombre || "",
         telefono: datosIniciales.telefono || "",
         correo: datosIniciales.correo || "",
         direccion: datosIniciales.direccion || "",
         notas: datosIniciales.notas || "",
-        items: datosIniciales.materiaPrima || datosIniciales.items || [],
+        total: datosIniciales.total || 0,
+        items: datosIniciales.ordenMateriaPrimas && Array.isArray(datosIniciales.ordenMateriaPrimas)
+          ? datosIniciales.ordenMateriaPrimas.map((omp) => ({
+              id: omp.id,
+              idMateria: omp.materiaPrima?.idMateria ? parseInt(omp.materiaPrima.idMateria) : null,
+              nombre: omp.materiaPrima?.nombre || "",
+              cantidad: omp.cantidad || 0,
+            }))
+          : [],
       });
     } else {
       setFormulario({
         id: "",
+        idOrden: "",
         nombre: "",
         telefono: "",
         correo: "",
         direccion: "",
         notas: "",
         items: [],
+        total: 0,
       });
     }
 
@@ -200,8 +210,9 @@ const ModalProveedor = ({
   };
 
   const agregarItem = () => {
-    if (!nuevoItem.idMateria || !nuevoItem.nombre.trim()) {
-      abrirModal("advertencia", "Debe seleccionar una materia prima.");
+    const idMateria = parseInt(nuevoItem.idMateria);
+    if (!idMateria || isNaN(idMateria)) {
+      abrirModal("advertencia", "Debe seleccionar una materia prima válida.");
       return;
     }
 
@@ -212,7 +223,7 @@ const ModalProveedor = ({
     }
 
     const repetido = formulario.items.some(
-      (item) => item.idMateria === nuevoItem.idMateria
+      (item) => parseInt(item.idMateria) === idMateria
     );
     if (repetido) {
       abrirModal("advertencia", "Ya has agregado esa materia prima.");
@@ -220,7 +231,7 @@ const ModalProveedor = ({
     }
 
     const nuevo = {
-      idMateria: nuevoItem.idMateria,
+      idMateria: idMateria,
       nombre: nuevoItem.nombre,
       cantidad: cantidad,
     };
@@ -254,6 +265,7 @@ const ModalProveedor = ({
     }
 
     const itemEditado = {
+      id: productoEditando.id,
       idMateria: productoEditando.idMateria,
       nombre: productoEditando.nombre,
       cantidad: parseFloat(productoEditando.cantidad),
@@ -295,11 +307,38 @@ const ModalProveedor = ({
         return;
       }
 
+      const calculatedTotal = 0;
+
+      const itemsToSend = formulario.items.map(item => {
+        const parsedIdMateria = parseInt(item.idMateria);
+        if (!parsedIdMateria || isNaN(parsedIdMateria)) {
+          console.error("Error: idMateria es inválido para un ítem:", item);
+          abrirModal("error", "ID de Materia Prima inválido en la orden. Revise la consola.");
+          throw new Error("ID de Materia Prima inválido.");
+        }
+        return {
+          id: item.id || undefined,
+          materiaPrima: { idMateria: parsedIdMateria },
+          cantidad: parseFloat(item.cantidad),
+        };
+      });
+
+      console.log("Datos de la Orden a enviar:", {
+        idOrden: formulario.idOrden || undefined,
+        proveedor: { idProveedor: parseInt(formulario.id) },
+        ordenMateriaPrimas: itemsToSend,
+        notas: formulario.notas || null,
+        estado: formulario.idOrden ? (datosIniciales?.estado ?? false) : false,
+        fecha: formulario.idOrden ? (datosIniciales?.fecha ?? new Date().toISOString()) : new Date().toISOString(),
+        total: calculatedTotal,
+      });
+
       onGuardar({
         id: formulario.id,
+        idOrden: formulario.idOrden,
         notas: formulario.notas,
-        items: formulario.items,
-        total: 0,
+        items: itemsToSend,
+        total: calculatedTotal,
       });
     } else {
       const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
@@ -317,11 +356,11 @@ const ModalProveedor = ({
         return;
       }
 
-      const existe = await verificarCorreoExistente(formulario.correo, formulario.id);
-        if (existe) {
-            abrirModal("advertencia", "Ya existe un usuario con ese correo.");
-            return;
-        }
+      const existe = await verificarCorreoExistente(formulario.correo, formulario.id || 0);
+      if (existe) {
+        abrirModal("advertencia", "Ya existe un proveedor con ese correo.");
+        return;
+      }
 
       onGuardar({ ...formulario });
     }
@@ -455,23 +494,35 @@ const ModalProveedor = ({
                     label: m.nombre,
                   }))}
                   value={
-                    nuevoItem.idMateria
+                    nuevoItem.idMateria && !isNaN(parseInt(nuevoItem.idMateria))
                       ? {
-                          value: nuevoItem.idMateria,
+                          value: parseInt(nuevoItem.idMateria),
                           label:
                             materiasPrimasDisponibles.find(
-                              (m) => m.idMateria === nuevoItem.idMateria
+                              (m) => m.idMateria === parseInt(nuevoItem.idMateria)
                             )?.nombre || "Materia prima seleccionada",
                         }
                       : null
                   }
                   onChange={(selected) => {
+                    if (!selected || !selected.value) {
+                      setNuevoItem((prev) => ({
+                        ...prev,
+                        idMateria: "",
+                        nombre: "",
+                      }));
+                      return;
+                    }
                     const materia = materiasPrimasDisponibles.find(
                       (m) => m.idMateria === selected.value
                     );
+                    if (!materia) {
+                      abrirModal("error", "Materia prima no encontrada.");
+                      return;
+                    }
                     setNuevoItem((prev) => ({
                       ...prev,
-                      idMateria: materia.idMateria,
+                      idMateria: parseInt(materia.idMateria),
                       nombre: materia.nombre,
                     }));
                   }}
