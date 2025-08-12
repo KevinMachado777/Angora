@@ -1,9 +1,12 @@
 package Angora.app.Controllers;
 
+import Angora.app.Controllers.dto.LoteDTO;
+import Angora.app.Controllers.dto.OrdenConfirmacionDTO;
 import Angora.app.Services.Email.EnviarCorreo;
 import Angora.app.Entities.Orden; // Asumiendo que existe una entidad Orden
 import Angora.app.Services.OrdenService; // Asumiendo que existe un servicio OrdenService
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,10 +57,9 @@ public class OrdenController {
         }
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Orden> actualizarOrden(@PathVariable Long id, @RequestBody Orden orden) {
+    @PutMapping
+    public ResponseEntity<Orden> actualizarOrden(@RequestBody Orden orden) {
         try {
-            orden.setIdOrden(id);
             Orden ordenActualizada = ordenService.actualizarOrden(orden);
             if (ordenActualizada == null) {
                 return ResponseEntity.status(404).body(null);
@@ -78,6 +80,16 @@ public class OrdenController {
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PostMapping("/confirmar/{idOrden}")
+    public ResponseEntity<String> confirmarOrden(@PathVariable Long idOrden, @RequestBody OrdenConfirmacionDTO ordenConfirmacion) {
+        try {
+            ordenService.confirmarOrden(idOrden, ordenConfirmacion.getLotes());
+            return ResponseEntity.ok("Orden confirmada y lotes creados exitosamente.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 

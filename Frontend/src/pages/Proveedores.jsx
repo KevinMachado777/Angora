@@ -130,7 +130,7 @@ const Proveedores = () => {
   const guardarProveedor = async (nuevo) => {
     try {
       if (editando) {
-        await api.put(`${urlProveedores}/${nuevo.id}`, {
+        await api.put(`${urlProveedores}`, {
           idProveedor: nuevo.id,
           nombre: nuevo.nombre,
           telefono: nuevo.telefono,
@@ -172,7 +172,7 @@ const Proveedores = () => {
       };
 
       if (editando) {
-        await api.put(`${urlOrdenes}/${nuevaOrden.id}`, ordenData);
+        await api.put(`${urlOrdenes}`, ordenData);
       } else {
         await api.post(urlOrdenes, ordenData);
       }

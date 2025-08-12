@@ -30,6 +30,9 @@ public class OrdenService implements IOrdenService {
     @Autowired
     private EnviarCorreo enviarCorreo;
 
+    @Autowired
+    private LoteService loteService;
+
     @Override
     public List<Orden> listarOrdenes() {
         return ordenRepository.findByEstadoFalse();
@@ -89,35 +92,17 @@ public class OrdenService implements IOrdenService {
 
     @Transactional
     public void confirmarOrden(Long idOrden, List<LoteDTO> lotes) {
+        // 1. Validar que la orden de compra existe
         Orden orden = ordenRepository.findById(idOrden)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
 
-        // Crear lotes
-        for (LoteDTO loteDTO : lotes) {
-            if (!materiaPrimaRepository.existsById(loteDTO.getIdMateria())) {
-                throw new RuntimeException("Materia prima no encontrada: " + loteDTO.getIdMateria());
-            }
-            Lote lote = new Lote();
-            lote.setIdMateria(loteDTO.getIdMateria());
-            lote.setCostoUnitario(loteDTO.getCostoUnitario());
-            lote.setCantidad(loteDTO.getCantidad());
-            lote.setCantidadDisponible(loteDTO.getCantidad());
-            lote.setFechaIngreso(LocalDateTime.now());
-            lote.setIdProveedor(orden.getProveedor().getIdProveedor());
-            loteRepository.save(lote);
-
-            // Actualizar cantidad en MateriaPrima
-            MateriaPrima materia = materiaPrimaRepository.findById(loteDTO.getIdMateria())
-                    .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
-            float totalDisponible = (float) loteRepository.findAll().stream()
-                    .filter(l -> l.getIdMateria().equals(loteDTO.getIdMateria()))
-                    .mapToDouble(l -> l.getCantidadDisponible() != null ? l.getCantidadDisponible() : 0.0)
-                    .sum();
-            materia.setCantidad(totalDisponible);
-            materiaPrimaRepository.save(materia);
+        // 2. Crear los lotes uno por uno
+        for (LoteDTO loteDto : lotes) {
+            // El LoteService ya se encarga de guardar y actualizar las cantidades de MateriaPrima
+            loteService.save(loteDto);
         }
 
-        // Actualizar estado de la orden a Completado
+        // 3. Actualizar el estado de la orden de compra
         orden.setEstado(true);
         ordenRepository.save(orden);
     }

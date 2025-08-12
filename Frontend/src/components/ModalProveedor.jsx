@@ -30,8 +30,14 @@ const ModalProveedor = ({
   });
 
   const [proveedoresDisponibles, setProveedoresDisponibles] = useState([]);
-  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState([]);
-  const [nuevoItem, setNuevoItem] = useState({ idMateria: "", nombre: "", cantidad: "" });
+  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState(
+    []
+  );
+  const [nuevoItem, setNuevoItem] = useState({
+    idMateria: "",
+    nombre: "",
+    cantidad: "",
+  });
   const [modalEdicionProducto, setModalEdicionProducto] = useState(false);
   const [productoEditando, setProductoEditando] = useState(null);
   const [modalMensaje, setModalMensaje] = useState({
@@ -48,7 +54,11 @@ const ModalProveedor = ({
   };
 
   const enviarCorreoOrden = async () => {
-    if (!formulario.id || !formulario.nombre || !proveedoresDisponibles.length) {
+    if (
+      !formulario.id ||
+      !formulario.nombre ||
+      !proveedoresDisponibles.length
+    ) {
       abrirModal("advertencia", "Debe seleccionar un proveedor válido.");
       return;
     }
@@ -62,13 +72,17 @@ const ModalProveedor = ({
     }
 
     try {
+      // Dentro de enviarCorreoOrden en ModalProveedor.js
       const formData = new FormData();
       formData.append("email", proveedor.correo);
       formData.append("nombre", proveedor.nombre);
-      formData.append("ordenNumero", datosIniciales?.idOrden.toString() || "N/A");
+      formData.append(
+        "ordenNumero",
+        datosIniciales?.idOrden.toString() || "N/A"
+      );
       formData.append("monto", formulario.total?.toFixed(2) || "0.00");
 
-      await api.post("/ordenes", formData, {
+      await api.post("/email/send", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -76,21 +90,29 @@ const ModalProveedor = ({
 
       abrirModal("exito", "Correo enviado correctamente al proveedor.");
     } catch (error) {
-      console.error("Error al enviar correo:", error.response?.status, error.response?.data);
-      abrirModal("error", `Error al enviar correo: ${error.response?.data?.message || error.message}`);
+      console.error(
+        "Error al enviar correo:",
+        error.response?.status,
+        error.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al enviar correo: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
 
-  const verificarCorreoExistente = async (correo) => {
-    try {
-      const response = await api.get(`/user/exists/${correo}`);
-      return response.data;
-    } catch (error) {
-      console.error("Error al verificar correo:", error.response?.status, error.response?.data);
-      abrirModal("error", `Error al verificar correo: ${error.response?.data?.message || error.message}`);
-      return false;
-    }
-  };
+  const verificarCorreoExistente = async (correo, idProveedor = 0) => {
+  try {
+    const response = await api.get(`/proveedores/exists/${correo}/${idProveedor}`);
+    return response.data; // Debería ser un booleano (true si existe, false si no)
+  } catch (error) {
+    console.error("Error al verificar correo:", error);
+    return true;
+  }
+};
 
   useEffect(() => {
     if (!isOpen || !token) {
@@ -105,16 +127,34 @@ const ModalProveedor = ({
         .get("/proveedores")
         .then((res) => setProveedoresDisponibles(res.data))
         .catch((err) => {
-          console.error("Error al cargar proveedores:", err.response?.status, err.response?.data);
-          abrirModal("error", `Error al cargar proveedores: ${err.response?.data?.message || err.message}`);
+          console.error(
+            "Error al cargar proveedores:",
+            err.response?.status,
+            err.response?.data
+          );
+          abrirModal(
+            "error",
+            `Error al cargar proveedores: ${
+              err.response?.data?.message || err.message
+            }`
+          );
         });
 
       api
         .get("/inventarioMateria")
         .then((res) => setMateriasPrimasDisponibles(res.data))
         .catch((err) => {
-          console.error("Error al cargar materias primas:", err.response?.status, err.response?.data);
-          abrirModal("error", `Error al cargar materias primas: ${err.response?.data?.message || err.message}`);
+          console.error(
+            "Error al cargar materias primas:",
+            err.response?.status,
+            err.response?.data
+          );
+          abrirModal(
+            "error",
+            `Error al cargar materias primas: ${
+              err.response?.data?.message || err.message
+            }`
+          );
         });
     }
 
@@ -243,7 +283,10 @@ const ModalProveedor = ({
 
     if (esOrden) {
       if (!formulario.id) {
-        abrirModal("advertencia", "Debe seleccionar un proveedor para la orden.");
+        abrirModal(
+          "advertencia",
+          "Debe seleccionar un proveedor para la orden."
+        );
         return;
       }
 
@@ -267,15 +310,18 @@ const ModalProveedor = ({
 
       const telefonoValido = /^\d{10}$/.test(formulario.telefono);
       if (!telefonoValido) {
-        abrirModal("advertencia", "El teléfono debe tener exactamente 10 dígitos.");
+        abrirModal(
+          "advertencia",
+          "El teléfono debe tener exactamente 10 dígitos."
+        );
         return;
       }
 
-      const existe = await verificarCorreoExistente(formulario.correo);
-      if (existe) {
-        abrirModal("advertencia", "Ya existe un usuario con ese correo.");
-        return;
-      }
+      const existe = await verificarCorreoExistente(formulario.correo, formulario.id);
+        if (existe) {
+            abrirModal("advertencia", "Ya existe un usuario con ese correo.");
+            return;
+        }
 
       onGuardar({ ...formulario });
     }

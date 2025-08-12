@@ -36,7 +36,10 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                 costoUnitario: parseInt(response.data.costoUnitario) || 0,
               };
             } catch (error) {
-              console.error(`Error al cargar costo para idMateria ${item.idMateria}:`, error);
+              console.error(
+                `Error al cargar costo para idMateria ${item.idMateria}:`,
+                error
+              );
               return {
                 idMateria: item.idMateria,
                 nombre: item.nombre || "",
@@ -75,12 +78,26 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
         idProveedor: orden.proveedor.idProveedor,
       }));
 
-      await api.post(`/ordenes/confirmar/${orden.idOrden}`, lotes);
+      // --- CORRECCIÓN AQUÍ: Llamar a la nueva ruta de confirmación ---
+      // Se envía el id de la orden en el path y el objeto OrdenConfirmacionDTO en el body
+      const body = { lotes }; // El body debe ser un objeto con la lista de lotes
+      await api.post(`/ordenes/confirmar/${orden.idOrden}`, body);
+
+      // Si la llamada es exitosa, cerramos el modal y actualizamos
       setModalConfirmacion(false);
       onConfirmar();
     } catch (error) {
-      console.error("Error al confirmar orden:", error.response?.status, error.response?.data);
-      abrirModal("error", `Error al confirmar orden: ${error.response?.data?.message || error.message}`);
+      console.error(
+        "Error al confirmar orden:",
+        error.response?.status,
+        error.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al confirmar orden: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
 
@@ -111,7 +128,9 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                     <input
                       type="number"
                       value={item.costoUnitario}
-                      onChange={(e) => handleCostoChange(item.idMateria, e.target.value)}
+                      onChange={(e) =>
+                        handleCostoChange(item.idMateria, e.target.value)
+                      }
                       className="form-control"
                       step="1"
                     />
@@ -125,7 +144,9 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
           <BotonCancelar onClick={onClose} />
           <BotonAceptar
             onClick={() => setModalConfirmacion(true)}
-            disabled={items.some((item) => item.costoUnitario <= 0 || item.cantidad <= 0)}
+            disabled={items.some(
+              (item) => item.costoUnitario <= 0 || item.cantidad <= 0
+            )}
           />
         </div>
       </Modal>
