@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+// Servicio de materia prima
 @Service
 public class MateriaPrimaService {
 
@@ -24,10 +25,10 @@ public class MateriaPrimaService {
     @Autowired
     private LoteRepository loteRepository;
 
+    // Listar las materias
     public List<MateriaDTO> findAll() {
 
         List<MateriaPrima> materiasEntity = materiaPrimaRepository.findAll();
-
         List<MateriaDTO> materiasDto = new ArrayList<>();
 
         materiasEntity.forEach(materia -> {
@@ -39,12 +40,11 @@ public class MateriaPrimaService {
             materiaDto.setVenta(materia.getVenta());
             materiasDto.add(materiaDto);
         });
-
         return materiasDto;
     }
 
+    // Buscar materias por id
     public MateriaDTO findById(Long id) {
-
         MateriaPrima materiaPrima = materiaPrimaRepository.findById(id).orElseThrow(() -> {
             throw new RuntimeException("Materia prima no encontrada");
         });
@@ -55,37 +55,39 @@ public class MateriaPrimaService {
         materiaDto.setCantidad(materiaPrima.getCantidad());
         materiaDto.setCosto(materiaPrima.getCosto());
         materiaDto.setVenta(materiaPrima.getVenta());
-
         return materiaDto;
     }
 
+    // Guardar una materia prima
     @Transactional
     public MateriaDTO save(MateriaDTO materiaDto) {
 
         MateriaPrima materiaPrima = new MateriaPrima();
-
         materiaPrima.setNombre(materiaDto.getNombre());
         materiaPrima.setCantidad(0f);
         materiaPrima.setCosto(0);
-        materiaPrima.setVenta(0);
+        materiaPrima.setVenta(materiaDto.getVenta());
 
         MateriaPrima savedMateria = materiaPrimaRepository.save(materiaPrima);
-
+        materiaDto.setIdMateria(savedMateria.getIdMateria());
         return materiaDto;
     }
 
+    // Actualizar una materia prima
     @Transactional
-    public MateriaPrima update(Long id, MateriaPrima materia) {
-        if (!materiaPrimaRepository.existsById(id)) {
+    public MateriaDTO update(MateriaDTO materia) {
+        if (!materiaPrimaRepository.existsById(materia.getIdMateria())) {
             throw new RuntimeException("Materia prima no encontrada");
         }
-        materia.setIdMateria(id);
-        return materiaPrimaRepository.save(materia);
-    }
 
-    @Transactional
-    public void delete(Long id) {
-        loteRepository.deleteByIdMateria(id);
-        materiaPrimaRepository.deleteById(id);
+        MateriaPrima materiaUpdate = new MateriaPrima();
+        materiaUpdate.setIdMateria(materia.getIdMateria());
+        materiaUpdate.setNombre(materia.getNombre());
+        materiaUpdate.setCantidad(materia.getCantidad());
+        materiaUpdate.setCosto(materia.getCosto());
+        materiaUpdate.setVenta(materia.getVenta());
+
+        materiaPrimaRepository.save(materiaUpdate);
+        return materia;
     }
 }

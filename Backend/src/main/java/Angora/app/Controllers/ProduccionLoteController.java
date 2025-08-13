@@ -12,40 +12,36 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/producciones-lotes")
 public class ProduccionLoteController {
 
-    // Repositorio
     @Autowired
     private ProduccionLoteRepository produccionLoteRepository;
 
     // Obtener all
     @GetMapping
-    public ResponseEntity<?> getAll(){
-
+    public ResponseEntity<?> getAll() {
         return ResponseEntity.ok(produccionLoteRepository.findAll());
     }
 
     // Obtener by ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id){
-
-        return new ResponseEntity<>( produccionLoteRepository.findById(id)
+    public ResponseEntity<?> getById(@PathVariable Long id) {
+        return new ResponseEntity<>(produccionLoteRepository.findById(id)
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build()), HttpStatus.OK) ;
+                .orElseGet(() -> ResponseEntity.notFound().build()), HttpStatus.OK);
     }
 
     // Crear
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody ProduccionLote produccionLote){
+    public ResponseEntity<?> create(@RequestBody ProduccionLote produccionLote) {
         return new ResponseEntity<>(produccionLoteRepository.save(produccionLote), HttpStatus.CREATED);
     }
 
     // Actualizar
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ProduccionLote produccionLote){
-        if(!produccionLoteRepository.existsById(id)){
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ProduccionLote produccionLote) {
+        if (!produccionLoteRepository.existsById(id)) {
             return new ResponseEntity<>("ProduccionLote no encontrado", HttpStatus.NOT_FOUND);
         }
-
-        produccionLote.setIdProduccion(id);
+        produccionLote.setId(id); // Corrección: usar setId en lugar de setIdProduccion
         return new ResponseEntity<>(produccionLoteRepository.save(produccionLote), HttpStatus.OK);
     }
 
@@ -55,8 +51,4 @@ public class ProduccionLoteController {
         produccionLoteRepository.deleteById(id);
         return new ResponseEntity<>("ProduccionLote eliminada", HttpStatus.NO_CONTENT);
     }
-
-
-
-
 }

@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +35,18 @@ public class DataInitializer implements CommandLineRunner {
 
     @Autowired
     private ProductoRepository productoRepository;
+
+    @Autowired
+    private LoteRepository loteRepository;
+
+    @Autowired
+    private ProduccionRepository produccionRepository;
+
+    @Autowired
+    private ProduccionLoteRepository produccionLoteRepository;
+
+    @Autowired
+    private LoteUsadoRepository loteUsadoRepository;
 
     @Autowired
     private CategoriaRepository categoriaRepository;
@@ -58,6 +71,8 @@ public class DataInitializer implements CommandLineRunner {
         initializeProveedores(); // Proveedores
         initializeMateriasPrimas(); // Materias primas
         initializeProductos(); // Productos
+        initializeLotes(); // Lotes
+        initializeProduccionesIniciales(); // Producciones
     }
 
     private void initializePermisosAndUsuarios() {
@@ -255,7 +270,7 @@ public class DataInitializer implements CommandLineRunner {
         dto.setNombre("Detergente en polvo");
         dto.setCosto(6000);
         dto.setPrecio(8500);
-        dto.setStock(50);
+        dto.setStock(3);
         dto.setIva(true);
 
         CategoriaIdDTO catDto = new CategoriaIdDTO();
@@ -272,11 +287,115 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Producto con materias creado correctamente.");
     }
 
+    @Transactional
+    private void initializeLotes() {
+        if (loteRepository.count() == 0) {
+            System.out.println("Creando lotes predeterminados...");
+            List<Lote> lotes = new ArrayList<>();
+
+            // Lote para Ácido sulfónico (idMateria = 1)
+            lotes.add(new Lote(null, 1L, 3500, 50f, 50f, LocalDateTime.now(), 1L));
+
+            // Lote para Glicerina (idMateria = 2)
+            lotes.add(new Lote(null, 2L, 2500, 40f, 40f, LocalDateTime.now(), 1L));
+
+            // Lote para Carbonato de sodio (idMateria = 3)
+            lotes.add(new Lote(null, 3L, 1800, 60f, 60f, LocalDateTime.now(), 1L));
+
+            // Lote para Lauril éter sulfato de sodio (idMateria = 4)
+            lotes.add(new Lote(null, 4L, 4200, 30f, 30f, LocalDateTime.now(), 1L));
+
+            // Lote para Fragancia lavanda (idMateria = 5)
+            lotes.add(new Lote(null, 5L, 6000, 20f, 20f, LocalDateTime.now(), 1L));
+
+            // Lote para Colorante azul (idMateria = 6)
+            lotes.add(new Lote(null, 6L, 1000, 10f, 10f, LocalDateTime.now(), 1L));
+
+            // Lote para Formol (idMateria = 7)
+            lotes.add(new Lote(null, 7L, 1500, 15f, 15f, LocalDateTime.now(), 1L));
+
+            // Lote para Agua destilada (idMateria = 8)
+            lotes.add(new Lote(null, 8L, 300, 100f, 100f, LocalDateTime.now(), 1L));
+
+            // Lote para Cloruro de amonio (idMateria = 9)
+            lotes.add(new Lote(null, 9L, 2000, 25f, 25f, LocalDateTime.now(), 1L));
+
+            // Lote para Alcohol etílico (idMateria = 10)
+            lotes.add(new Lote(null, 10L, 4500, 35f, 35f, LocalDateTime.now(), 1L));
+
+            loteRepository.saveAll(lotes);
+            System.out.println("Lotes predeterminados creados exitosamente");
+        } else {
+            System.out.println("Ya existen lotes en la base de datos");
+        }
+    }
+
+    @Transactional
+    private void initializeProduccionesIniciales() {
+        System.out.println("Creando producciones iniciales para trazabilidad...");
+        Producto producto = productoRepository.findById(1L)
+                .orElseThrow(() ->   new RuntimeException("Producto no encontrado para inicializar producciones"));
+
+        // Manejar stock null
+        int cantidadProducida = producto.getStock() != null ? producto.getStock() : 0;
+
+        // Crear una producción inicial para las unidades
+        Produccion produccion = new Produccion(null, 1L, LocalDateTime.now());
+        produccion = produccionRepository.save(produccion);
+
+        // Asumir lotes 1 y 3 para el producto
+        Lote lote1 = loteRepository.findById(1L).orElseThrow(() -> new RuntimeException("Lote 1 no encontrado"));
+        Lote lote3 = loteRepository.findById(3L).orElseThrow(() -> new RuntimeException("Lote 3 no encontrado"));
+
+        // Crear ProduccionLote para lote1
+        ProduccionLote pl1 = new ProduccionLote(
+                null,
+                produccion.getIdProduccion(),
+                lote1.getIdLote(),
+                15f * cantidadProducida
+        );
+        produccionLoteRepository.save(pl1);
+
+        ProduccionLote pl3 = new ProduccionLote(
+                null,
+                produccion.getIdProduccion(),
+                lote3.getIdLote(),
+                10f * cantidadProducida
+        );
+        produccionLoteRepository.save(pl3);
+
+        // Crear LoteUsado para el producto
+        LoteUsado lu1 = new LoteUsado(null, produccion.getIdProduccion(), lote1.getIdLote(), 15f * cantidadProducida, LocalDateTime.now());
+        loteUsadoRepository.save(lu1);
+
+        LoteUsado lu3 = new LoteUsado(null, produccion.getIdProduccion(), lote3.getIdLote(), 10f * cantidadProducida, LocalDateTime.now());
+        loteUsadoRepository.save(lu3);
+
+        // Actualizar cantidades disponibles en lotes
+        lote1.setCantidadDisponible(lote1.getCantidadDisponible() - 15f * cantidadProducida);
+        loteRepository.save(lote1);
+
+        lote3.setCantidadDisponible(lote3.getCantidadDisponible() - 10f * cantidadProducida);
+        loteRepository.save(lote3);
+
+        // Actualizar stock de materia prima
+        MateriaPrima mp1 = materiaPrimaRepository.findById(lote1.getIdMateria())
+                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
+        mp1.setCantidad(lote1.getCantidadDisponible());
+        materiaPrimaRepository.save(mp1);
+
+        MateriaPrima mp3 = materiaPrimaRepository.findById(lote3.getIdMateria())
+                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
+        mp3.setCantidad(lote3.getCantidadDisponible());
+        materiaPrimaRepository.save(mp3);
+
+        System.out.println("Producciones iniciales creadas para el producto 1");
+    }
+
     private MateriaProductoDTO createMateriaDTO(Long idMateria, Float cantidad) {
         MateriaProductoDTO dto = new MateriaProductoDTO();
         dto.setIdMateria(idMateria);
         dto.setCantidad(cantidad);
         return dto;
     }
-
 }

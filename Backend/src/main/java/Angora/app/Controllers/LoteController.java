@@ -14,59 +14,36 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/lotes")
 public class LoteController {
 
-    // Repositorio
-    @Autowired
-    private LoteRepository loteRepository;
-
     @Autowired
     private LoteService loteService;
 
+    @Autowired
+    private LoteRepository loteRepository;
+
     // Obtener todos los lotes
     @GetMapping
-    public ResponseEntity<?> getAll(){
-
-        return new ResponseEntity<>(loteRepository.findAll(), HttpStatus.OK);
+    public ResponseEntity<?> getAll() {
+        return new ResponseEntity<>(loteService.findAll(), HttpStatus.OK);
     }
 
     // Obtener un lote por su ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id){
-
+    public ResponseEntity<?> getById(@PathVariable Long id) {
         return new ResponseEntity<>(loteService.findById(id), HttpStatus.OK);
     }
 
-    // Guardar un lote
-    // NOTA: Este método se puede usar para guardar la confirmacion de la orden de compra de los proveedores
+    // Guardar un lote (puede usarse para confirmar orden de compra)
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody LoteDTO lote){
+    public ResponseEntity<?> create(@RequestBody LoteDTO lote) {
         return new ResponseEntity<>(loteService.save(lote), HttpStatus.CREATED);
     }
 
     // Actualizar algun lote
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Lote lote){
-
-        if(!loteRepository.existsById(id)){
+    @PutMapping
+    public ResponseEntity<?> update(@RequestBody Lote lote){
+        if(!loteRepository.existsById(lote.getIdLote())){
             throw new RuntimeException("Lote no encontrado");
         }
-
-        lote.setIdLote(id);
-
-        return new ResponseEntity<>(loteRepository.save(lote), HttpStatus.OK);
+        return new ResponseEntity<>(loteService.update(lote), HttpStatus.OK);
     }
-
-    // Eliminar un lote
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id){
-
-        if(!loteRepository.existsById(id)){
-            throw new RuntimeException("Lote no encontrado");
-        }
-
-        loteRepository.deleteById(id);
-
-        return new ResponseEntity<>("Lote eliminado", HttpStatus.NO_CONTENT);
-    }
-
-
 }

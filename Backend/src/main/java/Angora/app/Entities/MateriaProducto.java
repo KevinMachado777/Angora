@@ -37,14 +37,4 @@ public class MateriaProducto {
     public String toString() {
         return "MateriaProducto{materia=" + idMateria + ", cantidad=" + cantidad + "}";
     }
-
-
-    /*public MateriaProducto(){}
-
-    public MateriaProducto(Long id,Long idMateria, Float cantidad, Producto producto) {
-        this.id = id;
-        this.idMateria = idMateria;
-        this.cantidad = cantidad;
-        this.producto = producto;
-    }*/
 }

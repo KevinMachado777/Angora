@@ -1,5 +1,6 @@
 package Angora.app.Controllers;
 
+import Angora.app.Controllers.dto.NuevaCantidadDTO;
 import Angora.app.Controllers.dto.ProductoDTO;
 import Angora.app.Entities.Producto;
 import Angora.app.Services.ProductoService;
@@ -15,71 +16,66 @@ import java.util.List;
 @RequestMapping("/inventarioProducto")
 public class InventarioProductoController {
 
-    // Servicio de producto
     @Autowired
     private ProductoService productoService;
 
     // Obtener todos los productos del inventario
     @GetMapping
-    public ResponseEntity<?> getAll(){
+    public ResponseEntity<?> getAll() {
         var productos = productoService.findAll();
-        System.out.println("Productos encontrados: " + productos.toString() + "");
+        System.out.println("Productos encontrados: " + productos.toString());
         return new ResponseEntity<>(productos, HttpStatus.OK);
     }
 
     // Endpoint para listar en ventas
     @GetMapping("/listado")
-    public List<Producto> listarProductos(){
+    public List<Producto> listarProductos() {
         var productos = productoService.listarProductos();
         return productos;
     }
 
-    @PutMapping("/{cantidadComprada}")
-    public void actualizarStock(@RequestBody Producto producto, @PathVariable int cantidadComprada){
-        productoService.disminuirStock(producto, cantidadComprada);
-    }
-
     // Obtener producto por un ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id){
+    public ResponseEntity<?> getById(@PathVariable Long id) {
         var productoDto = productoService.findById(id);
         return new ResponseEntity<>(productoDto, HttpStatus.OK);
     }
 
     // Guardar un producto
     @PostMapping(consumes = "application/json")
-    public ResponseEntity<?> create(@RequestBody ProductoDTO producto){
-
-        System.out.println("Producto a guardar: " + producto.toString( ));
+    public ResponseEntity<?> create(@RequestBody ProductoDTO producto) {
+        System.out.println("Producto a guardar: " + producto.toString());
         return new ResponseEntity<>(productoService.crearProductoDesdeDTO(producto), HttpStatus.CREATED);
     }
 
-     // Actualizar un producto
-    @PutMapping(consumes = "application/json")
-    public ResponseEntity<?> update(@RequestBody ProductoDTO producto){
-
+    // Actualizar un producto
+    @PutMapping(value = "/{id}", consumes = "application/json")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ProductoDTO producto) {
+        // Validar que el id del cuerpo coincida con el id de la ruta (opcional pero recomendado)
+        if (!id.equals(producto.getIdProducto())) {
+            return new ResponseEntity<>("El ID del cuerpo no coincide con el ID de la ruta", HttpStatus.BAD_REQUEST);
+        }
         return new ResponseEntity<>(productoService.actualizarProductoDesdeDTO(producto), HttpStatus.OK);
     }
 
     // Eliminar un producto
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id){
-
+    public ResponseEntity<?> delete(@PathVariable Long id) {
         productoService.delete(id);
-
         return new ResponseEntity<>("Producto Eliminado", HttpStatus.NO_CONTENT);
     }
 
-    // Actualizar el stock de un producto, aumentar o reducir el stock
-    /*@PutMapping("/{id}/stock")
-    public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody Integer nuevaCantidad){
-        Producto producto = productoService.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Producto con ID " + id + " no encontrado."));
-
-        if (producto == null) {
-            return new ResponseEntity<>("Producto no encontrado: " + id, HttpStatus.NOT_FOUND);
+    // Actualizar el stock de un producto (aumentar o reducir)
+    @PutMapping("/{id}/stock")
+    public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody NuevaCantidadDTO nuevaCantidadDTO) {
+        try {
+            Producto producto = productoService.updateStock(id, nuevaCantidadDTO.getNuevaCantidad());
+            return new ResponseEntity<>(producto, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         }
+    }
 
-        return new ResponseEntity<>(productoService.updateStock(id, nuevaCantidad), HttpStatus.OK);
-    }*/
+    // Eliminado: @PutMapping("/{cantidadComprada}") public void actualizarStock(@RequestBody Producto producto, @RequestBody int cantidadComprada) { ... }
+    // Comentario: Metodo eliminado y reemplazado por updateStock con id y nuevaCantidad para consistencia con la lógica del servicio.
 }

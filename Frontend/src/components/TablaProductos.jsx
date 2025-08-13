@@ -3,14 +3,14 @@ import Modal from "./Modal";
 import BotonCancelar from "./BotonCancelar";
 import BotonGuardar from "./BotonGuardar";
 import BotonEditar from "./BotonEditar";
-import BotonEliminar from "./BotonEliminar";
 import BotonAceptar from "./BotonAceptar";
 import "../styles/tablaProductos.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../api/axiosInstance";
 
+// Componente TablaProductos con referencias para control externo (e.g., abrir modales)
 const TablaProductos = forwardRef(
-    ({ registrosMateria, lotesMateriaPrima, setRegistrosMateria, setLotesMateriaPrima, proveedores }, ref) => {
+    ({ registrosMateria, lotesMateriaPrima, setRegistrosMateria, setLotesMateriaPrima, proveedores, token }, ref) => {
         const [registros, setRegistros] = useState([]);
         const [productoSeleccionado, setProductoSeleccionado] = useState(null);
         const [modalAbierta, setModalAbierta] = useState(false);
@@ -25,98 +25,147 @@ const TablaProductos = forwardRef(
         const [producciones, setProducciones] = useState([]);
         const [produccionesLotes, setProduccionesLotes] = useState([]);
         const [costoTotal, setCostoTotal] = useState(0);
-        const [costoModificadoManualmente, setCostoModificadoManualemente] = useState(false);
-        const [formularioTemp, setFormularioTemp] = useState({ cantidad: 0, porcentajeGanancia: 15 });
+        const [costoModificadoManually, setCostoModificadoManually] = useState(false);
+        const [formularioTemp, setFormularioTemp] = useState({ porcentajeGanancia: 15 });
         const [maxFabricable, setMaxFabricable] = useState(null);
+        const [currentPage, setCurrentPage] = useState(1); // Paginación productos
+        const [itemsPerPage] = useState(5); // Cantidad de items por página (productos)
+        const [error, setError] = useState(null);
+        const [isLoading, setIsLoading] = useState(true);
         const [modalAdvertenciaPocoStock, setModalAdvertenciaPocoStock] = useState(false);
         const [modalAdvertenciaIdInvalido, setModalAdvertenciaIdInvalido] = useState(false);
         const [modalAdvertenciaMateriaAgregada, setModalAdvertenciaMateriaAgregada] = useState(false);
         const [modalAdvertenciaIdDuplicado, setModalAdvertenciaIdDuplicado] = useState(false);
         const [modalLotesUsados, setModalLotesUsados] = useState(false);
         const [lotesUsadosProducto, setLotesUsadosProducto] = useState([]);
-        const [error, setError] = useState(null);
-        const [isLoading, setIsLoading] = useState(true);
+        const [modalErrorStockInsuficiente, setModalErrorStockInsuficiente] = useState(false); // Modal para cantidad > maxFabricable
+        const [costoInput, setCostoInput] = useState(0); // Estado temporal para costo
+        const [precioInput, setPrecioInput] = useState(0); // Estado temporal para precio
+        const [nuevaCantidad, setNuevaCantidad] = useState(0); // Ahora representa "cantidad a fabricar" (incremento)
 
+        // Estados de categorías
+        const [categorias, setCategorias] = useState([]); // Categorías dinámicas
+        const [modalCategoriaAbierta, setModalCategoriaAbierta] = useState(false);
+        const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+        const [nuevaCategoria, setNuevaCategoria] = useState({ idCategoria: 0, nombre: "" });
+        const [modoEdicionCategoria, setModoEdicionCategoria] = useState(false);
+        const [modalConfirmDeleteCategoria, setModalConfirmDeleteCategoria] = useState(false);
+        const [categoriaToDelete, setCategoriaToDelete] = useState(null);
+        const [productosAsociadosToDelete, setProductosAsociadosToDelete] = useState([]);
+
+        // Paginacion para categorias
+        const [currentPageCategorias, setCurrentPageCategorias] = useState(1);
+        const [itemsPerPageCategorias] = useState(5);
+
+        // Validar datos de localStorage
+        const validateData = (data, key) => {
+            try {
+                return data && Array.isArray(JSON.parse(data)) ? JSON.parse(data) : [];
+            } catch {
+                console.warn(`Datos corruptos en localStorage para ${key}`);
+                return [];
+            }
+        };
+
+        // helper para headers (usa accessToken en localStorage o token prop)
+        const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("accessToken") || token}` });
+
+        // const handleApiError = (err, context) => {
+        //     console.error(`Error en ${context}:`, {
+        //         status: err.response?.status,
+        //         data: err.response?.data,
+        //         message: err.message,
+        //     });
+        //     if (err.response?.status === 401) {
+        //         setError("Sesión expirada o permisos insuficientes. Por favor, inicia sesión nuevamente.");
+        //         localStorage.removeItem("accessToken");
+        //         window.location.href = "/login";
+        //     } else {
+        //         setError(err.response?.data?.message || `Error en ${context}. Intenta de nuevo.`);
+        //     }
+        // };
+
+        // Cargar datos iniciales desde el backend
         useEffect(() => {
             const fetchData = async () => {
+                if (!token) {
+                    setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                    setIsLoading(false);
+                    return;
+                }
+
                 try {
-
-                    // Ahi lotesUsadosRes, produccionesRes, produccionesLotesRes
-
-
-                    
-                    // const [productosRes] = await Promise.all([
-                    //     api.get("/inventarioProducto")
-                    //     // api.get("/lotes-usados"),
-                    //     // api.get("/producciones"),
-                    //     // api.get("/producciones-lotes"),
-                    // ]);
-                    // console.log("Datos cargados:", {
-                    //     productos: productosRes.data,
-                    //     lotesUsados: lotesUsadosRes.data,
-                    //     producciones: produccionesRes.data,
-                    //     produccionesLotes: produccionesLotesRes.data,
-                    // });
-
-                    const productosRes = await api.get("/inventarioProducto")
-
-                    console.log("Productos cargados: " + productosRes.data)
+                    const headers = authHeaders();
+                    const [productosRes, lotesUsadosRes, produccionesRes, produccionesLotesRes] = await Promise.all([
+                        api.get("/inventarioProducto", { headers }),
+                        api.get("/lotes-usados", { headers }).catch(() => ({ data: [] })),
+                        api.get("/producciones", { headers }).catch(() => ({ data: [] })),
+                        api.get("/producciones-lotes", { headers }).catch(() => ({ data: [] })),
+                    ]);
 
                     setRegistros(productosRes.data);
-                    // setLotesUsadosEnProductos(lotesUsadosRes.data);
-                    // setProducciones(produccionesRes.data);
-                    // setProduccionesLotes(produccionesLotesRes.data);
+                    setLotesUsadosEnProductos(lotesUsadosRes.data);
+                    setProducciones(produccionesRes.data);
+                    setProduccionesLotes(produccionesLotesRes.data);
                     localStorage.setItem("productos", JSON.stringify(productosRes.data));
-                    localStorage.setItem("lotesUsadosEnProductos", JSON.stringify(lotesUsadosRes.data));
-                    localStorage.setItem("producciones", JSON.stringify(produccionesRes.data));
-                    localStorage.setItem("produccionesLotes", JSON.stringify(produccionesLotesRes.data));
                     setIsLoading(false);
                 } catch (err) {
-                    console.error("Error al cargar datos:", {
-                        status: err.response?.status,
-                        data: err.response?.data,
-                        message: err.message,
-                    });
-                    setError(err.response?.data?.message || "Error al conectar con el backend");
-                    const savedProductos = localStorage.getItem("productos");
-                    const savedLotesUsados = localStorage.getItem("lotesUsadosEnProductos");
-                    const savedProducciones = localStorage.getItem("producciones");
-                    const savedProduccionesLotes = localStorage.getItem("produccionesLotes");
-                    if (savedProductos) setRegistros(JSON.parse(savedProductos));
-                    if (savedLotesUsados) setLotesUsadosEnProductos(JSON.parse(savedLotesUsados));
-                    if (savedProducciones) setProducciones(JSON.parse(savedProducciones));
-                    if (savedProduccionesLotes) setProduccionesLotes(JSON.parse(savedProduccionesLotes));
+                    handleApiError(err, "carga de datos de productos");
+                    setRegistros(validateData(localStorage.getItem("productos"), "productos"));
                     setIsLoading(false);
                 }
             };
             fetchData();
-        }, []);
+        }, [token]);
 
+        // Cargar categorías dinámicamente desde el backend
+        useEffect(() => {
+            const fetchCategorias = async () => {
+                if (!token) return;
+                try {
+                    const headers = authHeaders();
+                    const response = await api.get("/categorias", { headers });
+                    setCategorias(response.data);
+                } catch (err) {
+                    handleApiError(err, "carga de categorías");
+                }
+            };
+            fetchCategorias();
+        }, [token]);
+
+        // Exponer método para abrir modal de agregar desde el padre
         useImperativeHandle(ref, () => ({
             abrirModalAgregar: () => {
                 setProductoSeleccionado(null);
                 setMateriasProducto([]);
                 setCostoTotal(0);
-                setCostoModificadoManualemente(false);
-                setFormularioTemp({ cantidad: 0, porcentajeGanancia: 15 });
+                setCostoModificadoManually(false);
+                setFormularioTemp({ porcentajeGanancia: 15 });
+                setCostoInput(0);
+                setPrecioInput(0);
                 setModalAbierta(true);
             },
         }));
 
+        // Calcular costo total y precio basado en materias (redondeando a múltiplos de 50)
         useEffect(() => {
-            if (!costoModificadoManualmente) {
+            if (!costoModificadoManually) {
                 const nuevoCosto = materiasProducto.reduce((acc, mat) => {
                     const inv = registrosMateria.find((m) => m.idMateria === mat.idMateria);
                     return acc + (inv?.costo || 0) * mat.cantidad;
                 }, 0);
-                setCostoTotal(nuevoCosto);
+                const costoRedondeado = Math.round(nuevoCosto / 50) * 50; // Redondear a múltiplo de 50
+                setCostoTotal(costoRedondeado);
+                setCostoInput(costoRedondeado);
+                setPrecioInput(Math.round(costoRedondeado * (1 + (formularioTemp.porcentajeGanancia || 15) / 100) / 50) * 50); // Redondear precio a múltiplo de 50
                 setFormularioTemp((prev) => ({
                     ...prev,
-                    precioUnitario: nuevoCosto * (1 + (prev.porcentajeGanancia || 15) / 100),
+                    precio: Math.round(costoRedondeado * (1 + (prev.porcentajeGanancia || 15) / 100) / 50) * 50, // Redondear a múltiplo de 50
                 }));
             }
-        }, [materiasProducto, costoModificadoManualmente, registrosMateria]);
+        }, [materiasProducto, costoModificadoManually, registrosMateria, formularioTemp.porcentajeGanancia]);
 
+        // Formatear fechas y monedas
         const formatDateTime = (dateString) => {
             if (!dateString || dateString === "N/A") return "N/A";
             const date = new Date(dateString);
@@ -130,22 +179,33 @@ const TablaProductos = forwardRef(
             }).format(date);
         };
 
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat("es-CO", {
+                style: "currency",
+                currency: "COP",
+                minimumFractionDigits: 0,
+            }).format(value);
+        };
+
+        // Abrir modal de edición
         const abrirModalEditar = (producto) => {
             setProductoSeleccionado(producto);
             setMateriasProducto(producto.materias || []);
             setCostoTotal(producto.costo || 0);
-            setCostoModificadoManualemente(true);
+            setCostoModificadoManually(true);
             setFormularioTemp({
                 idProducto: producto.idProducto,
                 nombre: producto.nombre,
-                precioUnitario: producto.precioUnitario,
-                cantidad: producto.cantidad,
-                idCategoria: producto?.idCategoria?.idCategoria,
-                porcentajeGanancia: ((producto.precioUnitario / producto.costo) - 1) * 100,
+                precio: producto.precio || 0,
+                porcentajeGanancia: producto.costo > 0 ? Math.round(((producto.precio / producto.costo) - 1) * 100) : 15,
+                idCategoria: producto.idCategoria?.idCategoria || "", // Cargar la categoría por defecto
             });
+            setCostoInput(producto.costo || 0);
+            setPrecioInput(producto.precio || 0);
             setModalAbierta(true);
         };
 
+        // Abrir modal de stock con cálculo de máximo fabricable
         const abrirModalStock = (producto) => {
             setProductoStock(producto);
             if (producto?.materias?.length) {
@@ -168,9 +228,11 @@ const TablaProductos = forwardRef(
             } else {
                 setMaxFabricable(0);
             }
+            setNuevaCantidad(0); // Reiniciamos la "cantidad a fabricar"
             setModalStock(true);
         };
 
+        // Abrir modal de lotes usados
         const abrirModalLotesUsados = (producto) => {
             const lotesUsados = lotesUsadosEnProductos
                 .filter((lu) => lu.idProducto === producto.idProducto)
@@ -197,27 +259,126 @@ const TablaProductos = forwardRef(
             setModalLotesUsados(true);
         };
 
-        const eliminarProducto = async (producto) => {
+        // Verificar si un producto puede eliminarse (sin lotes usados ni producciones)
+        const canDeleteProduct = (idProducto) => {
+            const hasLotesUsados = lotesUsadosEnProductos.some((lu) => lu.idProducto === idProducto);
+            const hasProducciones = producciones.some((p) => p.idProducto === idProducto);
+            return !hasLotesUsados && !hasProducciones;
+        };
+
+        const abrirModalCategoria = (categoria = null) => {
+            setCategoriaSeleccionada(categoria);
+            setModoEdicionCategoria(!!categoria);
+            setNuevaCategoria(categoria ? { idCategoria: categoria.idCategoria, nombre: categoria.nombre } : { idCategoria: 0, nombre: "" });
+            setModalCategoriaAbierta(true);
+        };
+
+        const guardarCategoria = async (e) => {
+            e.preventDefault();
+            if (!token) {
+                setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                return;
+            }
+            if (!nuevaCategoria.nombre.trim()) {
+                setError("El nombre de la categoría no puede estar vacío.");
+                return;
+            }
+
             try {
-                await api.delete(`/inventarioProducto/${producto.idProducto}`);
-                const nuevosRegistros = registros.filter((p) => p.idProducto !== producto.idProducto);
-                setRegistros(nuevosRegistros);
-                localStorage.setItem("productos", JSON.stringify(nuevosRegistros));
+                const headers = authHeaders();
+                if (modoEdicionCategoria) {
+                    await api.put(`/categorias/${nuevaCategoria.idCategoria}`, { nombre: nuevaCategoria.nombre }, { headers });
+                    setCategorias((prev) =>
+                        prev.map((c) => (c.idCategoria === nuevaCategoria.idCategoria ? { ...c, nombre: nuevaCategoria.nombre } : c))
+                    );
+                } else {
+                    const response = await api.post("/categorias", { nombre: nuevaCategoria.nombre }, { headers });
+                    setCategorias((prev) => [...prev, response.data]);
+                }
+                setModalCategoriaAbierta(false);
+                setNuevaCategoria({ idCategoria: 0, nombre: "" });
             } catch (err) {
-                console.error("Error al eliminar producto:", {
-                    status: err.response?.status,
-                    data: err.response?.data,
-                    message: err.message,
-                });
-                setError(err.response?.data?.message || "Error al eliminar el producto");
+                handleApiError(err, "gestión de categoría");
             }
         };
 
+        const eliminarCategoria = async (idCategoria, options = { force: false }) => {
+            // Si solo se llamó desde botón "Confirmar" del modal, options.force debería ser true
+            const asociados = registros.filter((p) => p.idCategoria?.idCategoria === idCategoria);
+
+            if (!options.force && asociados.length > 0) {
+                setCategoriaToDelete(idCategoria);
+                setProductosAsociadosToDelete(asociados);
+                setModalConfirmDeleteCategoria(true);
+                return;
+            }
+
+            if (!token) {
+                setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                return;
+            }
+
+            try {
+                const headers = { Authorization: `Bearer ${token}` };
+
+                // Si hay productos asociados y se forza la eliminación, actualizarlos a idCategoria = null
+                if (asociados.length > 0 && options.force) {
+                    await Promise.all(
+                        asociados.map((p) => {
+                            const body = {
+                                idProducto: p.idProducto,
+                                nombre: p.nombre,
+                                costo: p.costo ?? 0,
+                                precio: p.precio ?? 0,
+                                stock: p.stock ?? 0,
+                                iva: p.iva ?? 0,
+                                idCategoria: null,
+                                materias: p.materias ?? [],
+                            };
+                            return api.put(`/inventarioProducto/${p.idProducto}`, body, { headers });
+                        })
+                    );
+                }
+
+                // Eliminar la categoría
+                await api.delete(`/categorias/${idCategoria}`, { headers });
+
+                // Refrescar datos
+                const [productosRes, categoriasRes] = await Promise.all([
+                    api.get("/inventarioProducto", { headers }),
+                    api.get("/categorias", { headers }),
+                ]);
+                setRegistros(productosRes.data);
+                localStorage.setItem("productos", JSON.stringify(productosRes.data));
+                setCategorias(categoriasRes.data);
+                setModalConfirmDeleteCategoria(false);
+                setCategoriaToDelete(null);
+                setProductosAsociadosToDelete([]);
+            } catch (err) {
+                console.error("Error eliminando categoría:", err);
+                setError(
+                    err.response?.data?.message ||
+                    (err.code === "ERR_NETWORK" ? "Error de conexión con el servidor. Verifica tu red o el backend." : "Error eliminando categoría.")
+                );
+            }
+        };
+
+        // Guardar producto
         const guardarProducto = async (e) => {
             e.preventDefault();
+            if (!token) {
+                setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                return;
+            }
             const idProducto = Number(formularioTemp.idProducto);
             if (idProducto <= 0) {
                 setError("El ID del producto debe ser mayor que 0");
+                return;
+            }
+            const costoRedondeado = Math.round(costoInput / 50) * 50;
+            const precioRedondeado = Math.round(precioInput / 50) * 50;
+            if (costoRedondeado < 0 || precioRedondeado < 0) {
+                setError("El costo y el precio deben ser mayores o iguales a 0");
                 return;
             }
             if (!productoSeleccionado && registros.some((p) => p.idProducto === idProducto)) {
@@ -227,38 +388,37 @@ const TablaProductos = forwardRef(
             const nuevo = {
                 idProducto,
                 nombre: formularioTemp.nombre,
-                costo: Number(costoTotal),
-                precioUnitario: Number(formularioTemp.precioUnitario),
-                cantidad: Number(formularioTemp.cantidad),
-                idCategoria: formularioTemp.idCategoria,
+                costo: costoRedondeado,
+                precio: precioRedondeado,
+                idCategoria: formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null,
                 materias: materiasProducto,
             };
 
+            console.log("Objeto enviado:", nuevo);
             try {
+                const headers = authHeaders();
                 if (productoSeleccionado) {
-                    await api.put(`/inventarioProducto/${idProducto}`, nuevo);
+                    await api.put(`/inventarioProducto/${idProducto}`, nuevo, { headers });
                     setRegistros((prev) => prev.map((p) => (p.idProducto === idProducto ? nuevo : p)));
                 } else {
-                    await api.post("/inventarioProducto", nuevo);
-                    setRegistros((prev) => [...prev, nuevo]);
+                    const response = await api.post("/inventarioProducto", nuevo, { headers });
+                    setRegistros((prev) => [...prev, response.data]);
                 }
                 localStorage.setItem("productos", JSON.stringify(registros));
                 setModalAbierta(false);
                 setProductoSeleccionado(null);
                 setMateriasProducto([]);
-                setCostoTotal(0);
-                setCostoModificadoManualemente(false);
-                setFormularioTemp({ cantidad: 0, porcentajeGanancia: 15 });
+                setCostoTotal(costoRedondeado);
+                setCostoModificadoManually(false);
+                setFormularioTemp({ porcentajeGanancia: 15 });
+                setCostoInput(costoRedondeado);
+                setPrecioInput(precioRedondeado);
             } catch (err) {
-                console.error("Error al guardar producto:", {
-                    status: err.response?.status,
-                    data: err.response?.data,
-                    message: err.message,
-                });
-                setError(err.response?.data?.message || "Error al guardar el producto");
+                handleApiError(err, "guardado de producto");
             }
         };
 
+        // Agregar o editar materia al producto
         const agregarMateriaAlProducto = (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -295,214 +455,87 @@ const TablaProductos = forwardRef(
             setIndiceEdicionMateria(null);
             setMateriaNueva({ idMateria: 0, cantidad: 0 });
             setModalMateriaAbierta(false);
-            setCostoModificadoManualemente(false);
+            setCostoModificadoManually(false);
         };
 
-        // const actualizarStock = async (e) => {
-        //     e.preventDefault();
-        //     const nuevaCantidad = parseInt(e.target.stockCantidad?.value, 10);
-        //     if (isNaN(nuevaCantidad) || nuevaCantidad < 0) {
-        //         setError("La cantidad debe ser mayor o igual a 0");
-        //         return;
-        //     }
+        // Actualizar stock delegando al backend
+        // Ahora: el input representa "cantidad a fabricar" (incremento), no el stock absoluto.
+        const actualizarStock = async (e) => {
+            e.preventDefault();
+            if (!token) {
+                setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                return;
+            }
 
-        //     const diferencia = nuevaCantidad - productoStock.cantidad;
+            // Evitar shadowing: nuevaCantidadInt es el número de unidades a fabricar (incremento)
+            const nuevaCantidadInt = parseInt(nuevaCantidad, 10);
+            if (isNaN(nuevaCantidadInt) || nuevaCantidadInt < 0) {
+                setError("La cantidad debe ser mayor o igual a 0");
+                return;
+            }
+            // Verificamos contra maxFabricable el incremento (no el stock absoluto)
+            if (maxFabricable !== null && nuevaCantidadInt > maxFabricable) {
+                setModalErrorStockInsuficiente(true);
+                return;
+            }
 
-        //     try {
-        //         if (diferencia > 0) {
-        //             const nuevosLotes = [...lotesMateriaPrima];
-        //             const nuevosRegistrosMateria = [...registrosMateria];
-        //             const nuevosLotesUsados = [...lotesUsadosEnProductos];
-        //             const nuevasProducciones = [...producciones];
-        //             const nuevosProduccionesLotes = [...produccionesLotes];
-        //             const fechaActual = new Date().toISOString();
-        //             const idProduccion = Math.max(...producciones.map((p) => p.idProduccion), 0) + 1;
+            try {
+                const headers = authHeaders();
+                // Calcular nuevo stock sumando el incremento al stock actual (evita sobrescribir con el valor pequeño)
+                const currentStock = productoStock?.stock || 0;
+                const newStockToSend = currentStock + nuevaCantidadInt;
 
-        //             const nuevaProduccion = {
-        //                 idProduccion,
-        //                 idProducto: productoStock.idProducto,
-        //                 fecha: fechaActual,
-        //             };
-        //             const prodRes = await api.post("/producciones", nuevaProduccion);
-        //             nuevasProducciones.push(prodRes.data);
+                const response = await api.put(
+                    `/inventarioProducto/${productoStock.idProducto}/stock`,
+                    { nuevaCantidad: newStockToSend },
+                    { headers }
+                );
 
-        //             let stockSuficiente = true;
+                // Usar el stock que devuelve el backend si viene, sino usar el newStockToSend calculado
+                const updatedStockValue = response?.data?.stock ?? newStockToSend;
 
-        //             for (const mat of productoStock.materias) {
-        //                 let cantidadNecesaria = mat.cantidad * diferencia;
-        //                 const lotes = nuevosLotes
-        //                     .filter((lote) => lote.idMateria === mat.idMateria && lote.cantidadDisponible > 0)
-        //                     .sort((a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso));
+                // Actualizar registros inmediatamente y localStorage
+                setRegistros((prev) => {
+                    const updated = prev.map((p) =>
+                        p.idProducto === productoStock.idProducto ? { ...p, stock: updatedStockValue } : p
+                    );
+                    localStorage.setItem("productos", JSON.stringify(updated));
+                    return updated;
+                });
 
-        //                 const totalDisponible = lotes.reduce((sum, lote) => sum + lote.cantidadDisponible, 0);
-        //                 if (totalDisponible < cantidadNecesaria) {
-        //                     stockSuficiente = false;
-        //                     break;
-        //                 }
+                // Refrescar lotes y producciones para reflejar cambios
+                const [lotesUsadosRes, produccionesRes, produccionesLotesRes, lotesMateriaPrimaRes] = await Promise.all([
+                    api.get("/lotes-usados", { headers }).catch(() => ({ data: [] })),
+                    api.get("/producciones", { headers }).catch(() => ({ data: [] })),
+                    api.get("/producciones-lotes", { headers }).catch(() => ({ data: [] })),
+                    api.get("/lotes-materia-prima", { headers }).catch(() => ({ data: [] })) // Nueva consulta
+                ]);
+                setLotesUsadosEnProductos(lotesUsadosRes.data);
+                setProducciones(produccionesRes.data);
+                setProduccionesLotes(produccionesLotesRes.data);
+                // Actualizamos los lotes de materia prima en el padre (prop)
+                if (typeof setLotesMateriaPrima === "function") {
+                    setLotesMateriaPrima(lotesMateriaPrimaRes.data);
+                }
 
-        //                 for (const lote of lotes) {
-        //                     if (cantidadNecesaria <= 0) break;
-        //                     const disponible = lote.cantidadDisponible;
-        //                     const cantidadUsada = Math.min(disponible, cantidadNecesaria);
-        //                     lote.cantidadDisponible = Math.max(0, disponible - cantidadUsada);
-        //                     cantidadNecesaria -= cantidadUsada;
-
-        //                     const nuevoLoteUsado = {
-        //                         id: Math.max(...lotesUsadosEnProductos.map((lu) => lu.id), 0) + 1,
-        //                         idLote: lote.idLote,
-        //                         idProducto: productoStock.idProducto,
-        //                         cantidadUsada,
-        //                         fechaProduccion: fechaActual,
-        //                     };
-        //                     const loteUsadoRes = await api.post("/lotes-usados", nuevoLoteUsado);
-        //                     nuevosLotesUsados.push(loteUsadoRes.data);
-
-        //                     const nuevoProduccionLote = {
-        //                         id: Math.max(...produccionesLotes.map((pl) => pl.id), 0) + 1,
-        //                         idProduccion,
-        //                         idLote: lote.idLote,
-        //                         cantidadUsadaDelLote: cantidadUsada,
-        //                     };
-        //                     const prodLoteRes = await api.post("/producciones-lotes", nuevoProduccionLote);
-        //                     nuevosProduccionesLotes.push(prodLoteRes.data);
-
-        //                     await api.put(`/lotes/${lote.idLote}`, lote);
-        //                 }
-
-        //                 const inv = nuevosRegistrosMateria.find((m) => m.idMateria === mat.idMateria);
-        //                 if (inv) {
-        //                     const totalDisponible = nuevosLotes
-        //                         .filter((lote) => lote.idMateria === mat.idMateria)
-        //                         .reduce((sum, lote) => sum + lote.cantidadDisponible, 0);
-        //                     inv.cantidad = totalDisponible;
-        //                     await api.put(`/inventarioMateria/${inv.idMateria}`, inv);
-        //                 }
-        //             }
-
-        //             if (!stockSuficiente) {
-        //                 setModalAdvertenciaPocoStock(true);
-        //                 return;
-        //             }
-
-        //             setLotesUsadosEnProductos(nuevosLotesUsados);
-        //             setProducciones(nuevasProducciones);
-        //             setProduccionesLotes(nuevosProduccionesLotes);
-        //             setLotesMateriaPrima(nuevosLotes);
-        //             setRegistrosMateria(nuevosRegistrosMateria);
-        //             localStorage.setItem("lotesUsadosEnProductos", JSON.stringify(nuevosLotesUsados));
-        //             localStorage.setItem("producciones", JSON.stringify(nuevasProducciones));
-        //             localStorage.setItem("produccionesLotes", JSON.stringify(nuevosProduccionesLotes));
-        //             localStorage.setItem("lotesMateriaPrima", JSON.stringify(nuevosLotes));
-        //             localStorage.setItem("registrosMateria", JSON.stringify(nuevosRegistrosMateria));
-        //         } else if (diferencia < 0) {
-        //             const nuevosLotes = [...lotesMateriaPrima];
-        //             const nuevosRegistrosMateria = [...registrosMateria];
-        //             const nuevosLotesUsados = [...lotesUsadosEnProductos];
-        //             const nuevosProduccionesLotes = [...produccionesLotes];
-        //             const cantidadDevolver = Math.abs(diferencia);
-
-        //             const ultimaProduccion = producciones
-        //                 .filter((p) => p.idProducto === productoStock.idProducto)
-        //                 .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))[0];
-
-        //             if (ultimaProduccion) {
-        //                 const idProduccion = ultimaProduccion.idProduccion;
-
-        //                 for (const mat of productoStock.materias) {
-        //                     let cantidadDevolverMat = mat.cantidad * cantidadDevolver;
-        //                     const lotes = nuevosLotes
-        //                         .filter((lote) => lote.idMateria === mat.idMateria)
-        //                         .sort((a, b) => new Date(b.fechaIngreso) - new Date(a.fechaIngreso));
-
-        //                     for (const lote of lotes) {
-        //                         if (cantidadDevolverMat <= 0) break;
-        //                         const cantidadDevolverLote = Math.min(cantidadDevolverMat, mat.cantidad * cantidadDevolver);
-        //                         lote.cantidadDisponible += cantidadDevolverLote;
-        //                         cantidadDevolverMat -= cantidadDevolverLote;
-
-        //                         const loteUsado = nuevosLotesUsados.find(
-        //                             (lu) =>
-        //                                 lu.idLote === lote.idLote &&
-        //                                 lu.idProducto === productoStock.idProducto &&
-        //                                 lu.fechaProduccion === ultimaProduccion.fecha
-        //                         );
-        //                         if (loteUsado) {
-        //                             const indexLoteUsado = nuevosLotesUsados.indexOf(loteUsado);
-        //                             if (loteUsado.cantidadUsada <= cantidadDevolverLote) {
-        //                                 await api.delete(`/lotes-usados/${loteUsado.id}`);
-        //                                 nuevosLotesUsados.splice(indexLoteUsado, 1);
-        //                                 const prodLote = nuevosProduccionesLotes.find(
-        //                                     (pl) => pl.idProduccion === idProduccion && pl.idLote === lote.idLote
-        //                                 );
-        //                                 if (prodLote) {
-        //                                     await api.delete(`/producciones-lotes/${prodLote.id}`);
-        //                                     nuevosProduccionesLotes.splice(nuevosProduccionesLotes.indexOf(prodLote), 1);
-        //                                 }
-        //                             } else {
-        //                                 loteUsado.cantidadUsada -= cantidadDevolverLote;
-        //                                 await api.put(`/lotes-usados/${loteUsado.id}`, loteUsado);
-        //                                 const prodLote = nuevosProduccionesLotes.find(
-        //                                     (pl) => pl.idProduccion === idProduccion && pl.idLote === lote.idLote
-        //                                 );
-        //                                 if (prodLote) {
-        //                                     prodLote.cantidadUsadaDelLote -= cantidadDevolverLote;
-        //                                     await api.put(`/producciones-lotes/${prodLote.id}`, prodLote);
-        //                                 }
-        //                             }
-        //                         }
-        //                         await api.put(`/lotes/${lote.idLote}`, lote);
-        //                     }
-
-        //                     const inv = nuevosRegistrosMateria.find((m) => m.idMateria === mat.idMateria);
-        //                     if (inv) {
-        //                         const totalDisponible = nuevosLotes
-        //                             .filter((lote) => lote.idMateria === mat.idMateria)
-        //                             .reduce((sum, lote) => sum + lote.cantidadDisponible, 0);
-        //                         inv.cantidad = totalDisponible;
-        //                         await api.put(`/inventarioMateria/${inv.idMateria}`, inv);
-        //                     }
-        //                 }
-
-        //                 const lotesProduccion = nuevosProduccionesLotes.filter((pl) => pl.idProduccion === idProduccion);
-        //                 if (lotesProduccion.length === 0) {
-        //                     await api.delete(`/producciones/${idProduccion}`);
-        //                     setProducciones((prev) => prev.filter((p) => p.idProduccion !== idProduccion));
-        //                 }
-        //             }
-
-        //             setLotesUsadosEnProductos(nuevosLotesUsados);
-        //             setProduccionesLotes(nuevosProduccionesLotes);
-        //             setLotesMateriaPrima(nuevosLotes);
-        //             setRegistrosMateria(nuevosRegistrosMateria);
-        //             localStorage.setItem("lotesUsadosEnProductos", JSON.stringify(nuevosLotesUsados));
-        //             localStorage.setItem("produccionesLotes", JSON.stringify(nuevosProduccionesLotes));
-        //             localStorage.setItem("lotesMateriaPrima", JSON.stringify(nuevosLotes));
-        //             localStorage.setItem("registrosMateria", JSON.stringify(nuevosRegistrosMateria));
-        //             localStorage.setItem("producciones", JSON.stringify(producciones));
-        //         }
-
-        //         const productoActualizado = { ...productoStock, cantidad: nuevaCantidad };
-        //         await api.put(`/inventarioProducto/${productoStock.idProducto}`, productoActualizado);
-        //         setRegistros((prev) =>
-        //             prev.map((p) => (p.idProducto === productoStock.idProducto ? productoActualizado : p))
-        //         );
-        //         localStorage.setItem("productos", JSON.stringify(registros));
-        //         setModalStock(false);
-        //     } catch (err) {
-        //         console.error("Error al actualizar stock:", {
-        //             status: err.response?.status,
-        //             data: err.response?.data,
-        //             message: err.message,
-        //         });
-        //         setError(err.response?.data?.message || "Error al actualizar el stock");
-        //     }
-        // };
-
-        const formatCurrency = (value) => {
-            return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(
-                value
-            );
+                setModalStock(false);
+                setNuevaCantidad(0);
+            } catch (err) {
+                handleApiError(err, "actualización de stock");
+            }
         };
+
+        // Paginación: Calcular índices (productos)
+        const indexOfLastItem = currentPage * itemsPerPage;
+        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+        const currentItems = registros.slice(indexOfFirstItem, indexOfLastItem);
+        const totalPages = Math.ceil(registros.length / itemsPerPage);
+
+        // Paginacion de las categorias
+        const indexOfLastCategoria = currentPageCategorias * itemsPerPageCategorias;
+        const indexOfFirstCategoria = indexOfLastCategoria - itemsPerPageCategorias;
+        const currentCategorias = categorias.slice(indexOfFirstCategoria, indexOfLastCategoria);
+        const totalPagesCategorias = Math.ceil(categorias.length / itemsPerPageCategorias);
 
         if (isLoading) {
             return <div className="text-center mt-5">Cargando productos...</div>;
@@ -510,6 +543,14 @@ const TablaProductos = forwardRef(
 
         return (
             <div className="container inventario">
+                <button
+                    type="button"
+                    className="btn btn-primary mb-3"
+                    onClick={() => abrirModalCategoria()}
+                    style={{ position: "relative", zIndex: 0 }}
+                >
+                    Gestionar Categorías
+                </button>
                 {error && (
                     <Modal isOpen={!!error} onClose={() => setError(null)}>
                         <div className="encabezado-modal">
@@ -534,21 +575,26 @@ const TablaProductos = forwardRef(
                         </tr>
                     </thead>
                     <tbody>
-                        {registros.map((p) => (
+                        {currentItems.map((p) => (
                             <tr key={p.idProducto}>
                                 <td>{p.idProducto}</td>
                                 <td>{p.nombre}</td>
                                 <td>{formatCurrency(p.costo)}</td>
-                                <td>{formatCurrency(p.precioUnitario)}</td>
-                                <td>{p.cantidad}</td>
-                                <td>{p.idCategoria}</td>
+                                <td>{formatCurrency(p.precio)}</td>
+                                <td>{p.stock || 0}</td>
+                                <td>{categorias.find((cat) => cat.idCategoria === p.idCategoria?.idCategoria)?.nombre || "Sin categoría"}</td>
                                 <td>
                                     <BotonEditar onClick={() => abrirModalEditar(p)}>Editar</BotonEditar>
-                                    <BotonEliminar onClick={() => eliminarProducto(p)}>Eliminar</BotonEliminar>
-                                    <button className="btn btn-sm btn-outline-secondary" onClick={() => abrirModalStock(p)}>
+                                    <button
+                                        className="btn btn-sm btn-outline-secondary"
+                                        onClick={() => abrirModalStock(p)}
+                                    >
                                         Stock
                                     </button>
-                                    <button className="btn btn-sm btn-outline-info" onClick={() => abrirModalLotesUsados(p)}>
+                                    <button
+                                        className="btn btn-sm btn-outline-info"
+                                        onClick={() => abrirModalLotesUsados(p)}
+                                    >
                                         Lotes Usados
                                     </button>
                                 </td>
@@ -556,25 +602,92 @@ const TablaProductos = forwardRef(
                         ))}
                     </tbody>
                 </table>
+                {/* Paginación productos */}
+                <nav>
+                    <ul className="pagination justify-content-center">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                            <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
+                                Anterior
+                            </button>
+                        </li>
+                        {Array.from({ length: totalPages }, (_, i) => (
+                            <li key={i + 1} className={`page-item ${currentPage === i + 1 ? "active" : ""}`}>
+                                <button className="page-link" onClick={() => setCurrentPage(i + 1)}>
+                                    {i + 1}
+                                </button>
+                            </li>
+                        ))}
+                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                            <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
+                                Siguiente
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+
+                <div className="mt-4">
+                    <h5>Categorías Existentes</h5>
+                    <table className="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {currentCategorias.map((c) => (
+                                <tr key={c.idCategoria}>
+                                    <td>{c.idCategoria}</td>
+                                    <td>{c.nombre}</td>
+                                    <td>
+                                        <button
+                                            className="btn btn-sm btn-outline-primary me-1"
+                                            onClick={() => abrirModalCategoria(c)}
+                                        >
+                                            Editar
+                                        </button>
+                                        <button
+                                            className="btn btn-sm btn-outline-danger"
+                                            onClick={() => eliminarCategoria(c.idCategoria)}
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {/* Paginador de categorías */}
+                    <nav>
+                        <ul className="pagination justify-content-center">
+                            <li className={`page-item ${currentPageCategorias === 1 ? "disabled" : ""}`}>
+                                <button className="page-link" onClick={() => setCurrentPageCategorias(currentPageCategorias - 1)}>
+                                    Anterior
+                                </button>
+                            </li>
+                            {Array.from({ length: totalPagesCategorias }, (_, i) => (
+                                <li key={i + 1} className={`page-item ${currentPageCategorias === i + 1 ? "active" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageCategorias(i + 1)}>
+                                        {i + 1}
+                                    </button>
+                                </li>
+                            ))}
+                            <li className={`page-item ${currentPageCategorias === totalPagesCategorias ? "disabled" : ""}`}>
+                                <button className="page-link" onClick={() => setCurrentPageCategorias(currentPageCategorias + 1)}>
+                                    Siguiente
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+
                 {modalAbierta && (
                     <Modal isOpen={modalAbierta} onClose={() => setModalAbierta(false)}>
                         <form onSubmit={guardarProducto}>
                             <div className="mb-3 text-center">
                                 <h4>{productoSeleccionado ? "Editar" : "Agregar"} Producto</h4>
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">ID Producto</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={formularioTemp.idProducto || ""}
-                                    min="1"
-                                    required
-                                    disabled={productoSeleccionado !== null}
-                                    onChange={(e) =>
-                                        setFormularioTemp((prev) => ({ ...prev, idProducto: Number(e.target.value) }))
-                                    }
-                                />
                             </div>
                             <div className="mb-3">
                                 <label className="form-label">Nombre</label>
@@ -583,7 +696,9 @@ const TablaProductos = forwardRef(
                                     className="form-control"
                                     value={formularioTemp.nombre || ""}
                                     required
-                                    onChange={(e) => setFormularioTemp((prev) => ({ ...prev, nombre: e.target.value }))}
+                                    onChange={(e) =>
+                                        setFormularioTemp((prev) => ({ ...prev, nombre: e.target.value }))
+                                    }
                                 />
                             </div>
                             <div className="mb-3">
@@ -591,16 +706,12 @@ const TablaProductos = forwardRef(
                                 <input
                                     type="number"
                                     className="form-control"
-                                    value={costoTotal}
+                                    value={costoInput}
                                     min="0"
                                     onChange={(e) => {
-                                        const value = Number(e.target.value);
-                                        setCostoTotal(value);
-                                        setCostoModificadoManualemente(true);
-                                        setFormularioTemp((prev) => ({
-                                            ...prev,
-                                            precioUnitario: value * (1 + (prev.porcentajeGanancia || 15) / 100),
-                                        }));
+                                        const value = Number(e.target.value) || 0;
+                                        setCostoInput(value);
+                                        setCostoModificadoManually(true);
                                     }}
                                 />
                             </div>
@@ -611,13 +722,13 @@ const TablaProductos = forwardRef(
                                     className="form-control"
                                     value={formularioTemp.porcentajeGanancia || 15}
                                     min="0"
+                                    step="1"
                                     required
                                     onChange={(e) => {
-                                        const porcentaje = Number(e.target.value) || 15;
+                                        const porcentaje = Math.round(Number(e.target.value) || 15);
                                         setFormularioTemp((prev) => ({
                                             ...prev,
                                             porcentajeGanancia: porcentaje,
-                                            precioUnitario: costoTotal * (1 + porcentaje / 100),
                                         }));
                                     }}
                                 />
@@ -627,41 +738,30 @@ const TablaProductos = forwardRef(
                                 <input
                                     type="number"
                                     className="form-control"
-                                    value={formularioTemp.precioUnitario || 0}
+                                    value={precioInput}
                                     min="0"
                                     required
-                                    onChange={(e) =>
-                                        setFormularioTemp((prev) => ({ ...prev, precioUnitario: Number(e.target.value) }))
-                                    }
-                                />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">Cantidad</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={formularioTemp.cantidad || 0}
-                                    min="0"
-                                    required
-                                    disabled
-                                    onChange={(e) =>
-                                        setFormularioTemp((prev) => ({ ...prev, cantidad: Number(e.target.value) }))
-                                    }
+                                    onChange={(e) => {
+                                        const value = Number(e.target.value) || 0;
+                                        setPrecioInput(value);
+                                    }}
                                 />
                             </div>
                             <div className="mb-3">
                                 <label className="form-label">Categoría</label>
                                 <select
                                     className="form-select"
-                                    required
                                     value={formularioTemp.idCategoria || ""}
-                                    onChange={(e) => setFormularioTemp((prev) => ({ ...prev, idCategoria: e.target.value }))}
+                                    onChange={(e) =>
+                                        setFormularioTemp((prev) => ({ ...prev, idCategoria: Number(e.target.value) || null }))
+                                    }
                                 >
-                                    <option value="">Selecciona una categoría</option>
-                                    <option value="Jabón">Jabón</option>
-                                    <option value="Desengrasante">Desengrasante</option>
-                                    <option value="Insumo">Insumo</option>
-                                    <option value="Embalaje">Embalaje</option>
+                                    <option value="">Sin categoría</option>
+                                    {categorias.map((c) => (
+                                        <option key={c.idCategoria} value={c.idCategoria}>
+                                            {c.nombre}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                             <h6 className="text-center">Materias Primas</h6>
@@ -675,41 +775,44 @@ const TablaProductos = forwardRef(
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {materiasProducto.map((m, i) => (
-                                        <tr key={i}>
-                                            <td>{m.idMateria}</td>
-                                            <td>{m.nombre}</td>
-                                            <td>{m.cantidad}</td>
-                                            <td>
-                                                <button
-                                                    className="btn btn-sm btn-outline-primary me-1"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        setModoEdicionMateria(true);
-                                                        setIndiceEdicionMateria(i);
-                                                        setMateriaNueva({ idMateria: m.idMateria, cantidad: m.cantidad });
-                                                        setModalMateriaAbierta(true);
-                                                    }}
-                                                >
-                                                    Editar
-                                                </button>
-                                                <button
-                                                    className="btn btn-sm btn-outline-danger"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        const copia = [...materiasProducto];
-                                                        copia.splice(i, 1);
-                                                        setMateriasProducto(copia);
-                                                        setCostoModificadoManualemente(false);
-                                                    }}
-                                                >
-                                                    Eliminar
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {materiasProducto.map((m, i) => {
+                                        const materia = registrosMateria.find((rm) => rm.idMateria === m.idMateria);
+                                        return (
+                                            <tr key={i}>
+                                                <td>{m.idMateria}</td>
+                                                <td>{materia ? materia.nombre : "N/A"}</td>
+                                                <td>{m.cantidad}</td>
+                                                <td>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-primary me-1"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setModoEdicionMateria(true);
+                                                            setIndiceEdicionMateria(i);
+                                                            setMateriaNueva({ idMateria: m.idMateria, cantidad: m.cantidad });
+                                                            setModalMateriaAbierta(true);
+                                                        }}
+                                                    >
+                                                        Editar
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            const copia = [...materiasProducto];
+                                                            copia.splice(i, 1);
+                                                            setMateriasProducto(copia);
+                                                            setCostoModificadoManually(false);
+                                                        }}
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                             <button
@@ -730,22 +833,27 @@ const TablaProductos = forwardRef(
                         </form>
                     </Modal>
                 )}
+
                 {modalMateriaAbierta && (
                     <Modal isOpen={modalMateriaAbierta} onClose={() => setModalMateriaAbierta(false)}>
                         <form onSubmit={agregarMateriaAlProducto}>
                             <h5 className="text-center">{modoEdicionMateria ? "Editar" : "Agregar"} Materia Prima</h5>
                             <div className="mb-3">
-                                <label className="form-label">ID Materia</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={materiaNueva.idMateria}
-                                    required
+                                <label className="form-label">Materia Prima</label>
+                                <select
+                                    className="form-select"
+                                    value={materiaNueva.idMateria || ""}
                                     disabled={modoEdicionMateria}
-                                    onChange={(e) =>
-                                        setMateriaNueva({ ...materiaNueva, idMateria: Number(e.target.value) || 0 })
-                                    }
-                                />
+                                    onChange={(e) => setMateriaNueva({ ...materiaNueva, idMateria: Number(e.target.value) || 0 })}
+                                    required
+                                >
+                                    <option value="">Selecciona una materia prima</option>
+                                    {registrosMateria.map((m) => (
+                                        <option key={m.idMateria} value={m.idMateria}>
+                                            {m.nombre} (ID: {m.idMateria})
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="mb-3">
                                 <label className="form-label">Cantidad Requerida</label>
@@ -770,27 +878,31 @@ const TablaProductos = forwardRef(
                         </form>
                     </Modal>
                 )}
+
                 {modalStock && (
                     <Modal isOpen={modalStock} onClose={() => setModalStock(false)}>
                         <form onSubmit={actualizarStock}>
-                            <h5 className="text-center">Cambiar cantidad de stock de {productoStock?.nombre}</h5>
+                            <h5 className="text-center">Fabricar unidades de {productoStock?.nombre}</h5>
                             {maxFabricable !== null && (
                                 <div className="alert alert-info">
                                     Puedes fabricar hasta <strong>{maxFabricable}</strong> unidades con el inventario actual.
                                 </div>
                             )}
                             <div className="alert alert-primary">
-                                Cantidad actual es <strong>{productoStock?.cantidad}</strong> unidades.
+                                Cantidad actual es <strong>{productoStock?.stock}</strong> unidades.
                             </div>
                             <div className="mb-3">
-                                <label className="form-label">Nueva cantidad deseada</label>
+                                <label className="form-label">Cantidad a fabricar</label>
                                 <input
                                     name="stockCantidad"
                                     type="number"
                                     required
                                     className="form-control"
                                     min="0"
+                                    value={nuevaCantidad}
+                                    onChange={(e) => setNuevaCantidad(Number(e.target.value) || 0)}
                                 />
+                                <div className="form-text">Introduce cuántas unidades quieres fabricar (incremento).</div>
                             </div>
                             <div className="d-flex justify-content-end">
                                 <BotonCancelar onClick={() => setModalStock(false)} />
@@ -799,6 +911,7 @@ const TablaProductos = forwardRef(
                         </form>
                     </Modal>
                 )}
+
                 {modalAdvertenciaPocoStock && (
                     <Modal isOpen={modalAdvertenciaPocoStock} onClose={() => setModalAdvertenciaPocoStock(false)}>
                         <div className="encabezado-modal">
@@ -810,6 +923,7 @@ const TablaProductos = forwardRef(
                         </div>
                     </Modal>
                 )}
+
                 {modalAdvertenciaIdInvalido && (
                     <Modal isOpen={modalAdvertenciaIdInvalido} onClose={() => setModalAdvertenciaIdInvalido(false)}>
                         <div className="encabezado-modal">
@@ -823,8 +937,12 @@ const TablaProductos = forwardRef(
                         </div>
                     </Modal>
                 )}
+
                 {modalAdvertenciaMateriaAgregada && (
-                    <Modal isOpen={modalAdvertenciaMateriaAgregada} onClose={() => setModalAdvertenciaMateriaAgregada(false)}>
+                    <Modal
+                        isOpen={modalAdvertenciaMateriaAgregada}
+                        onClose={() => setModalAdvertenciaMateriaAgregada(false)}
+                    >
                         <div className="encabezado-modal">
                             <h2>Advertencia</h2>
                         </div>
@@ -836,8 +954,12 @@ const TablaProductos = forwardRef(
                         </div>
                     </Modal>
                 )}
+
                 {modalAdvertenciaIdDuplicado && (
-                    <Modal isOpen={modalAdvertenciaIdDuplicado} onClose={() => setModalAdvertenciaIdDuplicado(false)}>
+                    <Modal
+                        isOpen={modalAdvertenciaIdDuplicado}
+                        onClose={() => setModalAdvertenciaIdDuplicado(false)}
+                    >
                         <div className="encabezado-modal">
                             <h2>Advertencia</h2>
                         </div>
@@ -849,6 +971,19 @@ const TablaProductos = forwardRef(
                         </div>
                     </Modal>
                 )}
+
+                {modalErrorStockInsuficiente && (
+                    <Modal isOpen={modalErrorStockInsuficiente} onClose={() => setModalErrorStockInsuficiente(false)}>
+                        <div className="encabezado-modal">
+                            <h2>Error</h2>
+                        </div>
+                        <p className="text-center">No cuentas con la materia prima suficiente para crear esa cantidad de productos</p>
+                        <div className="modal-footer">
+                            <BotonAceptar onClick={() => setModalErrorStockInsuficiente(false)} />
+                        </div>
+                    </Modal>
+                )}
+
                 {modalLotesUsados && (
                     <Modal isOpen={modalLotesUsados} onClose={() => setModalLotesUsados(false)}>
                         <div style={{ position: "relative" }}>
@@ -891,6 +1026,45 @@ const TablaProductos = forwardRef(
                             <div className="modal-footer mt-4">
                                 <BotonAceptar onClick={() => setModalLotesUsados(false)} />
                             </div>
+                        </div>
+                    </Modal>
+                )}
+
+                {modalCategoriaAbierta && (
+                    <Modal isOpen={modalCategoriaAbierta} onClose={() => setModalCategoriaAbierta(false)}>
+                        <form onSubmit={guardarCategoria}>
+                            <h5 className="text-center">{modoEdicionCategoria ? "Editar" : "Agregar"} Categoría</h5>
+                            <div className="mb-3">
+                                <label className="form-label">Nombre de la Categoría</label>
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    value={nuevaCategoria.nombre}
+                                    required
+                                    onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })}
+                                />
+                            </div>
+                            <div className="d-flex justify-content-end">
+                                <BotonCancelar onClick={() => setModalCategoriaAbierta(false)} />
+                                <BotonGuardar type="submit" />
+                            </div>
+                        </form>
+                    </Modal>
+                )}
+
+                {modalConfirmDeleteCategoria && (
+                    <Modal isOpen={modalConfirmDeleteCategoria} onClose={() => setModalConfirmDeleteCategoria(false)}>
+                        <div className="encabezado-modal">
+                            <h2>Advertencia</h2>
+                        </div>
+                        <p className="text-center">
+                            Esta categoría está presente en los productos: {productosAsociadosToDelete.map((p) => p.nombre).join(", ")}. ¿Desea eliminarla y asignar 'Sin categoría' a estos productos?
+                        </p>
+                        <div className="d-flex justify-content-end">
+                            <BotonCancelar onClick={() => setModalConfirmDeleteCategoria(false)} />
+                            <BotonAceptar
+                                onClick={() => eliminarCategoria(categoriaToDelete, { force: true })}>
+                            </BotonAceptar>
                         </div>
                     </Modal>
                 )}

@@ -12,19 +12,18 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/producciones")
 public class ProduccionController {
 
-    // Repositorio de las producciones
     @Autowired
     private ProduccionRepository produccionRepository;
 
     // Obtener todas las producciones
     @GetMapping
-    public ResponseEntity<?> getAll(){
+    public ResponseEntity<?> getAll() {
         return new ResponseEntity<>(produccionRepository.findAll(), HttpStatus.OK);
     }
 
     // Obtener alguna producción por su ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id){
+    public ResponseEntity<?> getById(@PathVariable Long id) {
         return new ResponseEntity<>(produccionRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build()), HttpStatus.OK);
@@ -32,19 +31,16 @@ public class ProduccionController {
 
     // Método para guardar una producción
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Produccion produccion){
-
+    public ResponseEntity<?> create(@RequestBody Produccion produccion) {
         return new ResponseEntity<>(produccionRepository.save(produccion), HttpStatus.CREATED);
     }
 
     // Actualizar alguna produccion
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Produccion produccion){
-
-        if(!produccionRepository.existsById(id)){
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Produccion produccion) {
+        if (!produccionRepository.existsById(id)) {
             return new ResponseEntity<>("Producción no encontrada", HttpStatus.NOT_FOUND);
         }
-
         produccion.setIdProduccion(id);
         return new ResponseEntity<>(produccionRepository.save(produccion), HttpStatus.OK);
     }
@@ -52,11 +48,7 @@ public class ProduccionController {
     // Eliminar alguna producción
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
-
         produccionRepository.deleteById(id);
-
         return new ResponseEntity<>("Producción eliminada", HttpStatus.NO_CONTENT);
     }
-
-
 }

@@ -3,34 +3,38 @@ import Modal from "./Modal";
 import BotonCancelar from "./BotonCancelar";
 import BotonGuardar from "./BotonGuardar";
 import BotonEditar from "./BotonEditar";
-import BotonEliminar from "./BotonEliminar";
 import BotonAceptar from "./BotonAceptar";
-import "../styles/tablaMaterias.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../api/axiosInstance";
 
 const TablaMaterias = forwardRef(
-    ({ registrosMateria, setRegistrosMateria, lotesMateriaPrima, setLotesMateriaPrima, proveedores, token }, ref) => {
+    ({ registrosMateria, setRegistrosMateria, lotesMateriaPrima, setLotesMateriaPrima, proveedores }, ref) => {
         const [materiaSeleccionada, setMateriaSeleccionada] = useState(null);
         const [modalAbiertaMateria, setModalAbiertaMateria] = useState(false);
         const [modalAdvertenciaIdDuplicado, setModalAdvertenciaIdDuplicado] = useState(false);
-        const [materiaEliminar, setMateriaEliminar] = useState(null);
-        const [confirmarEliminacion, setConfirmarEliminacion] = useState(false);
+        const [modalAdvertenciaCosto, setModalAdvertenciaCosto] = useState(false);
         const [modalLotesMateria, setModalLotesMateria] = useState(false);
         const [lotesMateriaSeleccionada, setLotesMateriaSeleccionada] = useState([]);
         const [modalLoteAbierto, setModalLoteAbierto] = useState(false);
         const [loteSeleccionado, setLoteSeleccionado] = useState(null);
         const [loteNuevo, setLoteNuevo] = useState({
-            idLote: 0,
             idMateria: 0,
-            costoUnitario: 0,
-            cantidad: 0,
-            cantidadDisponible: 0,
-            fechaIngreso: new Date().toISOString().split("T")[0],
+            costoUnitario: "",
+            cantidad: "",
+            cantidadDisponible: "", // Nuevo estado para la cantidad disponible
             idProveedor: null,
         });
         const [error, setError] = useState(null);
         const [isLoading, setIsLoading] = useState(true);
+        const [currentPage, setCurrentPage] = useState(1);
+        const [itemsPerPage] = useState(5);
+
+        // Función para obtener el token desde localStorage
+        const getAuthToken = () => {
+            const localToken = localStorage.getItem("accessToken");
+            console.log("LocalStorage token:", localToken ? localToken.substring(0, 20) + "..." : "No token");
+            return localToken;
+        };
 
         // Función auxiliar para manejar errores
         const handleApiError = (err, context) => {
@@ -40,11 +44,15 @@ const TablaMaterias = forwardRef(
                 message: err.message,
             });
             if (err.response?.status === 401) {
-                setError("Sesión expirada o permisos insuficientes. Por favor, inicia sesión nuevamente.");
+                setError("Sesión expirada o token inválido. Por favor, inicia sesión nuevamente.");
                 localStorage.removeItem("accessToken");
-                window.location.href = "/login";
+                setTimeout(() => {
+                    window.location.href = "/login";
+                }, 2000);
+            } else if (err.response?.status === 403) {
+                setError("No tienes permisos para realizar esta acción. Contacta al administrador.");
             } else {
-                setError(err.response?.data?.message || `Error en ${context}`);
+                setError(err.response?.data?.message || `Error en ${context}. Intenta de nuevo.`);
             }
         };
 
@@ -61,88 +69,68 @@ const TablaMaterias = forwardRef(
             },
         }));
 
+        // Paginación: Calcular índices
+        const indexOfLastItem = currentPage * itemsPerPage;
+        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+        const currentItems = registrosMateria.slice(indexOfFirstItem, indexOfLastItem);
+        const totalPages = Math.ceil(registrosMateria.length / itemsPerPage);
+
         const guardarMateria = async (e) => {
             e.preventDefault();
-            if (!token) {
+            const authToken = getAuthToken();
+            if (!authToken) {
                 setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                console.log("No token found in guardarMateria");
                 return;
             }
             const datos = new FormData(e.target);
             const nueva = {
-                idMateria: Number(datos.get("idMateria")),
+                idMateria: materiaSeleccionada ? materiaSeleccionada.idMateria : undefined,
                 nombre: datos.get("nombre").trim(),
-                costo: Number(datos.get("costo")),
                 venta: Number(datos.get("venta")),
-                cantidad: Number(datos.get("cantidad")),
+                cantidad: materiaSeleccionada ? materiaSeleccionada.cantidad : 0,
+                costo: materiaSeleccionada ? materiaSeleccionada.costo : 0
             };
-            if (nueva.idMateria <= 0) {
-                setError("El ID de la materia prima debe ser mayor que 0");
-                return;
-            }
+
+            console.log("Datos del formulario de agregar materia:", nueva);
+
             if (!nueva.nombre) {
                 setError("El nombre de la materia prima es obligatorio");
                 return;
             }
-            if (nueva.costo < 0 || nueva.venta < 0 || nueva.cantidad < 0) {
-                setError("Costo, precio de venta y cantidad deben ser mayores o iguales a 0");
+            if (nueva.venta < 0) {
+                setError("El precio de venta debe ser mayor o igual a 0");
                 return;
             }
 
             try {
-                const headers = { Authorization: `Bearer ${token}` };
-                console.log("Guardando materia:", nueva);
+                const headers = { Authorization: `Bearer ${authToken}` };
+                console.log("Guardando materia:", nueva, "Token:", authToken.substring(0, 20) + "...");
                 let updatedMaterias;
                 if (materiaSeleccionada) {
-                    await api.put(`/inventarioMateria/${nueva.idMateria}`, nueva, { headers });
-                    updatedMaterias = registrosMateria.map((p) => (p.idMateria === nueva.idMateria ? nueva : p));
-                    setRegistrosMateria(updatedMaterias);
+                    await api.put(`/inventarioMateria`, nueva, { headers });
+                    updatedMaterias = registrosMateria.map((p) =>
+                        p.idMateria === materiaSeleccionada.idMateria ? { ...p, ...nueva } : p
+                    );
                 } else {
-                    if (registrosMateria.some((m) => m.idMateria === nueva.idMateria)) {
-                        setModalAdvertenciaIdDuplicado(true);
-                        return;
-                    }
                     const response = await api.post("/inventarioMateria", nueva, { headers });
-                    updatedMaterias = [...registrosMateria, response.data];
-                    setRegistrosMateria(updatedMaterias);
-                    const nuevoLote = {
-                        idLote: lotesMateriaPrima.length > 0 ? Math.max(...lotesMateriaPrima.map((l) => l.idLote)) + 1 : 1,
-                        idMateria: response.data.idMateria,
-                        costoUnitario: nueva.costo,
-                        cantidad: nueva.cantidad,
-                        cantidadDisponible: nueva.cantidad,
-                        fechaIngreso: new Date().toISOString().split("T")[0],
-                        idProveedor: null,
+                    const nuevaMateria = {
+                        ...response.data,
+                        costo: response.data.costo || 0,
+                        cantidad: response.data.cantidad || 0,
                     };
-                    await api.post("/lotes", nuevoLote, { headers });
-                    setLotesMateriaPrima((prev) => [...prev, nuevoLote]);
+                    updatedMaterias = [...registrosMateria, nuevaMateria];
                 }
+                setRegistrosMateria(updatedMaterias);
                 localStorage.setItem("registrosMateria", JSON.stringify(updatedMaterias));
-                localStorage.setItem("lotesMateriaPrima", JSON.stringify(lotesMateriaPrima));
                 setModalAbiertaMateria(false);
                 setMateriaSeleccionada(null);
             } catch (err) {
-                handleApiError(err, "guardado de materia prima");
-            }
-        };
-
-        const eliminarMateria = async (materia) => {
-            if (!token) {
-                setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
-                return;
-            }
-            try {
-                const headers = { Authorization: `Bearer ${token}` };
-                await api.delete(`/inventarioMateria/${materia.idMateria}`, { headers });
-                const updatedMaterias = registrosMateria.filter((p) => p.idMateria !== materia.idMateria);
-                const updatedLotes = lotesMateriaPrima.filter((l) => l.idMateria !== materia.idMateria);
-                setRegistrosMateria(updatedMaterias);
-                setLotesMateriaPrima(updatedLotes);
-                localStorage.setItem("registrosMateria", JSON.stringify(updatedMaterias));
-                localStorage.setItem("lotesMateriaPrima", JSON.stringify(updatedLotes));
-                setConfirmarEliminacion(false);
-                setMateriaEliminar(null);
-            } catch (err) {
-                handleApiError(err, "eliminación de materia prima");
+                if (err.response?.status === 409) {
+                    setModalAdvertenciaIdDuplicado(true);
+                } else {
+                    handleApiError(err, "guardado de materia prima");
+                }
             }
         };
 
@@ -155,12 +143,10 @@ const TablaMaterias = forwardRef(
         const abrirModalAgregarLote = (materia) => {
             setLoteSeleccionado(null);
             setLoteNuevo({
-                idLote: lotesMateriaPrima.length > 0 ? Math.max(...lotesMateriaPrima.map((l) => l.idLote)) + 1 : 1,
                 idMateria: materia.idMateria,
-                costoUnitario: materia.costo,
-                cantidad: 0,
-                cantidadDisponible: 0,
-                fechaIngreso: new Date().toISOString().split("T")[0],
+                costoUnitario: "",
+                cantidad: "",
+                cantidadDisponible: "",
                 idProveedor: null,
             });
             setModalLoteAbierto(true);
@@ -182,53 +168,85 @@ const TablaMaterias = forwardRef(
 
         const guardarLote = async (e) => {
             e.preventDefault();
-            if (!token) {
+            const authToken = getAuthToken();
+            if (!authToken) {
                 setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                console.log("No token found in guardarLote");
                 return;
             }
+            const datos = new FormData(e.target);
+            const costoUnitario = Number(datos.get("costoUnitario"));
+            const cantidadIngresada = Number(datos.get(loteSeleccionado ? "cantidadDisponible" : "cantidad"));
+
             const nuevoLote = {
-                idLote: Number(loteNuevo.idLote),
                 idMateria: Number(loteNuevo.idMateria),
-                costoUnitario: Number(loteNuevo.costoUnitario),
-                cantidad: Number(loteNuevo.cantidad),
-                cantidadDisponible: Number(loteNuevo.cantidad),
-                fechaIngreso: loteNuevo.fechaIngreso,
-                idProveedor: loteNuevo.idProveedor ? Number(loteNuevo.idProveedor) : null,
+                costoUnitario: costoUnitario,
+                cantidad: loteSeleccionado ? loteSeleccionado.cantidad : cantidadIngresada,
+                cantidadDisponible: loteSeleccionado ? cantidadIngresada : cantidadIngresada,
+                idProveedor: datos.get("idProveedor") ? Number(datos.get("idProveedor")) : null,
             };
-            if (nuevoLote.idLote <= 0) {
-                setError("El ID del lote debe ser mayor que 0");
-                return;
+
+            if (loteSeleccionado) {
+                nuevoLote.idLote = loteSeleccionado.idLote;
+                nuevoLote.fechaIngreso = loteSeleccionado.fechaIngreso;
+                nuevoLote.idProveedor = loteSeleccionado.idProveedor;
+
+                if (nuevoLote.cantidadDisponible > nuevoLote.cantidad) {
+                    setError("La cantidad disponible no puede ser mayor que la cantidad inicial del lote");
+                    return;
+                }
             }
-            if (nuevoLote.costoUnitario < 0 || nuevoLote.cantidad < 0 || nuevoLote.cantidadDisponible < 0) {
-                setError("Costo unitario, cantidad y cantidad disponible deben ser mayores o iguales a 0");
+
+            if (isNaN(costoUnitario) || isNaN(cantidadIngresada) || costoUnitario < 0 || cantidadIngresada < 0) {
+                setError("Costo unitario y cantidad deben ser números válidos mayores o iguales a 0");
                 return;
             }
 
             try {
-                const headers = { Authorization: `Bearer ${token}` };
-                console.log("Guardando lote:", nuevoLote);
+                const headers = { Authorization: `Bearer ${authToken}` };
                 let updatedLotes;
+                let responseData;
+
                 if (loteSeleccionado) {
-                    await api.put(`/lotes/${nuevoLote.idLote}`, nuevoLote, { headers });
-                    updatedLotes = lotesMateriaPrima.map((l) => (l.idLote === nuevoLote.idLote ? nuevoLote : l));
+                    responseData = await api.put(`/lotes`, nuevoLote, { headers });
+                    updatedLotes = lotesMateriaPrima.map((l) =>
+                        l.idLote === nuevoLote.idLote ? { ...l, ...nuevoLote } : l
+                    );
                 } else {
-                    if (lotesMateriaPrima.some((l) => l.idLote === nuevoLote.idLote)) {
-                        setModalAdvertenciaIdDuplicado(true);
-                        return;
-                    }
-                    const response = await api.post("/lotes", nuevoLote, { headers });
-                    updatedLotes = [...lotesMateriaPrima, response.data];
+                    responseData = await api.post("/lotes", nuevoLote, { headers });
+                    responseData = {
+                        ...responseData.data,
+                        costoUnitario: responseData.data.costoUnitario ?? nuevoLote.costoUnitario,
+                        cantidad: responseData.data.cantidad ?? nuevoLote.cantidad,
+                        cantidadDisponible: responseData.data.cantidadDisponible ?? nuevoLote.cantidad,
+                        idMateria: nuevoLote.idMateria,
+                        idProveedor: nuevoLote.idProveedor,
+                    };
+                    updatedLotes = [...lotesMateriaPrima, responseData];
                 }
+
                 setLotesMateriaPrima(updatedLotes);
 
-                // Actualizar cantidad total en registrosMateria
-                const totalDisponible = updatedLotes
-                    .filter((l) => l.idMateria === nuevoLote.idMateria)
-                    .reduce((sum, l) => sum + l.cantidadDisponible, 0);
+                // Actualizar también el estado `lotesMateriaSeleccionada`
+                // para que el modal se refresque.
+                const nuevosLotesParaModal = updatedLotes.filter(lote => lote.idMateria === nuevoLote.idMateria);
+                setLotesMateriaSeleccionada(nuevosLotesParaModal);
+
+                // Actualizar costo promedio y cantidad total en registrosMateria
+                const lotesMateria = updatedLotes.filter((l) => l.idMateria === nuevoLote.idMateria);
+                const totalDisponible = lotesMateria.reduce((sum, l) => sum + (l.cantidadDisponible || 0), 0);
+                const costoPromedio =
+                    totalDisponible > 0
+                        ? lotesMateria.reduce(
+                            (sum, l) => sum + (l.costoUnitario || 0) * (l.cantidadDisponible || 0),
+                            0
+                        ) / totalDisponible
+                        : 0;
+
                 const materiaActualizada = registrosMateria.find((m) => m.idMateria === nuevoLote.idMateria);
                 if (materiaActualizada) {
-                    const updatedMateria = { ...materiaActualizada, cantidad: totalDisponible };
-                    await api.put(`/inventarioMateria/${materiaActualizada.idMateria}`, updatedMateria, { headers });
+                    const updatedMateria = { ...materiaActualizada, costo: costoPromedio, cantidad: totalDisponible };
+                    await api.put(`/inventarioMateria`, updatedMateria, { headers });
                     setRegistrosMateria((prev) =>
                         prev.map((m) => (m.idMateria === nuevoLote.idMateria ? updatedMateria : m))
                     );
@@ -236,24 +254,23 @@ const TablaMaterias = forwardRef(
 
                 localStorage.setItem("lotesMateriaPrima", JSON.stringify(updatedLotes));
                 localStorage.setItem("registrosMateria", JSON.stringify(registrosMateria));
+
                 setModalLoteAbierto(false);
                 setLoteSeleccionado(null);
-                setLoteNuevo({
-                    idLote: 0,
-                    idMateria: 0,
-                    costoUnitario: 0,
-                    cantidad: 0,
-                    cantidadDisponible: 0,
-                    fechaIngreso: new Date().toISOString().split("T")[0],
-                    idProveedor: null,
-                });
+                setLoteNuevo({ idMateria: 0, costoUnitario: "", cantidad: "", cantidadDisponible: "", idProveedor: null });
             } catch (err) {
-                handleApiError(err, "guardado de lote");
+                if (err.response?.status === 409) {
+                    setModalAdvertenciaIdDuplicado(true);
+                } else {
+                    handleApiError(err, "guardado de lote");
+                }
             }
         };
 
         const formatCurrency = (value) => {
-            return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+            return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(
+                value
+            );
         };
 
         const formatDate = (dateString) => {
@@ -295,30 +312,32 @@ const TablaMaterias = forwardRef(
                         </tr>
                     </thead>
                     <tbody>
-                        {registrosMateria.map((materia) => (
+                        {currentItems.map((materia) => (
                             <tr key={materia.idMateria}>
                                 <td>{materia.idMateria}</td>
                                 <td>{materia.nombre}</td>
                                 <td>{formatCurrency(materia.costo)}</td>
-                                <td>{formatCurrency(materia.venta)}</td>
+                                <td>{materia.venta}</td>
                                 <td>{materia.cantidad}</td>
                                 <td>
-                                    <BotonEditar onClick={() => {
-                                        setMateriaSeleccionada(materia);
-                                        setModalAbiertaMateria(true);
-                                    }}>
+                                    <BotonEditar
+                                        onClick={() => {
+                                            setMateriaSeleccionada(materia);
+                                            setModalAbiertaMateria(true);
+                                        }}
+                                    >
                                         Editar
                                     </BotonEditar>
-                                    <BotonEliminar onClick={() => {
-                                        setMateriaEliminar(materia);
-                                        setConfirmarEliminacion(true);
-                                    }}>
-                                        Eliminar
-                                    </BotonEliminar>
-                                    <button className="btn btn-sm btn-outline-info me-1" onClick={() => abrirModalLotesMateria(materia)}>
+                                    <button
+                                        className="btn btn-sm btn-outline-info me-1"
+                                        onClick={() => abrirModalLotesMateria(materia)}
+                                    >
                                         Ver Lotes
                                     </button>
-                                    <button className="btn btn-sm btn-outline-success" onClick={() => abrirModalAgregarLote(materia)}>
+                                    <button
+                                        className="btn btn-sm btn-outline-success"
+                                        onClick={() => abrirModalAgregarLote(materia)}
+                                    >
                                         Agregar Lote
                                     </button>
                                 </td>
@@ -326,22 +345,43 @@ const TablaMaterias = forwardRef(
                         ))}
                     </tbody>
                 </table>
+                <nav>
+                    <ul className="pagination justify-content-center">
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                            <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
+                                Anterior
+                            </button>
+                        </li>
+                        {Array.from({ length: totalPages }, (_, i) => (
+                            <li key={i + 1} className={`page-item ${currentPage === i + 1 ? "active" : ""}`}>
+                                <button className="page-link" onClick={() => setCurrentPage(i + 1)}>
+                                    {i + 1}
+                                </button>
+                            </li>
+                        ))}
+                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                            <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
+                                Siguiente
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
                 {modalAbiertaMateria && (
                     <Modal isOpen={modalAbiertaMateria} onClose={() => setModalAbiertaMateria(false)}>
                         <form onSubmit={guardarMateria}>
                             <h2 className="mb-4">{materiaSeleccionada ? "Editar" : "Agregar"} Materia Prima</h2>
-                            <div className="mb-3">
-                                <label className="form-label">ID</label>
-                                <input
-                                    name="idMateria"
-                                    type="number"
-                                    defaultValue={materiaSeleccionada?.idMateria || ""}
-                                    className="form-control"
-                                    required
-                                    min="1"
-                                    disabled={materiaSeleccionada !== null}
-                                />
-                            </div>
+                            {materiaSeleccionada && (
+                                <div className="mb-3">
+                                    <label className="form-label">ID</label>
+                                    <input
+                                        name="idMateria"
+                                        type="number"
+                                        value={materiaSeleccionada.idMateria}
+                                        className="form-control"
+                                        disabled
+                                    />
+                                </div>
+                            )}
                             <div className="mb-3">
                                 <label className="form-label">Nombre</label>
                                 <input
@@ -352,18 +392,21 @@ const TablaMaterias = forwardRef(
                                     required
                                 />
                             </div>
-                            <div className="mb-3">
-                                <label className="form-label">Costo Unitario (COP)</label>
-                                <input
-                                    name="costo"
-                                    type="number"
-                                    defaultValue={materiaSeleccionada?.costo || ""}
-                                    className="form-control"
-                                    required
-                                    min="0"
-                                    step="0.01"
-                                />
-                            </div>
+                            {materiaSeleccionada && (
+                                <div className="mb-3">
+                                    <label className="form-label">Costo Unitario (COP)</label>
+                                    <input
+                                        name="costo"
+                                        type="number"
+                                        value={materiaSeleccionada.costo}
+                                        className="form-control"
+                                        disabled
+                                    />
+                                    <small className="form-text text-muted">
+                                        El costo depende del promedio de los costos de los lotes. Para modificarlo, edita los lotes.
+                                    </small>
+                                </div>
+                            )}
                             <div className="mb-3">
                                 <label className="form-label">Precio de Venta (COP)</label>
                                 <input
@@ -376,37 +419,23 @@ const TablaMaterias = forwardRef(
                                     step="0.01"
                                 />
                             </div>
-                            <div className="mb-3">
-                                <label className="form-label">Cantidad</label>
-                                <input
-                                    name="cantidad"
-                                    type="number"
-                                    defaultValue={materiaSeleccionada?.cantidad || ""}
-                                    className="form-control"
-                                    required
-                                    min="0"
-                                    disabled={materiaSeleccionada !== null}
-                                />
-                            </div>
+                            {materiaSeleccionada && (
+                                <div className="mb-3">
+                                    <label className="form-label">Cantidad</label>
+                                    <input
+                                        name="cantidad"
+                                        type="number"
+                                        value={materiaSeleccionada.cantidad}
+                                        className="form-control"
+                                        disabled
+                                    />
+                                </div>
+                            )}
                             <div className="d-flex justify-content-end gap-2">
                                 <BotonCancelar onClick={() => setModalAbiertaMateria(false)} />
                                 <BotonGuardar type="submit" />
                             </div>
                         </form>
-                    </Modal>
-                )}
-                {confirmarEliminacion && (
-                    <Modal isOpen={confirmarEliminacion} onClose={() => setConfirmarEliminacion(false)}>
-                        <div className="encabezado-modal">
-                            <h2>Confirmar Eliminación</h2>
-                        </div>
-                        <p className="text-center">
-                            ¿Desea eliminar la materia prima <strong>{materiaEliminar?.nombre}</strong>?
-                        </p>
-                        <div className="d-flex justify-content-end gap-2">
-                            <BotonCancelar onClick={() => setConfirmarEliminacion(false)} />
-                            <BotonAceptar onClick={() => eliminarMateria(materiaEliminar)} />
-                        </div>
                     </Modal>
                 )}
                 {modalLotesMateria && (
@@ -432,7 +461,12 @@ const TablaMaterias = forwardRef(
                                         <td>{lote.cantidad}</td>
                                         <td>{lote.cantidadDisponible}</td>
                                         <td>{formatDate(lote.fechaIngreso)}</td>
-                                        <td>{lote.idProveedor ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A" : "Manual"}</td>
+                                        <td>
+                                            {lote.idProveedor
+                                                ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre ||
+                                                "N/A"
+                                                : "Sin proveedor"}
+                                        </td>
                                         <td>
                                             <BotonEditar onClick={() => abrirModalEditarLote(lote)}>Editar</BotonEditar>
                                         </td>
@@ -449,70 +483,97 @@ const TablaMaterias = forwardRef(
                     <Modal isOpen={modalLoteAbierto} onClose={() => setModalLoteAbierto(false)}>
                         <form onSubmit={guardarLote}>
                             <h2 className="mb-4">{loteSeleccionado ? "Editar" : "Agregar"} Lote</h2>
-                            <div className="mb-3">
-                                <label className="form-label">ID Lote</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={loteNuevo.idLote}
-                                    required
-                                    min="1"
-                                    disabled={loteSeleccionado !== null}
-                                    onChange={(e) => setLoteNuevo({ ...loteNuevo, idLote: Number(e.target.value) })}
-                                />
-                            </div>
+                            {loteSeleccionado && (
+                                <div className="mb-3">
+                                    <label className="form-label">ID Lote</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={loteNuevo.idLote}
+                                        disabled
+                                    />
+                                </div>
+                            )}
                             <div className="mb-3">
                                 <label className="form-label">Costo Unitario (COP)</label>
                                 <input
+                                    name="costoUnitario"
                                     type="number"
-                                    className="form-control"
                                     value={loteNuevo.costoUnitario}
+                                    className="form-control"
                                     required
                                     min="0"
                                     step="0.01"
-                                    onChange={(e) => setLoteNuevo({ ...loteNuevo, costoUnitario: Number(e.target.value) })}
+                                    onChange={(e) =>
+                                        setLoteNuevo({ ...loteNuevo, costoUnitario: e.target.value })
+                                    }
                                 />
                             </div>
                             <div className="mb-3">
-                                <label className="form-label">Cantidad</label>
+                                <label className="form-label">{loteSeleccionado ? "Cantidad Disponible" : "Cantidad"}</label>
                                 <input
+                                    name={loteSeleccionado ? "cantidadDisponible" : "cantidad"}
                                     type="number"
+                                    value={loteSeleccionado ? loteNuevo.cantidadDisponible : loteNuevo.cantidad}
                                     className="form-control"
-                                    value={loteNuevo.cantidad}
                                     required
                                     min="0"
-                                    onChange={(e) => setLoteNuevo({
-                                        ...loteNuevo,
-                                        cantidad: Number(e.target.value),
-                                        cantidadDisponible: Number(e.target.value),
-                                    })}
+                                    // Corregimos el `max` para que sea dinámico
+                                    max={loteSeleccionado ? loteSeleccionado.cantidad : undefined}
+                                    onChange={(e) =>
+                                        setLoteNuevo({
+                                            ...loteNuevo,
+                                            [loteSeleccionado ? "cantidadDisponible" : "cantidad"]: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
-                            <div className="mb-3">
-                                <label className="form-label">Fecha de Ingreso</label>
-                                <input
-                                    type="date"
-                                    className="form-control"
-                                    value={loteNuevo.fechaIngreso}
-                                    required
-                                    onChange={(e) => setLoteNuevo({ ...loteNuevo, fechaIngreso: e.target.value })}
-                                />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label">Proveedor</label>
-                                <select
-                                    className="form-select"
-                                    value={loteNuevo.idProveedor || ""}
-                                    onChange={(e) => setLoteNuevo({ ...loteNuevo, idProveedor: e.target.value || null })}
-                                >
-                                    <option value="">Sin proveedor</option>
-                                    {proveedores.map((p) => (
-                                        <option key={p.idProveedor} value={p.idProveedor}>
-                                            {p.nombre}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            {loteSeleccionado && (
+                                <div className="mb-3">
+                                    <label className="form-label">Fecha de Ingreso</label>
+                                    <input
+                                        type="date"
+                                        className="form-control"
+                                        value={loteNuevo.fechaIngreso}
+                                        disabled
+                                    />
+                                </div>
+                            )}
+                            {loteSeleccionado ? (
+                                <div className="mb-3">
+                                    <label className="form-label">Proveedor</label>
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        value={
+                                            loteNuevo.idProveedor
+                                                ? proveedores.find((p) => p.idProveedor === loteNuevo.idProveedor)
+                                                    ?.nombre || "N/A"
+                                                : "Sin proveedor"
+                                        }
+                                        disabled
+                                    />
+                                </div>
+                            ) : (
+                                <div className="mb-3">
+                                    <label className="form-label">Proveedor</label>
+                                    <select
+                                        name="idProveedor"
+                                        className="form-select"
+                                        value={loteNuevo.idProveedor || ""}
+                                        onChange={(e) =>
+                                            setLoteNuevo({ ...loteNuevo, idProveedor: e.target.value || null })
+                                        }
+                                    >
+                                        <option value="">Sin proveedor</option>
+                                        {proveedores.map((p) => (
+                                            <option key={p.idProveedor} value={p.idProveedor}>
+                                                {p.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <div className="d-flex justify-content-end gap-2">
                                 <BotonCancelar onClick={() => setModalLoteAbierto(false)} />
                                 <BotonGuardar type="submit" />
@@ -525,11 +586,22 @@ const TablaMaterias = forwardRef(
                         <div className="encabezado-modal">
                             <h2>Advertencia</h2>
                         </div>
-                        <p className="text-center">
-                            ¡Ya existe {loteSeleccionado ? "un lote" : "una materia prima"} con el ID <strong>{loteSeleccionado ? loteNuevo.idLote : materiaSeleccionada?.idMateria || loteNuevo.idLote}</strong>!
-                        </p>
+                        <p className="text-center">¡Ya existe una materia prima con el mismo nombre!</p>
                         <div className="d-flex justify-content-end">
                             <BotonAceptar onClick={() => setModalAdvertenciaIdDuplicado(false)} />
+                        </div>
+                    </Modal>
+                )}
+                {modalAdvertenciaCosto && (
+                    <Modal isOpen={modalAdvertenciaCosto} onClose={() => setModalAdvertenciaCosto(false)}>
+                        <div className="encabezado-modal">
+                            <h2>Advertencia</h2>
+                        </div>
+                        <p className="text-center">
+                            El costo depende del promedio de los costos de los lotes. Para modificarlo, edita los lotes.
+                        </p>
+                        <div className="d-flex justify-content-end">
+                            <BotonAceptar onClick={() => setModalAdvertenciaCosto(false)} />
                         </div>
                     </Modal>
                 )}

@@ -6,5 +6,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MateriaProductoRepository extends JpaRepository<MateriaProducto, Long> {
+    // Para eliminar relaciones al eliminar un producto
     void deleteByProducto_IdProducto(Long idProducto);
 }
