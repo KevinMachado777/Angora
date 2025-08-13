@@ -1,5 +1,6 @@
 package Angora.app.Entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -22,10 +23,9 @@ public class Orden {
     @JoinColumn(name = "idProveedor")
     private Proveedor proveedor;
 
-    // --- CAMBIO CLAVE: Relación OneToMany con la nueva entidad de unión ---
     @OneToMany(mappedBy = "orden", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrdenMateriaPrima> ordenMateriaPrimas; // Cambio de nombre y tipo
-    // --- FIN CAMBIO CLAVE ---
+    @JsonManagedReference // Esta anotación evita el loop infinito
+    private List<OrdenMateriaPrima> ordenMateriaPrimas;
 
     private String notas;
     private Boolean estado;

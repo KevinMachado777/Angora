@@ -39,42 +39,44 @@ public class OrdenService implements IOrdenService {
 
     @Override
     public List<Orden> listarOrdenes() {
-        return ordenRepository.findByEstadoFalse();
+        return ordenRepository.findAllWithDetails(); // <-- Usa la nueva consulta personalizada
     }
 
     @Override
     @Transactional
     public Orden crearOrden(Orden orden) {
         try {
+            // Validaciones
             if (orden.getProveedor() == null || orden.getProveedor().getIdProveedor() == null) {
                 throw new RuntimeException("El proveedor es obligatorio");
             }
-            if (orden.getOrdenMateriaPrimas() == null || orden.getOrdenMateriaPrimas().isEmpty()) { // Cambio aquí
+            if (orden.getOrdenMateriaPrimas() == null || orden.getOrdenMateriaPrimas().isEmpty()) {
                 throw new RuntimeException("La orden debe contener al menos una materia prima");
             }
 
-            orden.setEstado(false); // Asegurar estado Pendiente al crear
-            orden.setFecha(LocalDateTime.now()); // Establecer la fecha de creación
+            // 1. Establecer valores por defecto (estado y fecha)
+            orden.setEstado(false);
+            orden.setFecha(LocalDateTime.now());
 
-            // Guardar la orden primero para obtener el idOrden
-            Orden savedOrden = ordenRepository.save(orden);
-
-            // Asociar cada OrdenMateriaPrima a la Orden recién guardada y guardar
-            List<OrdenMateriaPrima> ordenItems = new ArrayList<>();
+            // 2. Asociar cada ítem de materia prima a la orden principal.
+            // Esto es crucial para que JPA entienda la relación y guarde los ítems.
             for (OrdenMateriaPrima item : orden.getOrdenMateriaPrimas()) {
-                item.setOrden(savedOrden); // Asignar la orden a cada ítem
-                // Validar que la materia prima exista antes de guardar
-                MateriaPrima mp = materiaPrimaRepository.findById(item.getMateriaPrima().getIdMateria())
-                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada con ID: " + item.getMateriaPrima().getIdMateria()));
-                item.setMateriaPrima(mp); // Asegurar que la entidad completa está asociada
-                ordenItems.add(item);
+                // Asignar la referencia de la orden principal a cada item
+                item.setOrden(orden);
+                // Si el costo unitario es null, puedes inicializarlo para evitar un error.
+                if (item.getCostoUnitario() == null) {
+                    item.setCostoUnitario(0);
+                }
             }
-            ordenMateriaPrimaRepository.saveAll(ordenItems); // Guardar todos los ítems de la orden
 
-            savedOrden.setOrdenMateriaPrimas(ordenItems); // Actualizar la lista en la entidad Orden en memoria
+            // 3. Guardar la orden principal.
+            // Gracias a `cascade = CascadeType.ALL`, JPA guardará automáticamente todos los ítems asociados.
+            Orden savedOrden = ordenRepository.save(orden);
 
             return savedOrden;
         } catch (Exception e) {
+            System.err.println("Error al crear la orden: " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("Error al crear la orden: " + e.getMessage(), e);
         }
     }
@@ -87,46 +89,40 @@ public class OrdenService implements IOrdenService {
     @Override
     @Transactional
     public Orden actualizarOrden(Orden orden) {
-        if (orden.getIdOrden() == null || !ordenRepository.existsById(orden.getIdOrden())) {
-            throw new RuntimeException("Orden no encontrada para actualizar."); // Lanza RuntimeException en lugar de null
+        if (orden.getIdOrden() == null) {
+            throw new RuntimeException("El ID de la orden es obligatorio para la actualización.");
         }
-        try {
-            Orden existingOrden = ordenRepository.findById(orden.getIdOrden()).get(); // Obtener la orden existente
 
-            if (orden.getProveedor() == null || orden.getProveedor().getIdProveedor() == null) {
-                throw new RuntimeException("El proveedor es obligatorio");
-            }
-            if (orden.getOrdenMateriaPrimas() == null || orden.getOrdenMateriaPrimas().isEmpty()) {
-                throw new RuntimeException("La orden debe contener al menos una materia prima");
-            }
+        Orden existingOrden = ordenRepository.findById(orden.getIdOrden())
+                .orElseThrow(() -> new RuntimeException("Orden no encontrada con ID: " + orden.getIdOrden()));
 
-            // Actualizar campos de la orden principal
-            existingOrden.setProveedor(orden.getProveedor());
-            existingOrden.setNotas(orden.getNotas());
-            existingOrden.setTotal(orden.getTotal());
-            // No actualizamos el estado o la fecha aquí, eso lo maneja confirmarOrden
-
-            // Manejar los ítems de la orden (OrdenMateriaPrima)
-            // Borrar los ítems antiguos
-            ordenMateriaPrimaRepository.deleteAll(existingOrden.getOrdenMateriaPrimas());
-            existingOrden.getOrdenMateriaPrimas().clear();
-
-            // Añadir los nuevos ítems
-            List<OrdenMateriaPrima> updatedItems = new ArrayList<>();
-            for (OrdenMateriaPrima newItem : orden.getOrdenMateriaPrimas()) {
-                newItem.setOrden(existingOrden); // Asociar al objeto Orden existente
-                MateriaPrima mp = materiaPrimaRepository.findById(newItem.getMateriaPrima().getIdMateria())
-                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada con ID: " + newItem.getMateriaPrima().getIdMateria()));
-                newItem.setMateriaPrima(mp);
-                updatedItems.add(newItem);
-            }
-            ordenMateriaPrimaRepository.saveAll(updatedItems); // Guardar los nuevos ítems
-            existingOrden.setOrdenMateriaPrimas(updatedItems); // Actualizar la colección en memoria
-
-            return ordenRepository.save(existingOrden); // Guardar la orden actualizada
-        } catch (Exception e) {
-            throw new RuntimeException("Error al actualizar la orden: " + e.getMessage(), e);
+        if (orden.getProveedor() == null || orden.getProveedor().getIdProveedor() == null) {
+            throw new RuntimeException("El proveedor es obligatorio.");
         }
+        if (orden.getOrdenMateriaPrimas() == null || orden.getOrdenMateriaPrimas().isEmpty()) {
+            throw new RuntimeException("La orden debe contener al menos una materia prima.");
+        }
+
+        // 1. Actualizar los campos de la Orden principal
+        existingOrden.setProveedor(orden.getProveedor());
+        existingOrden.setNotas(orden.getNotas());
+        existingOrden.setTotal(orden.getTotal());
+        // Otros campos que desees actualizar
+
+        // 2. Sincronizar la colección de OrdenMateriaPrima
+        // Limpiar la lista existente
+        existingOrden.getOrdenMateriaPrimas().clear();
+
+        // Agregar todos los nuevos ítems a la lista de la orden existente
+        for (OrdenMateriaPrima newItem : orden.getOrdenMateriaPrimas()) {
+            newItem.setOrden(existingOrden); // Asegurarse de que cada ítem tenga la referencia a la orden
+            existingOrden.getOrdenMateriaPrimas().add(newItem);
+        }
+
+        // 3. Dejar que JPA se encargue de la persistencia
+        // Gracias a `cascade=ALL` y `orphanRemoval=true`, esta única llamada
+        // guardará la orden y actualizará, agregará o eliminará los ítems de la lista.
+        return ordenRepository.save(existingOrden);
     }
 
     @Override

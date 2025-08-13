@@ -1,5 +1,6 @@
 package Angora.app.Entities;
-
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,24 +10,26 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "orden_materia_prima") // Nombre de la tabla de unión
+@Table(name = "orden_materia_prima")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class OrdenMateriaPrima {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // ID de la línea de la orden
+    private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "id_orden", nullable = false)
-    private Orden orden; // Enlace a la Orden de Compra
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_orden", nullable = false, referencedColumnName = "idOrden")
+    @JsonBackReference // Esta anotación completa el manejo del loop infinito
+    private Orden orden;
 
-    @ManyToOne
-    @JoinColumn(name = "id_materia", nullable = false)
-    private MateriaPrima materiaPrima; // Enlace a la Materia Prima
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_materia", nullable = false, referencedColumnName = "id_materia")
+    private MateriaPrima materiaPrima;
 
     @Column(nullable = false)
-    private Float cantidad; // Aquí se guarda la cantidad específica de la orden
+    private Float cantidad;
 
-    @Column(nullable = true) // <--- ¡CAMBIO CLAVE AQUÍ! Ahora permite valores nulos
-    private Integer costoUnitario; // Costo unitario acordado en esta orden
+    @Column(nullable = true, name = "costo_unitario") // Especificar el nombre de columna explícitamente
+    private Integer costoUnitario;
 }

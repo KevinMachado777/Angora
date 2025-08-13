@@ -2,6 +2,8 @@ package Angora.app.Controllers;
 
 import Angora.app.Controllers.dto.LoteDTO;
 import Angora.app.Controllers.dto.OrdenConfirmacionDTO;
+import Angora.app.Controllers.dto.OrdenDTO;
+import Angora.app.Controllers.dto.OrdenMateriaPrimaDTO;
 import Angora.app.Services.Email.EnviarCorreo;
 import Angora.app.Entities.Orden; // Asumiendo que existe una entidad Orden
 import Angora.app.Services.OrdenService; // Asumiendo que existe un servicio OrdenService
@@ -13,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/ordenes")
@@ -48,25 +51,46 @@ public class OrdenController {
     }
 
     @PostMapping
-    public ResponseEntity<Orden> crearOrden(@RequestBody Orden orden) {
+    public ResponseEntity<?> crearOrden(@RequestBody Orden orden) {
         try {
             Orden nuevaOrden = ordenService.crearOrden(orden);
             return ResponseEntity.status(201).body(nuevaOrden);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(400).body("Error al crear la orden: " + e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(400).body(null);
+            return ResponseEntity.status(400).body("Error inesperado al crear la orden: " + e.getMessage());
         }
     }
 
     @PutMapping
-    public ResponseEntity<Orden> actualizarOrden(@RequestBody Orden orden) {
+    public ResponseEntity<OrdenDTO> actualizarOrden(@RequestBody Orden orden) {
         try {
             Orden ordenActualizada = ordenService.actualizarOrden(orden);
             if (ordenActualizada == null) {
-                return ResponseEntity.status(404).body(null);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
             }
-            return ResponseEntity.ok(ordenActualizada);
+            // Mapear la entidad a DTO
+            OrdenDTO ordenDTO = new OrdenDTO();
+            ordenDTO.setIdOrden(ordenActualizada.getIdOrden());
+            ordenDTO.setIdProveedor(ordenActualizada.getProveedor().getIdProveedor());
+            ordenDTO.setNotas(ordenActualizada.getNotas());
+            ordenDTO.setEstado(ordenActualizada.getEstado());
+            ordenDTO.setFecha(ordenActualizada.getFecha());
+            ordenDTO.setTotal(ordenActualizada.getTotal());
+            ordenDTO.setOrdenMateriaPrimas(
+                    ordenActualizada.getOrdenMateriaPrimas().stream().map(omp -> {
+                        OrdenMateriaPrimaDTO ompDTO = new OrdenMateriaPrimaDTO();
+                        ompDTO.setId(omp.getId());
+                        ompDTO.setIdMateria(omp.getMateriaPrima().getIdMateria());
+                        ompDTO.setCantidad(omp.getCantidad());
+                        ompDTO.setCostoUnitario(omp.getCostoUnitario());
+                        return ompDTO;
+                    }).collect(Collectors.toList())
+            );
+            return ResponseEntity.ok(ordenDTO);
         } catch (Exception e) {
-            return ResponseEntity.status(400).body(null);
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
     }
 
