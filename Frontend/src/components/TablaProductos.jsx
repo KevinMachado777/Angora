@@ -26,7 +26,7 @@ const TablaProductos = forwardRef(
         const [produccionesLotes, setProduccionesLotes] = useState([]);
         const [costoTotal, setCostoTotal] = useState(0);
         const [costoModificadoManually, setCostoModificadoManually] = useState(false);
-        const [formularioTemp, setFormularioTemp] = useState({ porcentajeGanancia: 15 });
+        const [formularioTemp, setFormularioTemp] = useState({ porcentajeGanancia: 15, nombre: "", idCategoria: "" });
         const [maxFabricable, setMaxFabricable] = useState(null);
         const [currentPage, setCurrentPage] = useState(1); // Paginación productos
         const [itemsPerPage] = useState(5); // Cantidad de items por página (productos)
@@ -45,6 +45,9 @@ const TablaProductos = forwardRef(
 
         // Estado para saber qué producto tiene abierta la modal de lotes usados
         const [productoLotesSeleccionado, setProductoLotesSeleccionado] = useState(null);
+
+        // Estado que detecta si el usuario escribió manualmente el precio
+        const [precioModificadoManually, setPrecioModificadoManually] = useState(false);
 
         // Estados de categorías
         const [categorias, setCategorias] = useState([]); // Categorías dinámicas
@@ -80,18 +83,19 @@ const TablaProductos = forwardRef(
         // helper para headers (usa accessToken en localStorage o token prop)
         const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("accessToken") || token}` });
 
+        // Manejo de errores (restaurado)
         const handleApiError = (err, context) => {
             console.error(`Error en ${context}:`, {
-                status: err.response?.status,
-                data: err.response?.data,
-                message: err.message,
+                status: err?.response?.status,
+                data: err?.response?.data,
+                message: err?.message,
             });
-            if (err.response?.status === 401) {
+            if (err?.response?.status === 401) {
                 setError("Sesión expirada o permisos insuficientes. Por favor, inicia sesión nuevamente.");
                 localStorage.removeItem("accessToken");
                 window.location.href = "/login";
             } else {
-                setError(err.response?.data?.message || `Error en ${context}. Intenta de nuevo.`);
+                setError(err?.response?.data?.message || `Error en ${context}. Intenta de nuevo.`);
             }
         };
 
@@ -150,9 +154,10 @@ const TablaProductos = forwardRef(
                 setMateriasProducto([]);
                 setCostoTotal(0);
                 setCostoModificadoManually(false);
-                setFormularioTemp({ porcentajeGanancia: 15 });
+                setFormularioTemp({ porcentajeGanancia: 15, nombre: "", idCategoria: "" });
                 setCostoInput(0);
                 setPrecioInput(0);
+                setPrecioModificadoManually(false);
                 setModalAbierta(true);
             },
         }));
@@ -167,13 +172,29 @@ const TablaProductos = forwardRef(
                 const costoRedondeado = Math.round(nuevoCosto / 50) * 50; // Redondear a múltiplo de 50
                 setCostoTotal(costoRedondeado);
                 setCostoInput(costoRedondeado);
-                setPrecioInput(Math.round(costoRedondeado * (1 + (formularioTemp.porcentajeGanancia || 15) / 100) / 50) * 50); // Redondear precio a múltiplo de 50
+                // Solo recalcular precio si el usuario no lo modificó manualmente
+                if (!precioModificadoManually) {
+                    const precioCalc = Math.round(costoRedondeado * (1 + (formularioTemp.porcentajeGanancia || 15) / 100) / 50) * 50;
+                    setPrecioInput(precioCalc);
+                }
                 setFormularioTemp((prev) => ({
                     ...prev,
-                    precio: Math.round(costoRedondeado * (1 + (prev.porcentajeGanancia || 15) / 100) / 50) * 50, // Redondear a múltiplo de 50
+                    precio: Math.round(costoRedondeado * (1 + (prev.porcentajeGanancia || 15) / 100) / 50) * 50,
                 }));
             }
-        }, [materiasProducto, costoModificadoManually, registrosMateria, formularioTemp.porcentajeGanancia]);
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [materiasProducto, costoModificadoManually, registrosMateria]);
+
+        // Recalcular precio cuando cambia solo el porcentaje (y el usuario NO modificó precio manualmente)
+        useEffect(() => {
+            if (!precioModificadoManually) {
+                const costo = Number(costoInput || 0);
+                const porcentaje = Number(formularioTemp.porcentajeGanancia || 15);
+                const nuevoPrecio = Math.round(costo * (1 + porcentaje / 100) / 50) * 50;
+                setPrecioInput(nuevoPrecio);
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [formularioTemp.porcentajeGanancia, costoInput]);
 
         // Formatear fechas y monedas
         const formatDateTime = (dateString) => {
@@ -203,15 +224,20 @@ const TablaProductos = forwardRef(
             setMateriasProducto(producto.materias || []);
             setCostoTotal(producto.costo || 0);
             setCostoModificadoManually(true);
+            const costoVal = Number(producto.costo || 0);
+            const precioVal = Number(producto.precio || 0);
+            const porcentajeComputed = costoVal > 0 ? Math.round(((precioVal / costoVal) - 1) * 100) : (formularioTemp.porcentajeGanancia || 15);
+
             setFormularioTemp({
                 idProducto: producto.idProducto,
                 nombre: producto.nombre,
-                precio: producto.precio || 0,
-                porcentajeGanancia: producto.costo > 0 ? Math.round(((producto.precio / producto.costo) - 1) * 100) : 15,
-                idCategoria: producto.idCategoria?.idCategoria || "", // Cargar la categoría por defecto
+                precio: precioVal,
+                porcentajeGanancia: Number.isFinite(porcentajeComputed) ? porcentajeComputed : (formularioTemp.porcentajeGanancia || 15),
+                idCategoria: producto.idCategoria?.idCategoria || "",
             });
-            setCostoInput(producto.costo || 0);
-            setPrecioInput(producto.precio || 0);
+            setCostoInput(costoVal);
+            setPrecioInput(precioVal);
+            setPrecioModificadoManually(false);
             setModalAbierta(true);
         };
 
@@ -448,49 +474,83 @@ const TablaProductos = forwardRef(
                 setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
                 return;
             }
-            const idProducto = Number(formularioTemp.idProducto);
-            if (idProducto <= 0) {
-                setError("El ID del producto debe ser mayor que 0");
+
+            // Validar que tenga al menos 1 materia (evita porcentajes extraños y errores en backend)
+            if (!materiasProducto || materiasProducto.length === 0) {
+                setError("El producto debe tener al menos 1 materia prima asociada.");
                 return;
             }
-            const costoRedondeado = Math.round(costoInput / 50) * 50;
-            const precioRedondeado = Math.round(precioInput / 50) * 50;
+
+            // Costos y precio en múltiplos de 50
+            const costoRedondeado = Math.round(Number(costoInput || 0) / 50) * 50;
+            // Si el usuario NO modificó manualmente el precio, calcúlelo a partir del porcentaje
+            const precioRedondeado = !precioModificadoManually
+                ? Math.round(costoRedondeado * (1 + Number(formularioTemp.porcentajeGanancia || 15) / 100) / 50) * 50
+                : Math.round(Number(precioInput || 0) / 50) * 50;
+
             if (costoRedondeado < 0 || precioRedondeado < 0) {
                 setError("El costo y el precio deben ser mayores o iguales a 0");
                 return;
             }
-            if (!productoSeleccionado && registros.some((p) => p.idProducto === idProducto)) {
-                setModalAdvertenciaIdDuplicado(true);
-                return;
-            }
-            const nuevo = {
-                idProducto,
-                nombre: formularioTemp.nombre,
-                costo: costoRedondeado,
-                precio: precioRedondeado,
-                idCategoria: formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null,
-                materias: materiasProducto,
-            };
 
-            console.log("Objeto enviado:", nuevo);
             try {
                 const headers = authHeaders();
+
                 if (productoSeleccionado) {
-                    await api.put(`/inventarioProducto/${idProducto}`, nuevo, { headers });
-                    setRegistros((prev) => prev.map((p) => (p.idProducto === idProducto ? nuevo : p)));
+                    // UPDATE: incluimos idProducto y preservamos stock e iva del producto existente
+                    const payload = {
+                        idProducto: productoSeleccionado.idProducto,
+                        nombre: formularioTemp.nombre,
+                        costo: costoRedondeado,
+                        precio: precioRedondeado,
+                        stock: productoSeleccionado.stock ?? 0, // preservamos stock
+                        iva: productoSeleccionado.iva ?? 0,
+                        materias: materiasProducto,
+                    };
+                    // incluir idCategoria explícitamente (si está vacío -> null)
+                    payload.idCategoria = formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null;
+
+                    await api.put(`/inventarioProducto/${productoSeleccionado.idProducto}`, payload, { headers });
+
+                    // actualizar localmente sin alterar stock
+                    setRegistros((prev) => {
+                        const updated = prev.map((p) =>
+                            p.idProducto === productoSeleccionado.idProducto ? { ...p, ...payload } : p
+                        );
+                        localStorage.setItem("productos", JSON.stringify(updated));
+                        return updated;
+                    });
                 } else {
-                    const response = await api.post("/inventarioProducto", nuevo, { headers });
-                    setRegistros((prev) => [...prev, response.data]);
+                    // CREATE: enviar stock/iva por defecto (backend espera esos campos en tu implementación)
+                    const payload = {
+                        nombre: formularioTemp.nombre,
+                        costo: costoRedondeado,
+                        precio: precioRedondeado,
+                        stock: 0,
+                        iva: 0,
+                        materias: materiasProducto,
+                    };
+                    // idCategoria puede ser null (backend debe aceptar null; ver nota abajo)
+                    payload.idCategoria = formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null;
+
+                    const response = await api.post("/inventarioProducto", payload, { headers });
+                    const created = response?.data ?? payload;
+                    setRegistros((prev) => {
+                        const updated = [...prev, created];
+                        localStorage.setItem("productos", JSON.stringify(updated));
+                        return updated;
+                    });
                 }
-                localStorage.setItem("productos", JSON.stringify(registros));
+
                 setModalAbierta(false);
                 setProductoSeleccionado(null);
                 setMateriasProducto([]);
                 setCostoTotal(costoRedondeado);
                 setCostoModificadoManually(false);
-                setFormularioTemp({ porcentajeGanancia: 15 });
+                setFormularioTemp({ porcentajeGanancia: formularioTemp.porcentajeGanancia ?? 15, nombre: "", idCategoria: "" });
                 setCostoInput(costoRedondeado);
                 setPrecioInput(precioRedondeado);
+                setPrecioModificadoManually(false);
             } catch (err) {
                 handleApiError(err, "guardado de producto");
             }
@@ -536,8 +596,7 @@ const TablaProductos = forwardRef(
             setCostoModificadoManually(false);
         };
 
-        // Actualizar stock delegando al backend
-        // El input representa "cantidad a fabricar" (incremento), no el stock absoluto.
+        // Actualizar stock delegando al backend (incremento)
         const actualizarStock = async (e) => {
             e.preventDefault();
             if (!token) {
@@ -545,13 +604,11 @@ const TablaProductos = forwardRef(
                 return;
             }
 
-            // Evitar shadowing: nuevaCantidadInt es el número de unidades a fabricar (incremento)
             const nuevaCantidadInt = parseInt(nuevaCantidad, 10);
             if (isNaN(nuevaCantidadInt) || nuevaCantidadInt < 0) {
                 setError("La cantidad debe ser mayor o igual a 0");
                 return;
             }
-            // Verificamos contra maxFabricable el incremento (no el stock absoluto)
             if (maxFabricable !== null && nuevaCantidadInt > maxFabricable) {
                 setModalErrorStockInsuficiente(true);
                 return;
@@ -559,7 +616,6 @@ const TablaProductos = forwardRef(
 
             try {
                 const headers = authHeaders();
-                // Calcular nuevo stock sumando el incremento al stock actual (evita sobrescribir con el valor pequeño)
                 const currentStock = productoStock?.stock || 0;
                 const newStockToSend = currentStock + nuevaCantidadInt;
 
@@ -569,10 +625,8 @@ const TablaProductos = forwardRef(
                     { headers }
                 );
 
-                // Usar el stock que devuelve el backend si viene, sino usar el newStockToSend calculado
                 const updatedStockValue = response?.data?.stock ?? newStockToSend;
 
-                // Actualizar registros inmediatamente y localStorage
                 setRegistros((prev) => {
                     const updated = prev.map((p) =>
                         p.idProducto === productoStock.idProducto ? { ...p, stock: updatedStockValue } : p
@@ -581,17 +635,15 @@ const TablaProductos = forwardRef(
                     return updated;
                 });
 
-                // Refrescar lotes y producciones para reflejar cambios
                 const [lotesUsadosRes, produccionesRes, produccionesLotesRes, lotesMateriaPrimaRes] = await Promise.all([
                     api.get("/lotes-usados", { headers }).catch(() => ({ data: [] })),
                     api.get("/producciones", { headers }).catch(() => ({ data: [] })),
                     api.get("/producciones-lotes", { headers }).catch(() => ({ data: [] })),
-                    api.get("/lotes-materia-prima", { headers }).catch(() => ({ data: [] })) 
+                    api.get("/lotes-materia-prima", { headers }).catch(() => ({ data: [] }))
                 ]);
                 setLotesUsadosEnProductos(lotesUsadosRes.data);
                 setProducciones(produccionesRes.data);
                 setProduccionesLotes(produccionesLotesRes.data);
-                // Actualizamos los lotes de materia prima en el padre (prop)
                 if (typeof setLotesMateriaPrima === "function") {
                     setLotesMateriaPrima(lotesMateriaPrimaRes.data);
                 }
@@ -816,8 +868,12 @@ const TablaProductos = forwardRef(
                                     onChange={(e) => {
                                         const value = Number(e.target.value) || 0;
                                         setPrecioInput(value);
+                                        setPrecioModificadoManually(true);
                                     }}
                                 />
+                                <small className="form-text text-muted">
+                                    Si modificas el precio manualmente, ese valor se conservará; si solo cambias el porcentaje, el precio se recalculará automáticamente.
+                                </small>
                             </div>
                             <div className="mb-3">
                                 <label className="form-label">Categoría</label>
@@ -825,7 +881,7 @@ const TablaProductos = forwardRef(
                                     className="form-select"
                                     value={formularioTemp.idCategoria || ""}
                                     onChange={(e) =>
-                                        setFormularioTemp((prev) => ({ ...prev, idCategoria: Number(e.target.value) || null }))
+                                        setFormularioTemp((prev) => ({ ...prev, idCategoria: e.target.value ? Number(e.target.value) : "" }))
                                     }
                                 >
                                     <option value="">Sin categoría</option>
@@ -918,6 +974,8 @@ const TablaProductos = forwardRef(
                                     disabled={modoEdicionMateria}
                                     onChange={(e) => setMateriaNueva({ ...materiaNueva, idMateria: Number(e.target.value) || 0 })}
                                     required
+                                    // size para que tenga scroll si hay muchas materias (lista desplegable tipo listbox)
+                                    size={8}
                                 >
                                     <option value="">Selecciona una materia prima</option>
                                     {registrosMateria.map((m) => (
@@ -1169,6 +1227,19 @@ const TablaProductos = forwardRef(
                             <BotonAceptar
                                 onClick={() => eliminarCategoria(categoriaToDelete, { force: true })}>
                             </BotonAceptar>
+                        </div>
+                    </Modal>
+                )}
+
+                {/* Error modal general */}
+                {error && (
+                    <Modal isOpen={!!error} onClose={() => setError(null)}>
+                        <div className="encabezado-modal">
+                            <h2>Error</h2>
+                        </div>
+                        <p className="text-center">{error}</p>
+                        <div className="modal-footer">
+                            <BotonAceptar onClick={() => setError(null)} />
                         </div>
                     </Modal>
                 )}
