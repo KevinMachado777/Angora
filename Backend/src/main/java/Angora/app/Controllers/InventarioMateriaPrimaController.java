@@ -32,25 +32,18 @@ public class InventarioMateriaPrimaController {
     }
 
     // Guardar una materia prima
-    // ¡IMPORTANTE! crear otro método en el servicio si es para orden y otro metodo en el controlador!
-    // Este método es exclusivo para guardar si la materia no tiene proveedor
+    // ¡IMPORTANTE crear otro metodo en el servicio si es para orden y otro metodo en el controlador!
+    // Este metodo es exclusivo para guardar si la materia no tiene proveedor
     @PostMapping
     public ResponseEntity<?> create(@RequestBody MateriaDTO materia){
-
+        System.out.println("Materia a guardar: " + materia);
         return new ResponseEntity<>(materiaPrimaService.save(materia), HttpStatus.CREATED);
     }
 
     // Actualizar una materia
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody MateriaPrima materia){
-        return new ResponseEntity<>(materiaPrimaService.update(id, materia), HttpStatus.OK);
+    @PutMapping
+    public ResponseEntity<?> update(@RequestBody MateriaDTO materia){
+        System.out.println("Materia a modificar: " + materia);
+        return new ResponseEntity<>(materiaPrimaService.update(materia), HttpStatus.OK);
     }
-
-    // Eliminar una materia
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
-        materiaPrimaService.delete(id);
-        return new ResponseEntity<>("Materia prima eliminada", HttpStatus.NO_CONTENT);
-    }
-
 }

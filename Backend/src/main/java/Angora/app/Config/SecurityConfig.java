@@ -87,11 +87,38 @@ public class SecurityConfig {
                     // Rutas de reportes
                     http.requestMatchers(HttpMethod.GET, "/reportes/**").hasAuthority("REPORTES");
 
-                    // Rutas de los inventarios
+                    // Rutas del inventario de productos
                     http.requestMatchers(HttpMethod.GET, "/inventarioProducto/**").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.POST, "/inventarioProducto").hasAuthority("INVENTARIOS");
-                    http.requestMatchers(HttpMethod.PUT, "/inventarioProducto").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/{id}").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/{id}/stock").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.DELETE, "/inventarioProducto/**").hasAuthority("INVENTARIOS");
+
+                    // Rutas de las categorias
+                    http.requestMatchers(HttpMethod.GET, "/categorias/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.POST, "/categorias").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.PUT, "/categorias/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.DELETE, "/categorias/**").hasAuthority("INVENTARIOS");
+
+                    // Rutas de lotes
+                    http.requestMatchers(HttpMethod.GET, "/lotes-usados/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.GET, "/lotes/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.POST, "/lotes").hasAnyAuthority("INVENTARIOS", "PROVEEDORES");
+                    http.requestMatchers(HttpMethod.PUT, "/lotes/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.DELETE, "/lotes/**").denyAll();
+
+                    // Rutas de producion
+                    http.requestMatchers(HttpMethod.GET, "/producciones/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.GET, "/producciones-lotes/**").hasAuthority("INVENTARIOS");
+
+                    // Rutas de inventarios materias
+                    http.requestMatchers(HttpMethod.GET, "/inventarioMateria/**").hasAnyAuthority("INVENTARIOS", "PROVEEDORES");
+                    http.requestMatchers(HttpMethod.POST, "/inventarioMateria/**").hasAnyAuthority("INVENTARIOS", "PROVEEDORES");
+                    http.requestMatchers(HttpMethod.PUT, "/inventarioMateria/**").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.DELETE, "/inventarioMateria/**").denyAll();
+
+                    // Rutas de los proveedores
+                    http.requestMatchers(HttpMethod.GET,"/proveedores/**").permitAll();
 
                     // Rutas de ventas
                     http.requestMatchers(HttpMethod.POST, "/ventas/**").permitAll();

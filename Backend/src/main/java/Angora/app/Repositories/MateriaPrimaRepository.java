@@ -13,6 +13,6 @@ import java.util.Optional;
 // Repositorio para manejar materia prima
 @Repository
 public interface MateriaPrimaRepository extends JpaRepository<MateriaPrima, Long> {
-
-    Optional<Object> findByNombre(String nombreMateria);
+    // Tipo de dato cambiado a Materia, antes era Object
+    Optional<MateriaPrima> findByNombre(String nombreMateria);
 }

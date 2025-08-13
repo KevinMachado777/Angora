@@ -5,7 +5,7 @@ import Login from "../pages/Login";
 import Home from "../pages/Home";
 import Perfil from "../pages/Perfil";
 import Personal from "../pages/Personal";
-import { Inventario } from "../pages/Inventario";
+import Inventario  from "../pages/Inventario";
 import Ventas from "../pages/Ventas";
 import Portafolio from "../pages/Portafolio";
 import Pedidos from "../pages/Pedidos";

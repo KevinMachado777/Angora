@@ -29,4 +29,12 @@ public class LoteUsado {
 
     @Column(name = "fecha_produccion", nullable = false)
     private LocalDateTime fechaProduccion;
+
+    // Nuevo constructor para uso en ProductoService
+    public LoteUsado(Long idProducto, Long idLote, Float cantidadUsada, LocalDateTime fechaProduccion) {
+        this.idProducto = idProducto;
+        this.idLote = idLote;
+        this.cantidadUsada = cantidadUsada;
+        this.fechaProduccion = fechaProduccion;
+    }
 }

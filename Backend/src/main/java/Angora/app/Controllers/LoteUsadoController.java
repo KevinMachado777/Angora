@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/lotes-usados")
 public class LoteUsadoController {
 
-    // Repositorio de lotes usados
     @Autowired
     private LoteUsadoRepository loteUsadoRepository;
 
@@ -39,11 +38,9 @@ public class LoteUsadoController {
     // Actualizar un lote usado
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody LoteUsado loteUsado) {
-
         if (!loteUsadoRepository.existsById(id)) {
             throw new RuntimeException("Lote usado no encontrado");
         }
-
         return new ResponseEntity<>(loteUsadoRepository.save(loteUsado), HttpStatus.OK);
     }
 
@@ -53,9 +50,7 @@ public class LoteUsadoController {
         if (!loteUsadoRepository.existsById(id)) {
             throw new RuntimeException("Lote usado no encontrado");
         }
-
         loteUsadoRepository.deleteById(id);
-
         return new ResponseEntity<>("Lote usado eliminado", HttpStatus.NO_CONTENT);
     }
 }

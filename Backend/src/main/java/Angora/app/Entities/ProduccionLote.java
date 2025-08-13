@@ -28,4 +28,11 @@ public class ProduccionLote {
     // Cantidad usada de ese lote en la producción
     @Column(name = "cantidad_usada_del_lote", nullable = false)
     private Float cantidadUsadaDelLote;
+
+    // Nuevo constructor para uso en ProductoService
+    public ProduccionLote(Long idProduccion, Long idLote, Float cantidadUsadaDelLote) {
+        this.idProduccion = idProduccion;
+        this.idLote = idLote;
+        this.cantidadUsadaDelLote = cantidadUsadaDelLote;
+    }
 }
