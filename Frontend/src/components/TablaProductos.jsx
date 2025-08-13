@@ -43,6 +43,9 @@ const TablaProductos = forwardRef(
         const [precioInput, setPrecioInput] = useState(0); // Estado temporal para precio
         const [nuevaCantidad, setNuevaCantidad] = useState(0); // Ahora representa "cantidad a fabricar" (incremento)
 
+        // Estado para saber qué producto tiene abierta la modal de lotes usados
+        const [productoLotesSeleccionado, setProductoLotesSeleccionado] = useState(null);
+
         // Estados de categorías
         const [categorias, setCategorias] = useState([]); // Categorías dinámicas
         const [modalCategoriaAbierta, setModalCategoriaAbierta] = useState(false);
@@ -57,6 +60,13 @@ const TablaProductos = forwardRef(
         const [currentPageCategorias, setCurrentPageCategorias] = useState(1);
         const [itemsPerPageCategorias] = useState(5);
 
+        // Paginación para lotes en modal
+        const [currentPageLotes, setCurrentPageLotes] = useState(1);
+        const [itemsPerPageLotes] = useState(2);
+
+        // Filtro de fecha para lotes
+        const [filterDate, setFilterDate] = useState("");
+
         // Validar datos de localStorage
         const validateData = (data, key) => {
             try {
@@ -70,20 +80,20 @@ const TablaProductos = forwardRef(
         // helper para headers (usa accessToken en localStorage o token prop)
         const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("accessToken") || token}` });
 
-        // const handleApiError = (err, context) => {
-        //     console.error(`Error en ${context}:`, {
-        //         status: err.response?.status,
-        //         data: err.response?.data,
-        //         message: err.message,
-        //     });
-        //     if (err.response?.status === 401) {
-        //         setError("Sesión expirada o permisos insuficientes. Por favor, inicia sesión nuevamente.");
-        //         localStorage.removeItem("accessToken");
-        //         window.location.href = "/login";
-        //     } else {
-        //         setError(err.response?.data?.message || `Error en ${context}. Intenta de nuevo.`);
-        //     }
-        // };
+        const handleApiError = (err, context) => {
+            console.error(`Error en ${context}:`, {
+                status: err.response?.status,
+                data: err.response?.data,
+                message: err.message,
+            });
+            if (err.response?.status === 401) {
+                setError("Sesión expirada o permisos insuficientes. Por favor, inicia sesión nuevamente.");
+                localStorage.removeItem("accessToken");
+                window.location.href = "/login";
+            } else {
+                setError(err.response?.data?.message || `Error en ${context}. Intenta de nuevo.`);
+            }
+        };
 
         // Cargar datos iniciales desde el backend
         useEffect(() => {
@@ -213,16 +223,11 @@ const TablaProductos = forwardRef(
                     const lotes = lotesMateriaPrima
                         .filter((lote) => lote.idMateria === mat.idMateria && lote.cantidadDisponible > 0)
                         .sort((a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso));
-                    let cantidadNecesaria = mat.cantidad;
-                    let unidadesPosibles = Infinity;
+                    let totalDisponible = 0;
                     for (const lote of lotes) {
-                        if (cantidadNecesaria <= 0) break;
-                        const disponible = lote.cantidadDisponible;
-                        const unidades = Math.floor(disponible / mat.cantidad);
-                        unidadesPosibles = Math.min(unidadesPosibles, unidades);
-                        cantidadNecesaria -= disponible;
+                        totalDisponible += lote.cantidadDisponible;
                     }
-                    return cantidadNecesaria <= 0 ? unidadesPosibles : 0;
+                    return Math.floor(totalDisponible / mat.cantidad);
                 });
                 setMaxFabricable(Math.min(...cantidadesPosibles));
             } else {
@@ -232,32 +237,105 @@ const TablaProductos = forwardRef(
             setModalStock(true);
         };
 
-        // Abrir modal de lotes usados
         const abrirModalLotesUsados = (producto) => {
-            const lotesUsados = lotesUsadosEnProductos
-                .filter((lu) => lu.idProducto === producto.idProducto)
-                .map((lu) => {
-                    const lote = lotesMateriaPrima.find((l) => l.idLote === lu.idLote);
-                    const produccionLote = produccionesLotes.find(
-                        (pl) => pl.idLote === lu.idLote && pl.cantidadUsadaDelLote === lu.cantidadUsada
-                    );
-                    return {
-                        ...lu,
-                        materiaNombre: registrosMateria.find((m) => m.idMateria === lote?.idMateria)?.nombre || "N/A",
-                        proveedorNombre: lote?.idProveedor
-                            ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
-                            : "Manual",
-                        cantidadInicial: lote?.cantidad || 0,
-                        cantidadDisponible: lote?.cantidadDisponible || 0,
-                        fechaIngreso: formatDateTime(lote?.fechaIngreso),
-                        fechaProduccion: formatDateTime(lu.fechaProduccion),
-                        idProduccion: produccionLote?.idProduccion || "N/A",
-                    };
-                })
-                .sort((a, b) => new Date(a.fechaProduccion) - new Date(b.fechaProduccion));
-            setLotesUsadosProducto(lotesUsados);
+            // Guardamos el producto que queremos mostrar en la modal y abrimos
+            setProductoLotesSeleccionado(producto);
+            setCurrentPageLotes(1); // reset paginación al abrir
             setModalLotesUsados(true);
         };
+
+        // Reconstruye y filtra lotesUsadosProducto de forma reactiva,
+        useEffect(() => {
+            // Si la modal no está abierta o no hay producto seleccionado, limpiamos
+            if (!modalLotesUsados || !productoLotesSeleccionado) {
+                setLotesUsadosProducto([]);
+                return;
+            }
+
+            // prefiltrar los lotes usados para este producto
+            const lotesUsadosParaProducto = lotesUsadosEnProductos.filter((lu) => lu.idProducto === productoLotesSeleccionado.idProducto);
+
+            // Mapear + calcular histórico 
+            const mapped = lotesUsadosParaProducto.map((lu) => {
+                const lote = lotesMateriaPrima.find((l) => l.idLote === lu.idLote) || {};
+
+                const fechaProduccionRaw = lu.fechaProduccion; // raw timestamp desde backend
+                const fechaIngresoRaw = lote.fechaIngreso; // raw timestamp desde lote
+
+                // Formateadas para mostrar
+                const fechaProduccion = formatDateTime(fechaProduccionRaw);
+                const fechaIngreso = formatDateTime(fechaIngresoRaw);
+
+                // Inicial del lote (cantidad original al ingreso)
+                const cantidadInicial = lote.cantidad ?? 0;
+
+                // Suma acumulada de usos del mismo lote hasta la fecha de esta producción
+                const usedUntilThis = lotesUsadosEnProductos
+                    .filter((x) => x.idLote === lu.idLote && new Date(x.fechaProduccion) <= new Date(fechaProduccionRaw))
+                    .reduce((s, x) => s + (x.cantidadUsada ?? 0), 0);
+
+                // Antes de esta producción: restamos los usos anteriores (excluyendo el actual)
+                const cantidadAntesFabricacion = cantidadInicial - (usedUntilThis - (lu.cantidadUsada ?? 0));
+                const cantidadUsada = lu.cantidadUsada ?? 0;
+                const cantidadDespuesFabricacion = Math.max(0, cantidadAntesFabricacion - cantidadUsada);
+
+                // proveedor
+                const proveedorNombre = lote.idProveedor
+                    ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
+                    : "Manual";
+
+                // Buscar produccionLote para obtener idProduccion si existe (si usas produccionesLotes)
+                const produccionLote = produccionesLotes.find(
+                    (pl) => pl.idLote === lu.idLote && Math.abs((pl.cantidadUsadaDelLote ?? 0) - (lu.cantidadUsada ?? 0)) < 1e-6
+                );
+
+                return {
+                    // conservamos el id interno del registro 'lotesUsadosEnProductos'
+                    id: lu.id,
+                    idLote: lu.idLote,
+                    materiaNombre: registrosMateria.find((m) => m.idMateria === lote?.idMateria)?.nombre || "N/A",
+                    proveedorNombre,
+                    cantidadInicial,
+                    cantidadAntesFabricacion,
+                    cantidadUsada,
+                    cantidadDespuesFabricacion,
+                    fechaIngreso,          // para mostrar
+                    fechaProduccion,       // para mostrar
+                    fechaIngresoRaw,
+                    fechaProduccionRaw,
+                    idProduccion: produccionLote?.idProduccion || lu.idProduccion || "N/A",
+                    // guardamos cantidadDisponible actual del lote también (estado actual)
+                    cantidadDisponibleActual: lote?.cantidadDisponible ?? 0,
+                };
+            });
+
+            // Filtrado por filterDate (reactivo)
+            const filtered = mapped.filter((lu) => {
+                if (!filterDate) return true;
+                if (!lu.fechaProduccionRaw) return false;
+                const d = new Date(lu.fechaProduccionRaw);
+                if (isNaN(d.getTime())) return false;
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                const day = String(d.getDate()).padStart(2, "0");
+                const localDate = `${y}-${m}-${day}`; // YYYY-MM-DD
+                return localDate === filterDate;
+            });
+
+            const sorted = filtered.sort((a, b) => new Date(a.fechaProduccionRaw) - new Date(b.fechaProduccionRaw));
+
+            setLotesUsadosProducto(sorted);
+            setCurrentPageLotes(1);
+        }, [
+            modalLotesUsados,
+            productoLotesSeleccionado,
+            filterDate,
+            lotesUsadosEnProductos,
+            lotesMateriaPrima,
+            produccionesLotes,
+            registrosMateria,
+            proveedores
+        ]);
 
         // Verificar si un producto puede eliminarse (sin lotes usados ni producciones)
         const canDeleteProduct = (idProducto) => {
@@ -459,7 +537,7 @@ const TablaProductos = forwardRef(
         };
 
         // Actualizar stock delegando al backend
-        // Ahora: el input representa "cantidad a fabricar" (incremento), no el stock absoluto.
+        // El input representa "cantidad a fabricar" (incremento), no el stock absoluto.
         const actualizarStock = async (e) => {
             e.preventDefault();
             if (!token) {
@@ -508,7 +586,7 @@ const TablaProductos = forwardRef(
                     api.get("/lotes-usados", { headers }).catch(() => ({ data: [] })),
                     api.get("/producciones", { headers }).catch(() => ({ data: [] })),
                     api.get("/producciones-lotes", { headers }).catch(() => ({ data: [] })),
-                    api.get("/lotes-materia-prima", { headers }).catch(() => ({ data: [] })) // Nueva consulta
+                    api.get("/lotes-materia-prima", { headers }).catch(() => ({ data: [] })) 
                 ]);
                 setLotesUsadosEnProductos(lotesUsadosRes.data);
                 setProducciones(produccionesRes.data);
@@ -531,11 +609,17 @@ const TablaProductos = forwardRef(
         const currentItems = registros.slice(indexOfFirstItem, indexOfLastItem);
         const totalPages = Math.ceil(registros.length / itemsPerPage);
 
-        // Paginacion de las categorias
+        // Paginación de las categorías
         const indexOfLastCategoria = currentPageCategorias * itemsPerPageCategorias;
         const indexOfFirstCategoria = indexOfLastCategoria - itemsPerPageCategorias;
         const currentCategorias = categorias.slice(indexOfFirstCategoria, indexOfLastCategoria);
         const totalPagesCategorias = Math.ceil(categorias.length / itemsPerPageCategorias);
+
+        // Paginación de lotes en modal
+        const indexOfLastLote = currentPageLotes * itemsPerPageLotes;
+        const indexOfFirstLote = indexOfLastLote - itemsPerPageLotes;
+        const currentLotes = lotesUsadosProducto.slice(indexOfFirstLote, indexOfLastLote);
+        const totalPagesLotes = Math.ceil(lotesUsadosProducto.length / itemsPerPageLotes);
 
         if (isLoading) {
             return <div className="text-center mt-5">Cargando productos...</div>;
@@ -543,25 +627,6 @@ const TablaProductos = forwardRef(
 
         return (
             <div className="container inventario">
-                <button
-                    type="button"
-                    className="btn btn-primary mb-3"
-                    onClick={() => abrirModalCategoria()}
-                    style={{ position: "relative", zIndex: 0 }}
-                >
-                    Gestionar Categorías
-                </button>
-                {error && (
-                    <Modal isOpen={!!error} onClose={() => setError(null)}>
-                        <div className="encabezado-modal">
-                            <h2>Error</h2>
-                        </div>
-                        <p className="text-center">{error}</p>
-                        <div className="modal-footer">
-                            <BotonAceptar onClick={() => setError(null)} />
-                        </div>
-                    </Modal>
-                )}
                 <table className="table table-bordered">
                     <thead>
                         <tr>
@@ -624,8 +689,15 @@ const TablaProductos = forwardRef(
                         </li>
                     </ul>
                 </nav>
-
                 <div className="mt-4">
+                    <button
+                        type="button"
+                        className="btn btn-primary mb-3"
+                        onClick={() => abrirModalCategoria()}
+                        style={{ position: "relative", zIndex: 0 }}
+                    >
+                        Gestionar Categorías
+                    </button>
                     <h5>Categorías Existentes</h5>
                     <table className="table table-bordered">
                         <thead>
@@ -985,18 +1057,27 @@ const TablaProductos = forwardRef(
                 )}
 
                 {modalLotesUsados && (
-                    <Modal isOpen={modalLotesUsados} onClose={() => setModalLotesUsados(false)}>
+                    <Modal isOpen={modalLotesUsados} onClose={() => { setModalLotesUsados(false); setProductoLotesSeleccionado(null); }}>
                         <div style={{ position: "relative" }}>
                             <button
                                 type="button"
                                 className="btn-close"
                                 style={{ position: "absolute", top: "10px", right: "10px" }}
-                                onClick={() => setModalLotesUsados(false)}
+                                onClick={() => { setModalLotesUsados(false); setProductoLotesSeleccionado(null); }}
                                 aria-label="Close"
                             ></button>
                             <h2 className="mb-3">Lotes Usados en Producto</h2>
+                            <div className="mb-3">
+                                <label className="form-label">Filtrar por fecha de producción:</label>
+                                <input
+                                    type="date"
+                                    className="form-control"
+                                    value={filterDate}
+                                    onChange={(e) => setFilterDate(e.target.value)}
+                                />
+                            </div>
                             <div className="row g-3">
-                                {lotesUsadosProducto.map((lu) => (
+                                {currentLotes.map((lu) => (
                                     <div key={lu.id} className="col-md-12">
                                         <div className="card shadow-sm h-100">
                                             <div className="card-body">
@@ -1006,9 +1087,11 @@ const TablaProductos = forwardRef(
                                                     <br />
                                                     <strong>Cantidad Inicial:</strong> {lu.cantidadInicial} unidades
                                                     <br />
-                                                    <strong>Cantidad Disponible:</strong> {lu.cantidadDisponible} unidades
+                                                    <strong>Cantidad antes de fabricación:</strong> {lu.cantidadAntesFabricacion} unidades
                                                     <br />
                                                     <strong>Cantidad Usada:</strong> {lu.cantidadUsada} unidades
+                                                    <br />
+                                                    <strong>Cantidad después de fabricación:</strong> {lu.cantidadDespuesFabricacion} unidades
                                                     <br />
                                                     <strong>ID Producción:</strong> {lu.idProduccion}
                                                     <br />
@@ -1024,7 +1107,28 @@ const TablaProductos = forwardRef(
                                 ))}
                             </div>
                             <div className="modal-footer mt-4">
-                                <BotonAceptar onClick={() => setModalLotesUsados(false)} />
+                                <nav>
+                                    <ul className="pagination justify-content-center">
+                                        <li className={`page-item ${currentPageLotes === 1 ? "disabled" : ""}`}>
+                                            <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes - 1)}>
+                                                Anterior
+                                            </button>
+                                        </li>
+                                        {Array.from({ length: totalPagesLotes }, (_, i) => (
+                                            <li key={i + 1} className={`page-item ${currentPageLotes === i + 1 ? "active" : ""}`}>
+                                                <button className="page-link" onClick={() => setCurrentPageLotes(i + 1)}>
+                                                    {i + 1}
+                                                </button>
+                                            </li>
+                                        ))}
+                                        <li className={`page-item ${currentPageLotes === totalPagesLotes ? "disabled" : ""}`}>
+                                            <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes + 1)}>
+                                                Siguiente
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </nav>
+                                <BotonAceptar onClick={() => { setModalLotesUsados(false); setProductoLotesSeleccionado(null); }} />
                             </div>
                         </div>
                     </Modal>
