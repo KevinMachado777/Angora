@@ -21,7 +21,7 @@ const TablaMaterias = forwardRef(
             idMateria: 0,
             costoUnitario: "",
             cantidad: "",
-            cantidadDisponible: "", // Nuevo estado para la cantidad disponible
+            cantidadDisponible: "",
             idProveedor: null,
         });
         const [error, setError] = useState(null);
@@ -32,7 +32,7 @@ const TablaMaterias = forwardRef(
         // Función para obtener el token desde localStorage
         const getAuthToken = () => {
             const localToken = localStorage.getItem("accessToken");
-            console.log("LocalStorage token:", localToken ? localToken.substring(0, 20) + "..." : "No token");
+            // console.log("LocalStorage token:", localToken ? localToken.substring(0, 20) + "..." : "No token");
             return localToken;
         };
 
@@ -85,35 +85,37 @@ const TablaMaterias = forwardRef(
             }
             const datos = new FormData(e.target);
             const nueva = {
+                // idMateria solo para edición (backend lo deduce por body o ruta)
                 idMateria: materiaSeleccionada ? materiaSeleccionada.idMateria : undefined,
                 nombre: datos.get("nombre").trim(),
                 venta: Number(datos.get("venta")),
+                // mantenemos cantidad y costo actuales si existe la materia (no se editan desde aquí)
                 cantidad: materiaSeleccionada ? materiaSeleccionada.cantidad : 0,
                 costo: materiaSeleccionada ? materiaSeleccionada.costo : 0
             };
-
-            console.log("Datos del formulario de agregar materia:", nueva);
 
             if (!nueva.nombre) {
                 setError("El nombre de la materia prima es obligatorio");
                 return;
             }
-            if (nueva.venta < 0) {
+            if (isNaN(nueva.venta) || nueva.venta < 0) {
                 setError("El precio de venta debe ser mayor o igual a 0");
                 return;
             }
 
             try {
                 const headers = { Authorization: `Bearer ${authToken}` };
-                console.log("Guardando materia:", nueva, "Token:", authToken.substring(0, 20) + "...");
                 let updatedMaterias;
                 if (materiaSeleccionada) {
-                    await api.put(`/inventarioMateria`, nueva, { headers });
+                    // PUT: actualizar solo nombre/venta (costo y cantidad son gestionados por lotes)
+                    const payload = { ...materiaSeleccionada, nombre: nueva.nombre, venta: nueva.venta };
+                    await api.put(`/inventarioMateria`, payload, { headers });
                     updatedMaterias = registrosMateria.map((p) =>
-                        p.idMateria === materiaSeleccionada.idMateria ? { ...p, ...nueva } : p
+                        p.idMateria === materiaSeleccionada.idMateria ? { ...p, ...payload } : p
                     );
                 } else {
-                    const response = await api.post("/inventarioMateria", nueva, { headers });
+                    const body = { nombre: nueva.nombre, venta: nueva.venta };
+                    const response = await api.post("/inventarioMateria", body, { headers });
                     const nuevaMateria = {
                         ...response.data,
                         costo: response.data.costo || 0,
@@ -160,8 +162,7 @@ const TablaMaterias = forwardRef(
                 costoUnitario: lote.costoUnitario,
                 cantidad: lote.cantidad,
                 cantidadDisponible: lote.cantidadDisponible,
-                fechaIngreso: lote.fechaIngreso,
-                idProveedor: lote.idProveedor,
+                // ya no mantenemos fechaIngreso ni idProveedor en el estado editable
             });
             setModalLoteAbierto(true);
         };
@@ -188,9 +189,7 @@ const TablaMaterias = forwardRef(
 
             if (loteSeleccionado) {
                 nuevoLote.idLote = loteSeleccionado.idLote;
-                nuevoLote.fechaIngreso = loteSeleccionado.fechaIngreso;
-                nuevoLote.idProveedor = loteSeleccionado.idProveedor;
-
+                // NOTA: no modificamos fechaIngreso ni proveedor para lote existente
                 if (nuevoLote.cantidadDisponible > nuevoLote.cantidad) {
                     setError("La cantidad disponible no puede ser mayor que la cantidad inicial del lote");
                     return;
@@ -208,7 +207,8 @@ const TablaMaterias = forwardRef(
                 let responseData;
 
                 if (loteSeleccionado) {
-                    responseData = await api.put(`/lotes`, nuevoLote, { headers });
+                    responseData = await api.put(`/lotes`, { ...loteSeleccionado, ...nuevoLote }, { headers });
+                    // mapear con la información enviada
                     updatedLotes = lotesMateriaPrima.map((l) =>
                         l.idLote === nuevoLote.idLote ? { ...l, ...nuevoLote } : l
                     );
@@ -228,11 +228,10 @@ const TablaMaterias = forwardRef(
                 setLotesMateriaPrima(updatedLotes);
 
                 // Actualizar también el estado `lotesMateriaSeleccionada`
-                // para que el modal se refresque.
                 const nuevosLotesParaModal = updatedLotes.filter(lote => lote.idMateria === nuevoLote.idMateria);
                 setLotesMateriaSeleccionada(nuevosLotesParaModal);
 
-                // Actualizar costo promedio y cantidad total en registrosMateria
+                // Actualizar costo promedio y cantidad total en registrosMateria (si existe)
                 const lotesMateria = updatedLotes.filter((l) => l.idMateria === nuevoLote.idMateria);
                 const totalDisponible = lotesMateria.reduce((sum, l) => sum + (l.cantidadDisponible || 0), 0);
                 const costoPromedio =
@@ -366,22 +365,16 @@ const TablaMaterias = forwardRef(
                         </li>
                     </ul>
                 </nav>
+
+                {/* MODAL: Agregar / Editar Materia
+                    Ahora sólo muestra: Nombre, (mensaje de costo) y Precio de venta.
+                    No muestra ID ni cantidad (no editables desde aquí).
+                */}
                 {modalAbiertaMateria && (
                     <Modal isOpen={modalAbiertaMateria} onClose={() => setModalAbiertaMateria(false)}>
                         <form onSubmit={guardarMateria}>
                             <h2 className="mb-4">{materiaSeleccionada ? "Editar" : "Agregar"} Materia Prima</h2>
-                            {materiaSeleccionada && (
-                                <div className="mb-3">
-                                    <label className="form-label">ID</label>
-                                    <input
-                                        name="idMateria"
-                                        type="number"
-                                        value={materiaSeleccionada.idMateria}
-                                        className="form-control"
-                                        disabled
-                                    />
-                                </div>
-                            )}
+
                             <div className="mb-3">
                                 <label className="form-label">Nombre</label>
                                 <input
@@ -392,13 +385,15 @@ const TablaMaterias = forwardRef(
                                     required
                                 />
                             </div>
+
+                            {/* Mostrar mensaje de costo si la materia ya existe */}
                             {materiaSeleccionada && (
                                 <div className="mb-3">
                                     <label className="form-label">Costo Unitario (COP)</label>
                                     <input
                                         name="costo"
-                                        type="number"
-                                        value={materiaSeleccionada.costo}
+                                        type="text"
+                                        value={formatCurrency(materiaSeleccionada.costo)}
                                         className="form-control"
                                         disabled
                                     />
@@ -407,30 +402,20 @@ const TablaMaterias = forwardRef(
                                     </small>
                                 </div>
                             )}
+
                             <div className="mb-3">
                                 <label className="form-label">Precio de Venta (COP)</label>
                                 <input
                                     name="venta"
                                     type="number"
-                                    defaultValue={materiaSeleccionada?.venta || ""}
+                                    defaultValue={materiaSeleccionada?.venta ?? ""}
                                     className="form-control"
                                     required
                                     min="0"
                                     step="0.01"
                                 />
                             </div>
-                            {materiaSeleccionada && (
-                                <div className="mb-3">
-                                    <label className="form-label">Cantidad</label>
-                                    <input
-                                        name="cantidad"
-                                        type="number"
-                                        value={materiaSeleccionada.cantidad}
-                                        className="form-control"
-                                        disabled
-                                    />
-                                </div>
-                            )}
+
                             <div className="d-flex justify-content-end gap-2">
                                 <BotonCancelar onClick={() => setModalAbiertaMateria(false)} />
                                 <BotonGuardar type="submit" />
@@ -438,6 +423,8 @@ const TablaMaterias = forwardRef(
                         </form>
                     </Modal>
                 )}
+
+                {/* MODAL: Lotes de materia */}
                 {modalLotesMateria && (
                     <Modal isOpen={modalLotesMateria} onClose={() => setModalLotesMateria(false)}>
                         <h2 className="mb-4">Lotes de Materia Prima</h2>
@@ -479,10 +466,16 @@ const TablaMaterias = forwardRef(
                         </div>
                     </Modal>
                 )}
+
+                {/* MODAL: Agregar / Editar Lote
+                    Para lote existente: mostramos ID Lote (deshabilitado), costo editable, cantidad disponible editable.
+                    NO mostramos ni permitimos editar fechaIngreso ni proveedor.
+                */}
                 {modalLoteAbierto && (
                     <Modal isOpen={modalLoteAbierto} onClose={() => setModalLoteAbierto(false)}>
                         <form onSubmit={guardarLote}>
                             <h2 className="mb-4">{loteSeleccionado ? "Editar" : "Agregar"} Lote</h2>
+
                             {loteSeleccionado && (
                                 <div className="mb-3">
                                     <label className="form-label">ID Lote</label>
@@ -494,6 +487,7 @@ const TablaMaterias = forwardRef(
                                     />
                                 </div>
                             )}
+
                             <div className="mb-3">
                                 <label className="form-label">Costo Unitario (COP)</label>
                                 <input
@@ -509,6 +503,7 @@ const TablaMaterias = forwardRef(
                                     }
                                 />
                             </div>
+
                             <div className="mb-3">
                                 <label className="form-label">{loteSeleccionado ? "Cantidad Disponible" : "Cantidad"}</label>
                                 <input
@@ -518,7 +513,6 @@ const TablaMaterias = forwardRef(
                                     className="form-control"
                                     required
                                     min="0"
-                                    // Corregimos el `max` para que sea dinámico
                                     max={loteSeleccionado ? loteSeleccionado.cantidad : undefined}
                                     onChange={(e) =>
                                         setLoteNuevo({
@@ -528,33 +522,9 @@ const TablaMaterias = forwardRef(
                                     }
                                 />
                             </div>
-                            {loteSeleccionado && (
-                                <div className="mb-3">
-                                    <label className="form-label">Fecha de Ingreso</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={loteNuevo.fechaIngreso}
-                                        disabled
-                                    />
-                                </div>
-                            )}
-                            {loteSeleccionado ? (
-                                <div className="mb-3">
-                                    <label className="form-label">Proveedor</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={
-                                            loteNuevo.idProveedor
-                                                ? proveedores.find((p) => p.idProveedor === loteNuevo.idProveedor)
-                                                    ?.nombre || "N/A"
-                                                : "Sin proveedor"
-                                        }
-                                        disabled
-                                    />
-                                </div>
-                            ) : (
+
+                            {/* Para nuevo lote permitimos seleccionar proveedor; para editar lote no mostramos este input (no editable) */}
+                            {!loteSeleccionado ? (
                                 <div className="mb-3">
                                     <label className="form-label">Proveedor</label>
                                     <select
@@ -573,7 +543,8 @@ const TablaMaterias = forwardRef(
                                         ))}
                                     </select>
                                 </div>
-                            )}
+                            ) : null}
+
                             <div className="d-flex justify-content-end gap-2">
                                 <BotonCancelar onClick={() => setModalLoteAbierto(false)} />
                                 <BotonGuardar type="submit" />
@@ -581,6 +552,7 @@ const TablaMaterias = forwardRef(
                         </form>
                     </Modal>
                 )}
+
                 {modalAdvertenciaIdDuplicado && (
                     <Modal isOpen={modalAdvertenciaIdDuplicado} onClose={() => setModalAdvertenciaIdDuplicado(false)}>
                         <div className="encabezado-modal">
