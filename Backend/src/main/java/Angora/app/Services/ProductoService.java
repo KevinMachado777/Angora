@@ -122,15 +122,19 @@ public class ProductoService {
     // Crear un producto recibiendo los datos en dto (sin cambios)
     @Transactional
     public ProductoDTO crearProductoDesdeDTO(ProductoDTO productoDTO) {
-        Categoria categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
+        Categoria categoria = null;
+        if (productoDTO.getIdCategoria() != null) {
+            // buscar la categoria si el DTO la trae
+            categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
+                    .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
+        }
         Producto producto = Producto.builder()
                 .nombre(productoDTO.getNombre())
                 .precio(productoDTO.getPrecio())
                 .costo(productoDTO.getCosto())
-                .stock(productoDTO.getStock())
+                .stock(productoDTO.getStock() != null ? productoDTO.getStock() : 0)
                 .iva(productoDTO.getIva())
-                .idCategoria(categoria)
+                .idCategoria(categoria) // puede ser null
                 .build();
         producto = productoRepository.save(producto);
         Producto finalProducto = producto;
@@ -151,6 +155,7 @@ public class ProductoService {
 
         return productoDTO;
     }
+
 
     @Transactional
     public ProductoDTO actualizarProductoDesdeDTO(ProductoDTO productoDTO) {
@@ -250,8 +255,15 @@ public class ProductoService {
                     float usar = Math.min(lote.getCantidadDisponible(), restante);
                     lote.setCantidadDisponible(lote.getCantidadDisponible() - usar);
                     loteRepository.save(lote);
+
+                    // guardamos la relacion produccion-lote (traza)
                     produccionLoteRepository.save(new ProduccionLote(idProduccion, lote.getIdLote(), usar));
-                    loteUsadoRepository.save(new LoteUsado(idProducto, lote.getIdLote(), usar, fechaActual));
+
+                    // IMPORTANT: ahora guardamos LoteUsado **con idProduccion** para que no quede null en BD
+                    // Usamos el constructor completo: (id, idLote, idProducto, cantidadUsada, fechaProduccion, idProduccion)
+                    LoteUsado loteUsado = new LoteUsado(null, lote.getIdLote(), idProducto, usar, fechaActual, idProduccion);
+                    loteUsadoRepository.save(loteUsado);
+
                     restante -= usar;
                 }
             }
@@ -321,4 +333,82 @@ public class ProductoService {
         updateStock(producto.getIdProducto(), producto.getStock() - cantidadComprada);
         // Comentario: Reemplazado por updateStock para incluir lógica de lotes y trazabilidad.
     }
+
+
+     // Metodo que Recalcula costo y precio de todos los productos que usan la materia con id = idMateria.
+    @Transactional
+    public void recalculateProductsCostByMateria(Long idMateria) {
+        // Obtener el costo actual de la materia
+        MateriaPrima materia = materiaRepository.findById(idMateria)
+                .orElseThrow(() -> new RuntimeException("Materia no encontrada: " + idMateria));
+        // Costo unitario
+        double costoUnitarioMateria = materia.getCosto() != null ? materia.getCosto().doubleValue() : 0.0;
+
+        // Obtener todas las relaciones materia-producto que usan esta materia
+        List<MateriaProducto> relaciones = materiaProductoRepository.findByIdMateria(idMateria);
+
+        // Un producto sólo tiene una entrada por materia, así que iteramos relaciones.
+        for (MateriaProducto rel : relaciones) {
+            // Asegurar tener el producto cargado
+            Producto producto = null;
+            if (rel.getProducto() != null && rel.getProducto().getIdProducto() != null) {
+                // preferir el objeto asociado si viene cargado
+                producto = productoRepository.findById(rel.getProducto().getIdProducto())
+                        .orElse(null);
+            }
+            if (producto == null) {
+                // si no se puede obtener: continuar
+                continue;
+            }
+
+            // Recalcular costo del producto sumando por cada materia del producto
+            double nuevoCostoRaw = 0.0;
+            List<MateriaProducto> materiasDelProducto = producto.getMaterias() != null ? producto.getMaterias() : new ArrayList<>();
+            for (MateriaProducto mp : materiasDelProducto) {
+                Long idM = mp.getIdMateria();
+                double costoM = 0.0;
+                // Obtener costo de la materia desde la entidad MateriaPrima
+                MateriaPrima mpEntidad = materiaRepository.findById(idM).orElse(null);
+                if (mpEntidad != null && mpEntidad.getCosto() != null) {
+                    costoM = mpEntidad.getCosto().doubleValue();
+                }
+                double cantidad = mp.getCantidad() != null ? mp.getCantidad() : 0.0;
+                nuevoCostoRaw += costoM * cantidad;
+            }
+
+            int nuevoCostoRedondeado = roundTo50(nuevoCostoRaw);
+
+            // calcular nuevo precio preservando markup histórico
+            double oldCosto = producto.getCosto() != null ? producto.getCosto() : 0.0;
+            double oldPrecio = producto.getPrecio() != null ? producto.getPrecio() : 0.0;
+            double nuevoPrecioCalc;
+            if (oldCosto > 0.0) {
+                double markup = oldPrecio / oldCosto;
+                nuevoPrecioCalc = nuevoCostoRedondeado * markup;
+            } else {
+                nuevoPrecioCalc = nuevoCostoRedondeado * 1.15; // 15% por defecto
+            }
+            int nuevoPrecioRedondeado = roundTo50(nuevoPrecioCalc);
+
+            // Persistir sólo si hay cambio
+            boolean changed = false;
+            if (producto.getCosto() == null || producto.getCosto().intValue() != nuevoCostoRedondeado) {
+                producto.setCosto(nuevoCostoRedondeado);
+                changed = true;
+            }
+            if (producto.getPrecio() == null || producto.getPrecio().intValue() != nuevoPrecioRedondeado) {
+                producto.setPrecio(nuevoPrecioRedondeado);
+                changed = true;
+            }
+
+            if (changed) {
+                productoRepository.save(producto);
+            }
+        }
+    }
+
+    private int roundTo50(double value) {
+        return (int) (Math.round(value / 50.0) * 50);
+    }
+
 }

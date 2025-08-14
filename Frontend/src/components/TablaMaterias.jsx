@@ -7,6 +7,7 @@ import BotonAceptar from "./BotonAceptar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../api/axiosInstance";
 
+// Componente de tabla de materias primas
 const TablaMaterias = forwardRef(
     ({ registrosMateria, setRegistrosMateria, lotesMateriaPrima, setLotesMateriaPrima, proveedores }, ref) => {
         const [materiaSeleccionada, setMateriaSeleccionada] = useState(null);
@@ -32,7 +33,6 @@ const TablaMaterias = forwardRef(
         // Función para obtener el token desde localStorage
         const getAuthToken = () => {
             const localToken = localStorage.getItem("accessToken");
-            // console.log("LocalStorage token:", localToken ? localToken.substring(0, 20) + "..." : "No token");
             return localToken;
         };
 
@@ -85,11 +85,9 @@ const TablaMaterias = forwardRef(
             }
             const datos = new FormData(e.target);
             const nueva = {
-                // idMateria solo para edición (backend lo deduce por body o ruta)
                 idMateria: materiaSeleccionada ? materiaSeleccionada.idMateria : undefined,
                 nombre: datos.get("nombre").trim(),
                 venta: Number(datos.get("venta")),
-                // mantenemos cantidad y costo actuales si existe la materia (no se editan desde aquí)
                 cantidad: materiaSeleccionada ? materiaSeleccionada.cantidad : 0,
                 costo: materiaSeleccionada ? materiaSeleccionada.costo : 0
             };
@@ -162,7 +160,6 @@ const TablaMaterias = forwardRef(
                 costoUnitario: lote.costoUnitario,
                 cantidad: lote.cantidad,
                 cantidadDisponible: lote.cantidadDisponible,
-                // ya no mantenemos fechaIngreso ni idProveedor en el estado editable
             });
             setModalLoteAbierto(true);
         };
@@ -366,10 +363,7 @@ const TablaMaterias = forwardRef(
                     </ul>
                 </nav>
 
-                {/* MODAL: Agregar / Editar Materia
-                    Ahora sólo muestra: Nombre, (mensaje de costo) y Precio de venta.
-                    No muestra ID ni cantidad (no editables desde aquí).
-                */}
+                {/* MODAL: Agregar / Editar Materia */}
                 {modalAbiertaMateria && (
                     <Modal isOpen={modalAbiertaMateria} onClose={() => setModalAbiertaMateria(false)}>
                         <form onSubmit={guardarMateria}>
@@ -467,10 +461,7 @@ const TablaMaterias = forwardRef(
                     </Modal>
                 )}
 
-                {/* MODAL: Agregar / Editar Lote
-                    Para lote existente: mostramos ID Lote (deshabilitado), costo editable, cantidad disponible editable.
-                    NO mostramos ni permitimos editar fechaIngreso ni proveedor.
-                */}
+                {/* MODAL: Agregar / Editar Lote */}
                 {modalLoteAbierto && (
                     <Modal isOpen={modalLoteAbierto} onClose={() => setModalLoteAbierto(false)}>
                         <form onSubmit={guardarLote}>
@@ -523,7 +514,7 @@ const TablaMaterias = forwardRef(
                                 />
                             </div>
 
-                            {/* Para nuevo lote permitimos seleccionar proveedor; para editar lote no mostramos este input (no editable) */}
+                            {/* Para nuevo lote permitimos seleccionar proveedor; para editar lote no mostramos este input */}
                             {!loteSeleccionado ? (
                                 <div className="mb-3">
                                     <label className="form-label">Proveedor</label>

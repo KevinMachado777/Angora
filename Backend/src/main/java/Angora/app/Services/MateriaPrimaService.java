@@ -25,6 +25,9 @@ public class MateriaPrimaService {
     @Autowired
     private LoteRepository loteRepository;
 
+    @Autowired
+    private ProductoService productoService;
+
     // Listar las materias
     public List<MateriaDTO> findAll() {
 
@@ -76,18 +79,33 @@ public class MateriaPrimaService {
     // Actualizar una materia prima
     @Transactional
     public MateriaDTO update(MateriaDTO materia) {
-        if (!materiaPrimaRepository.existsById(materia.getIdMateria())) {
-            throw new RuntimeException("Materia prima no encontrada");
+        if (materia == null || materia.getIdMateria() == null) {
+            throw new RuntimeException("ID de materia requerido para actualizar");
         }
 
-        MateriaPrima materiaUpdate = new MateriaPrima();
-        materiaUpdate.setIdMateria(materia.getIdMateria());
-        materiaUpdate.setNombre(materia.getNombre());
-        materiaUpdate.setCantidad(materia.getCantidad());
-        materiaUpdate.setCosto(materia.getCosto());
-        materiaUpdate.setVenta(materia.getVenta());
+        // Buscar la entidad existente
+        MateriaPrima existente = materiaPrimaRepository.findById(materia.getIdMateria())
+                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
 
-        materiaPrimaRepository.save(materiaUpdate);
-        return materia;
+        // Actualizar campos (solo si vienen en el DTO)
+        if (materia.getNombre() != null) existente.setNombre(materia.getNombre());
+        if (materia.getCantidad() != null) existente.setCantidad(materia.getCantidad());
+        if (materia.getCosto() != null) existente.setCosto(materia.getCosto());
+        if (materia.getVenta() != null) existente.setVenta(materia.getVenta());
+
+        // Guardar cambios
+        MateriaPrima saved = materiaPrimaRepository.save(existente);
+
+        // Recalcular productos que usan esta materia (backend)
+        productoService.recalculateProductsCostByMateria(saved.getIdMateria());
+
+        // Devolver DTO
+        MateriaDTO out = new MateriaDTO();
+        out.setIdMateria(saved.getIdMateria());
+        out.setNombre(saved.getNombre());
+        out.setCosto(saved.getCosto());
+        out.setVenta(saved.getVenta());
+        out.setCantidad(saved.getCantidad());
+        return out;
     }
 }

@@ -63,6 +63,9 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private ProveedorService proveedorService;
 
+    // guardamos el id del producto creado aquí si se crea en esta ejecución
+    private Long productoInicialId = null;
+
     @Override
     @Transactional
     public void run(String... args) throws Exception {
@@ -70,9 +73,9 @@ public class DataInitializer implements CommandLineRunner {
         initializeCategorias(); // Categorias
         initializeProveedores(); // Proveedores
         initializeMateriasPrimas(); // Materias primas
-        initializeProductos(); // Productos
+        initializeProductos(); // Productos (podrá setear productoInicialId)
         initializeLotes(); // Lotes
-        initializeProduccionesIniciales(); // Producciones
+        initializeProduccionesIniciales(); // Producciones (usa productoInicialId o fallback)
     }
 
     private void initializePermisosAndUsuarios() {
@@ -257,13 +260,13 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     private void initializeProductos() {
         if (productoRepository.count() > 0) {
-            System.out.println("Productos ya existen en la base de datos");
+            System.out.println("Productos ya existen en la base de datos - no se crearán productos iniciales");
             return;
         }
 
         System.out.println("Buscando categoría con Nombre Limpieza...");
         Categoria categoria = categoriaRepository.findByNombre("Limpieza")
-                .orElseThrow(() -> new RuntimeException("Categoría con ID 1 no existe"));
+                .orElseThrow(() -> new RuntimeException("Categoría con Nombre 'Limpieza' no existe"));
 
         System.out.println("Creando DTO del producto...");
         ProductoDTO dto = new ProductoDTO();
@@ -277,14 +280,27 @@ public class DataInitializer implements CommandLineRunner {
         catDto.setIdCategoria(categoria.getIdCategoria());
         dto.setIdCategoria(catDto);
 
+        // Obtener IDs reales de materias por nombre (evita asumir 1L, 3L, etc.)
         List<MateriaProductoDTO> materias = new ArrayList<>();
-        materias.add(createMateriaDTO(1L, 15f)); // Ácido sulfónico
-        materias.add(createMateriaDTO(3L, 10f)); // Carbonato de sodio
+
+        MateriaPrima mpAcido = materiaPrimaRepository.findByNombre("Ácido sulfónico")
+                .orElseThrow(() -> new RuntimeException("Materia 'Ácido sulfónico' no encontrada"));
+        MateriaPrima mpCarbonato = materiaPrimaRepository.findByNombre("Carbonato de sodio")
+                .orElseThrow(() -> new RuntimeException("Materia 'Carbonato de sodio' no encontrada"));
+
+        materias.add(createMateriaDTO(mpAcido.getIdMateria(), 15f)); // Ácido sulfónico
+        materias.add(createMateriaDTO(mpCarbonato.getIdMateria(), 10f)); // Carbonato de sodio
         dto.setMaterias(materias);
 
         System.out.println("Guardando producto usando ProductoService...");
-        productoService.crearProductoDesdeDTO(dto);
-        System.out.println("Producto con materias creado correctamente.");
+        // capturamos el DTO resultante (contendrá idProducto si todo fue bien)
+        ProductoDTO creado = productoService.crearProductoDesdeDTO(dto);
+        if (creado != null && creado.getIdProducto() != null) {
+            productoInicialId = creado.getIdProducto();
+            System.out.println("Producto inicial creado con id: " + productoInicialId);
+        } else {
+            System.out.println("Producto inicial creado pero no devolvió id (verificar).");
+        }
     }
 
     @Transactional
@@ -333,21 +349,65 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     private void initializeProduccionesIniciales() {
         System.out.println("Creando producciones iniciales para trazabilidad...");
-        Producto producto = productoRepository.findById(1L)
-                .orElseThrow(() ->   new RuntimeException("Producto no encontrado para inicializar producciones"));
+
+        // Intento usar el id que guardamos si creamos producto en esta ejecución
+        Producto producto = null;
+
+        if (productoInicialId != null) {
+            producto = productoRepository.findById(productoInicialId).orElse(null);
+            System.out.println("Buscando producto por productoInicialId: " + productoInicialId + " -> " + (producto != null));
+        }
+
+        // si no encontramos por el id guardado, intentamos buscar por nombre (si existe)
+        if (producto == null) {
+            Optional<Producto> porNombre = productoRepository.findAll().stream()
+                    .filter(p -> "Detergente en polvo".equalsIgnoreCase(p.getNombre()))
+                    .findFirst();
+            if (porNombre.isPresent()) {
+                producto = porNombre.get();
+                System.out.println("Encontrado producto por nombre: " + producto.getIdProducto());
+            }
+        }
+
+        // fallback: si hay cualquier producto, usamos el último insertado
+        if (producto == null && productoRepository.count() > 0) {
+            producto = productoRepository.findTopByOrderByIdProductoDesc();
+            System.out.println("Usando producto fallback (findTopByOrderByIdProductoDesc): " + (producto != null ? producto.getIdProducto() : "null"));
+        }
+
+        if (producto == null) {
+            // No hay producto en la DB: no hacemos producciones iniciales, pero no tiramos excepción
+            System.out.println("No se encontró ningún producto para crear producciones iniciales. Se omite esta parte.");
+            return;
+        }
 
         // Manejar stock null
         int cantidadProducida = producto.getStock() != null ? producto.getStock() : 0;
 
         // Crear una producción inicial para las unidades
-        Produccion produccion = new Produccion(null, 1L, LocalDateTime.now());
+        Produccion produccion = new Produccion(null, producto.getIdProducto(), LocalDateTime.now());
         produccion = produccionRepository.save(produccion);
 
-        // Asumir lotes 1 y 3 para el producto
-        Lote lote1 = loteRepository.findById(1L).orElseThrow(() -> new RuntimeException("Lote 1 no encontrado"));
-        Lote lote3 = loteRepository.findById(3L).orElseThrow(() -> new RuntimeException("Lote 3 no encontrado"));
+        // Intentamos usar lotes 1 y 3 si existen; si no, buscamos dos lotes disponibles
+        Lote lote1 = loteRepository.findById(1L).orElse(null);
+        Lote lote3 = loteRepository.findById(3L).orElse(null);
 
-        // Crear ProduccionLote para lote1
+        // si faltan, intentamos buscar los dos primeros lotes que existan
+        if (lote1 == null || lote3 == null) {
+            List<Lote> primeros = loteRepository.findAll();
+            if (primeros.size() >= 2) {
+                lote1 = primeros.get(0);
+                lote3 = primeros.get(1);
+            } else if (primeros.size() == 1) {
+                lote1 = primeros.get(0);
+                lote3 = primeros.get(0);
+            } else {
+                System.out.println("No hay lotes suficientes para crear producciones iniciales. Se omite.");
+                return;
+            }
+        }
+
+        // Crear ProduccionLote para lote1 y lote3
         ProduccionLote pl1 = new ProduccionLote(
                 null,
                 produccion.getIdProduccion(),
@@ -364,32 +424,52 @@ public class DataInitializer implements CommandLineRunner {
         );
         produccionLoteRepository.save(pl3);
 
-        // Crear LoteUsado para el producto
-        LoteUsado lu1 = new LoteUsado(null, produccion.getIdProduccion(), lote1.getIdLote(), 15f * cantidadProducida, LocalDateTime.now());
+        // Creamos LoteUsado **usando setters** para no depender de una firma de constructor específica
+        LoteUsado lu1 = new LoteUsado();
+        lu1.setIdLote(lote1.getIdLote());
+        lu1.setIdProducto(producto.getIdProducto());
+        lu1.setCantidadUsada(15f * cantidadProducida);
+        lu1.setFechaProduccion(LocalDateTime.now());
+        lu1.setIdProduccion(produccion.getIdProduccion());
         loteUsadoRepository.save(lu1);
 
-        LoteUsado lu3 = new LoteUsado(null, produccion.getIdProduccion(), lote3.getIdLote(), 10f * cantidadProducida, LocalDateTime.now());
+        LoteUsado lu3 = new LoteUsado();
+        lu3.setIdLote(lote3.getIdLote());
+        lu3.setIdProducto(producto.getIdProducto());
+        lu3.setCantidadUsada(10f * cantidadProducida);
+        lu3.setFechaProduccion(LocalDateTime.now());
+        lu3.setIdProduccion(produccion.getIdProduccion());
         loteUsadoRepository.save(lu3);
 
-        // Actualizar cantidades disponibles en lotes
-        lote1.setCantidadDisponible(lote1.getCantidadDisponible() - 15f * cantidadProducida);
-        loteRepository.save(lote1);
+        // Actualizar cantidades disponibles en lotes (protegiendo contra nulls)
+        if (lote1.getCantidadDisponible() != null) {
+            lote1.setCantidadDisponible(lote1.getCantidadDisponible() - 15f * cantidadProducida);
+            loteRepository.save(lote1);
+        }
+        if (lote3.getCantidadDisponible() != null) {
+            lote3.setCantidadDisponible(lote3.getCantidadDisponible() - 10f * cantidadProducida);
+            loteRepository.save(lote3);
+        }
 
-        lote3.setCantidadDisponible(lote3.getCantidadDisponible() - 10f * cantidadProducida);
-        loteRepository.save(lote3);
+        // Actualizar stock de materia prima si existen
+        if (lote1.getIdMateria() != null) {
+            MateriaPrima mp1 = materiaPrimaRepository.findById(lote1.getIdMateria())
+                    .orElse(null);
+            if (mp1 != null) {
+                mp1.setCantidad(lote1.getCantidadDisponible());
+                materiaPrimaRepository.save(mp1);
+            }
+        }
+        if (lote3.getIdMateria() != null) {
+            MateriaPrima mp3 = materiaPrimaRepository.findById(lote3.getIdMateria())
+                    .orElse(null);
+            if (mp3 != null) {
+                mp3.setCantidad(lote3.getCantidadDisponible());
+                materiaPrimaRepository.save(mp3);
+            }
+        }
 
-        // Actualizar stock de materia prima
-        MateriaPrima mp1 = materiaPrimaRepository.findById(lote1.getIdMateria())
-                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
-        mp1.setCantidad(lote1.getCantidadDisponible());
-        materiaPrimaRepository.save(mp1);
-
-        MateriaPrima mp3 = materiaPrimaRepository.findById(lote3.getIdMateria())
-                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
-        mp3.setCantidad(lote3.getCantidadDisponible());
-        materiaPrimaRepository.save(mp3);
-
-        System.out.println("Producciones iniciales creadas para el producto 1");
+        System.out.println("Producciones iniciales creadas para el producto id: " + producto.getIdProducto());
     }
 
     private MateriaProductoDTO createMateriaDTO(Long idMateria, Float cantidad) {
