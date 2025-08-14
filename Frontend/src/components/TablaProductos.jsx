@@ -8,7 +8,7 @@ import "../styles/tablaProductos.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../api/axiosInstance";
 
-// Componente TablaProductos con referencias para control externo (e.g., abrir modales)
+// Componente de tabla de productos
 const TablaProductos = forwardRef(
     ({ registrosMateria, lotesMateriaPrima, setRegistrosMateria, setLotesMateriaPrima, proveedores, token }, ref) => {
         const [registros, setRegistros] = useState([]);
@@ -41,7 +41,7 @@ const TablaProductos = forwardRef(
         const [modalErrorStockInsuficiente, setModalErrorStockInsuficiente] = useState(false); // Modal para cantidad > maxFabricable
         const [costoInput, setCostoInput] = useState(0); // Estado temporal para costo
         const [precioInput, setPrecioInput] = useState(0); // Estado temporal para precio
-        const [nuevaCantidad, setNuevaCantidad] = useState(0); // Ahora representa "cantidad a fabricar" (incremento)
+        const [nuevaCantidad, setNuevaCantidad] = useState(0);
 
         // Estado para saber qué producto tiene abierta la modal de lotes usados
         const [productoLotesSeleccionado, setProductoLotesSeleccionado] = useState(null);
@@ -83,7 +83,7 @@ const TablaProductos = forwardRef(
         // helper para headers (usa accessToken en localStorage o token prop)
         const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("accessToken") || token}` });
 
-        // Manejo de errores (restaurado)
+        // Manejo de errores
         const handleApiError = (err, context) => {
             console.error(`Error en ${context}:`, {
                 status: err?.response?.status,
@@ -162,13 +162,12 @@ const TablaProductos = forwardRef(
             },
         }));
 
-        // Helper: obtener costo unitario de un lote (intenta varios nombres de campo)
         const getLoteCosto = (lote) => {
             if (!lote) return 0;
             return lote.costo ?? lote.precioUnitario ?? lote.precio ?? lote.valorUnitario ?? 0;
         };
 
-        // Calcular costo total y precio basado en materias (redondeando a múltiplos de 50)
+        // Calcular costo total y precio basado en materias
         useEffect(() => {
             if (!costoModificadoManually) {
                 const nuevoCosto = materiasProducto.reduce((acc, mat) => {
@@ -188,7 +187,6 @@ const TablaProductos = forwardRef(
                     precio: Math.round(costoRedondeado * (1 + (prev.porcentajeGanancia || 15) / 100) / 50) * 50,
                 }));
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [materiasProducto, costoModificadoManually, registrosMateria]);
 
         // Recalcular precio cuando cambia solo el porcentaje (y el usuario NO modificó precio manualmente)
@@ -199,14 +197,13 @@ const TablaProductos = forwardRef(
                 const nuevoPrecio = Math.round(costo * (1 + porcentaje / 100) / 50) * 50;
                 setPrecioInput(nuevoPrecio);
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [formularioTemp.porcentajeGanancia, costoInput]);
 
-        // Cuando cambian lotesMateriaPrima -> actualizar costos por materia (promedio ponderado) y recalcular productos
+        // Cuando cambian lotesMateriaPrima -> actualizar costos por materia y recalcular productos
         useEffect(() => {
             if (!lotesMateriaPrima) return;
 
-            // calcular mapa { idMateria: costoPromedio }
+            // calcular mapa 
             const materiaCostMap = {};
             const lotesByMateria = {};
             for (const lote of lotesMateriaPrima) {
@@ -217,7 +214,6 @@ const TablaProductos = forwardRef(
             }
             Object.keys(lotesByMateria).forEach((idM) => {
                 const lotes = lotesByMateria[idM];
-                // weighted average por cantidad (si cantidad está disponible)
                 let numer = 0;
                 let denom = 0;
                 for (const lote of lotes) {
@@ -240,7 +236,6 @@ const TablaProductos = forwardRef(
                     newCostoRaw += (costoMat || 0) * (m.cantidad || 0);
                 }
                 const newCosto = Math.round(newCostoRaw / 50) * 50;
-                // calcular precio con el mismo markup actual si posible
                 const oldCosto = Number(p.costo || 0);
                 const oldPrecio = Number(p.precio || 0);
                 let newPrecio = oldPrecio;
@@ -262,10 +257,9 @@ const TablaProductos = forwardRef(
                 setRegistros(updated);
                 localStorage.setItem("productos", JSON.stringify(updated));
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [lotesMateriaPrima]);
 
-        // También recalcular si cambian registrosMateria (por si ahi se guarda la forma "oficial" del costo de la materia)
+        // También recalcular si cambian registrosMateria
         useEffect(() => {
             if (!registrosMateria || registrosMateria.length === 0) return;
             const updated = registros.map((p) => {
@@ -294,7 +288,6 @@ const TablaProductos = forwardRef(
                 setRegistros(updated);
                 localStorage.setItem("productos", JSON.stringify(updated));
             }
-            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [registrosMateria]);
 
         // Formatear fechas y monedas
@@ -366,20 +359,17 @@ const TablaProductos = forwardRef(
         };
 
         const abrirModalLotesUsados = (producto) => {
-            // Guardamos el producto que queremos mostrar en la modal y abrimos
             setProductoLotesSeleccionado(producto);
             setCurrentPageLotes(1); // reset paginación al abrir
             setModalLotesUsados(true);
         };
 
-        // Resolución robusta de idProduccion para un registro de lote usado (lu)
+        // Resolución robusta de idProduccion para un registro de lote usado 
         const resolveIdProduccionForLu = (lu) => {
-            // 1) Si backend ya envía idProduccion -> devuélvelo
             if (lu.idProduccion !== undefined && lu.idProduccion !== null) {
                 return lu.idProduccion;
             }
 
-            // 2) Intentar buscar en `producciones` por idProducto y fecha cercana
             if (producciones && producciones.length > 0 && lu.fechaProduccion) {
                 try {
                     const fechaLu = new Date(lu.fechaProduccion).getTime();
@@ -397,11 +387,10 @@ const TablaProductos = forwardRef(
                 }
             }
 
-            // 3) Intentar emparejar en produccionesLotes por idLote + cantidad + fecha cercana
+            // Intentar emparejar en produccionesLotes por idLote + cantidad + fecha cercana
             if (produccionesLotes && produccionesLotes.length > 0) {
                 const qtyLu = Number(lu.cantidadUsada ?? lu.cantidad ?? 0);
                 const fechaLu = lu.fechaProduccion ? new Date(lu.fechaProduccion).getTime() : null;
-                // prefer exact idLote + cantidad match
                 let candidate = produccionesLotes.find(pl => Number(pl.idLote) === Number(lu.idLote) && Math.abs((Number(pl.cantidadUsadaDelLote ?? pl.cantidadUsada ?? 0) - qtyLu)) < 1e-6);
                 if (!candidate && fechaLu) {
                     // fallback a proximidad temporal + idLote
@@ -416,13 +405,11 @@ const TablaProductos = forwardRef(
                 if (candidate) return (candidate.idProduccion ?? candidate.id_produccion ?? candidate.id) || "N/A";
             }
 
-            // 4) Fallback: "N/A"
             return "N/A";
         };
 
         // Reconstruye y filtra lotesUsadosProducto de forma reactiva,
         useEffect(() => {
-            // Si la modal no está abierta o no hay producto seleccionado, limpiamos
             if (!modalLotesUsados || !productoLotesSeleccionado) {
                 setLotesUsadosProducto([]);
                 return;
@@ -442,7 +429,7 @@ const TablaProductos = forwardRef(
                 const fechaProduccion = formatDateTime(fechaProduccionRaw);
                 const fechaIngreso = formatDateTime(fechaIngresoRaw);
 
-                // Inicial del lote (cantidad original al ingreso)
+                // Inicial del lote 
                 const cantidadInicial = lote.cantidad ?? 0;
 
                 // Suma acumulada de usos del mismo lote hasta la fecha de esta producción
@@ -450,7 +437,7 @@ const TablaProductos = forwardRef(
                     .filter((x) => x.idLote === lu.idLote && new Date(x.fechaProduccion) <= new Date(fechaProduccionRaw))
                     .reduce((s, x) => s + (x.cantidadUsada ?? 0), 0);
 
-                // Antes de esta producción: restamos los usos anteriores (excluyendo el actual)
+                // Antes de esta producción: restamos los usos anteriores 
                 const cantidadAntesFabricacion = cantidadInicial - (usedUntilThis - (lu.cantidadUsada ?? 0));
                 const cantidadUsada = lu.cantidadUsada ?? 0;
                 const cantidadDespuesFabricacion = Math.max(0, cantidadAntesFabricacion - cantidadUsada);
@@ -460,11 +447,10 @@ const TablaProductos = forwardRef(
                     ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
                     : "Manual";
 
-                // Buscar produccionLote para obtener idProduccion si existe (si usas produccionesLotes)
+                // Buscar produccionLote para obtener idProduccion si existe 
                 const idProduccionResolved = resolveIdProduccionForLu(lu);
 
                 return {
-                    // conservamos el id interno del registro 'lotesUsadosEnProductos'
                     id: lu.id,
                     idLote: lu.idLote,
                     materiaNombre: registrosMateria.find((m) => m.idMateria === lote?.idMateria)?.nombre || "N/A",
@@ -478,7 +464,6 @@ const TablaProductos = forwardRef(
                     fechaIngresoRaw,
                     fechaProduccionRaw,
                     idProduccion: idProduccionResolved,
-                    // guardamos cantidadDisponible actual del lote también (estado actual)
                     cantidadDisponibleActual: lote?.cantidadDisponible ?? 0,
                 };
             });
@@ -556,7 +541,6 @@ const TablaProductos = forwardRef(
         };
 
         const eliminarCategoria = async (idCategoria, options = { force: false }) => {
-            // Si solo se llamó desde botón "Confirmar" del modal, options.force debería ser true
             const asociados = registros.filter((p) => p.idCategoria?.idCategoria === idCategoria);
 
             if (!options.force && asociados.length > 0) {
@@ -630,7 +614,7 @@ const TablaProductos = forwardRef(
                 return;
             }
 
-            // Validar que tenga al menos 1 materia (evita porcentajes extraños y errores en backend)
+            // Validar que tenga al menos 1 materia 
             if (!materiasProducto || materiasProducto.length === 0) {
                 setError("El producto debe tener al menos 1 materia prima asociada.");
                 return;
@@ -638,7 +622,7 @@ const TablaProductos = forwardRef(
 
             // Costos y precio en múltiplos de 50
             const costoRedondeado = Math.round(Number(costoInput || 0) / 50) * 50;
-            // Si el usuario NO modificó manualmente el precio, calcúlelo a partir del porcentaje
+            // Si el usuario NO modificó manualmente el precio, calcular a partir del porcentaje
             const precioRedondeado = !precioModificadoManually
                 ? Math.round(costoRedondeado * (1 + Number(formularioTemp.porcentajeGanancia || 15) / 100) / 50) * 50
                 : Math.round(Number(precioInput || 0) / 50) * 50;
@@ -652,17 +636,15 @@ const TablaProductos = forwardRef(
                 const headers = authHeaders();
 
                 if (productoSeleccionado) {
-                    // UPDATE: incluimos idProducto y preservamos stock e iva del producto existente
                     const payload = {
                         idProducto: productoSeleccionado.idProducto,
                         nombre: formularioTemp.nombre,
                         costo: costoRedondeado,
                         precio: precioRedondeado,
                         stock: productoSeleccionado.stock ?? 0, // preservamos stock
-                        iva: productoSeleccionado.iva ? true : Boolean(formularioTemp.iva), // si ya tiene iva -> preserve true, else allow chosen value
+                        iva: productoSeleccionado.iva ? true : Boolean(formularioTemp.iva), 
                         materias: materiasProducto,
                     };
-                    // incluir idCategoria explícitamente (si está vacío -> null)
                     payload.idCategoria = formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null;
 
                     await api.put(`/inventarioProducto/${productoSeleccionado.idProducto}`, payload, { headers });
@@ -676,7 +658,6 @@ const TablaProductos = forwardRef(
                         return updated;
                     });
                 } else {
-                    // CREATE: enviar stock/iva por defecto (backend espera esos campos en tu implementación)
                     const payload = {
                         nombre: formularioTemp.nombre,
                         costo: costoRedondeado,
@@ -685,7 +666,6 @@ const TablaProductos = forwardRef(
                         iva: Boolean(formularioTemp.iva),
                         materias: materiasProducto,
                     };
-                    // idCategoria puede ser null (backend debe aceptar null; ver nota abajo)
                     payload.idCategoria = formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null;
 
                     const response = await api.post("/inventarioProducto", payload, { headers });
@@ -751,7 +731,7 @@ const TablaProductos = forwardRef(
             setCostoModificadoManually(false);
         };
 
-        // Actualizar stock delegando al backend (incremento)
+        // Actualizar stock delegando al backend
         const actualizarStock = async (e) => {
             e.preventDefault();
             if (!token) {
@@ -810,7 +790,7 @@ const TablaProductos = forwardRef(
             }
         };
 
-        // Paginación: Calcular índices (productos)
+        // Paginación de los productos
         const indexOfLastItem = currentPage * itemsPerPage;
         const indexOfFirstItem = indexOfLastItem - itemsPerPage;
         const currentItems = registros.slice(indexOfFirstItem, indexOfLastItem);
@@ -1074,7 +1054,7 @@ const TablaProductos = forwardRef(
                                                 value="true"
                                                 checked={Boolean(formularioTemp.iva)}
                                                 onChange={() => {
-                                                    // si ya tenía iva activado en el producto, no permitir desactivar (pero permitir activar si estaba en false)
+                                                    // si ya tenía iva activado en el producto, no permitir desactivar
                                                     if (productoSeleccionado.iva) {
                                                         // ya tiene iva -> preserve true
                                                         setFormularioTemp((p) => ({ ...p, iva: true }));
@@ -1212,7 +1192,7 @@ const TablaProductos = forwardRef(
                                     disabled={modoEdicionMateria}
                                     onChange={(e) => setMateriaNueva({ ...materiaNueva, idMateria: Number(e.target.value) || 0 })}
                                     required
-                                    // size para que tenga scroll si hay muchas materias (lista desplegable tipo listbox)
+                                    // size para que tenga scroll si hay muchas materias
                                     size={8}
                                 >
                                     <option value="">Selecciona una materia prima</option>
