@@ -656,3 +656,11 @@ h1 {
         opacity: 1;
     }
 }
+
+/* Estilos del contador*/
+.login-contador {
+    color: white;
+    margin-bottom: 20px;
+    font-size: 15px;
+    font-weight: bold;
+}
