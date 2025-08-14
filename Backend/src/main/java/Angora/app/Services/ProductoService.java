@@ -45,6 +45,9 @@ public class ProductoService {
     @Autowired
     private MovimientoRepository movimientoRepository;
 
+    @Autowired
+    private MovimientoInventarioService movimientoInventarioService;
+
     // Buscar todos los productos (sin cambios)
     public List<ProductoDTO> findAll() {
         var productos = productoRepository.findAll();
@@ -237,26 +240,34 @@ public class ProductoService {
         int diferencia = nuevaCantidad - stockActual;
         LocalDateTime fechaActual = LocalDateTime.now();
 
-        // Si hay cambio, registrar movimiento de producto (entrada/ salida)
+        // Si hay cambio, registrar movimiento de producto (entrada/ salida) Y set cantidadActual
         if (diferencia != 0) {
             Movimiento movimiento = new Movimiento();
             movimiento.setProducto(producto);
             movimiento.setCantidadAnterior((float) stockActual);
             movimiento.setCantidadCambio((float) Math.abs(diferencia));
+            movimiento.setCantidadActual((float) nuevaCantidad);
             movimiento.setTipoMovimiento(diferencia > 0 ? "entrada" : "salida");
             movimiento.setFechaMovimiento(fechaActual);
             movimientoRepository.save(movimiento);
         }
 
         if (diferencia > 0) {
-            // Aumentar stock (fabricación) - tu lógica existente
+            // Aumentar stock (fabricación)
             Produccion produccion = new Produccion();
             produccion.setIdProducto(idProducto);
             produccion.setFecha(fechaActual);
             Produccion savedProduccion = produccionRepository.save(produccion);
             Long idProduccion = savedProduccion.getIdProduccion();
 
+            // Antes de consumir lotes: guardar snapshot de cantidades de cada materia implicada
+            // Para cada materia del producto: consumir lotes (FIFO) y después generar movimiento de materia
             for (MateriaProducto mp : producto.getMaterias()) {
+                Long idMateria = mp.getIdMateria();
+                MateriaPrima materia = materiaRepository.findById(idMateria)
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateria));
+                Float anteriorMateria = materia.getCantidad() != null ? materia.getCantidad() : 0f;
+
                 float cantidadNecesaria = mp.getCantidad() * diferencia;
                 if (!hasSufficientStock(mp.getIdMateria(), cantidadNecesaria)) {
                     throw new RuntimeException("Stock insuficiente para la materia prima " + mp.getIdMateria());
@@ -280,9 +291,21 @@ public class ProductoService {
 
                     restante -= usar;
                 }
+
+                // después de consumir lotes, recalcular cantidad disponible actual de la materia
+                Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
+                if (actualMateria == null) actualMateria = 0f;
+
+                // actualizar entidad materia en BD
+                materia.setCantidad(actualMateria);
+                materiaRepository.save(materia);
+
+                // registrar movimiento de materia (salida por uso en producción)
+                movimientoInventarioService.crearMovimientoMateria(materia, anteriorMateria, actualMateria, "salida");
             }
+
         } else if (diferencia < 0) {
-            // Reducir stock (devolución) - tu lógica existente
+            // Reducir stock (devolución)
             int cantidadDevolver = Math.abs(diferencia);
             Produccion ultimaProduccion = produccionRepository.findTopByIdProductoOrderByFechaDesc(idProducto)
                     .orElseThrow(() -> new RuntimeException("No hay producciones para devolver stock"));
@@ -308,6 +331,18 @@ public class ProductoService {
                         restante -= devolver;
                     }
                 }
+
+                // después de devolver lotes, recalcular materia y registrar movimiento de materia (entrada)
+                Long idMateria = mp.getIdMateria();
+                MateriaPrima materia = materiaRepository.findById(idMateria)
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateria));
+                Float anteriorMateria = materia.getCantidad() != null ? materia.getCantidad() : 0f;
+                Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
+                if (actualMateria == null) actualMateria = 0f;
+                materia.setCantidad(actualMateria);
+                materiaRepository.save(materia);
+
+                movimientoInventarioService.crearMovimientoMateria(materia, anteriorMateria, actualMateria, "entrada");
             }
         }
 
@@ -319,8 +354,6 @@ public class ProductoService {
 
         return producto;
     }
-
-
 
     @Transactional
     private void updateMateriaCantidadForAll(Set<Long> idMaterias) {

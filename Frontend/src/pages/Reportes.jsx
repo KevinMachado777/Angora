@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/axiosInstance';
 import '../styles/reportes.css';
 import TablaReportes from '../components/TablaReportes';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarAlt, faFileExcel } from '@fortawesome/free-solid-svg-icons';
 import * as XLSX from 'xlsx';
 
 // Registrando componentes de ChartJS
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend);
+// IMPORTANT: añadimos Filler para evitar la advertencia "Tried to use the 'fill' option without the 'Filler' plugin enabled"
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler);
 
 const urlBackend = 'http://localhost:8080/angora/api/v1';
 
@@ -30,7 +31,14 @@ const Reportes = () => {
         utilidad: 0,
     });
 
-    const chartRef = useRef(null);
+    // Refs para cada chart y para el contenedor general de gráficos
+    const barRef = useRef(null);
+    const pieRef = useRef(null);
+    const lineRef = useRef(null);
+    const chartsContainerRef = useRef(null);
+
+    // estado del tamaño del contenedor para forzar remount cuando cambia (soluciona problemas con DevTools device toolbar)
+    const [chartsContainerSize, setChartsContainerSize] = useState({ width: 0, height: 0 });
 
     // Normaliza/transforma las distintas respuestas del backend
     const normalizeResponse = (raw, tipoReporte, filtroTipo) => {
@@ -172,6 +180,103 @@ const Reportes = () => {
         fetchData();
     }, [tipoReporte, filtroTipo, fechaInicio, fechaFin]);
 
+    // Cuando los datos cambian, forzamos un resize/update corto para los charts
+    useEffect(() => {
+        const triggerResize = () => {
+            setTimeout(() => {
+                try {
+                    if (barRef.current && typeof barRef.current.resize === 'function') {
+                        barRef.current.resize();
+                        if (typeof barRef.current.update === 'function') barRef.current.update();
+                    }
+                    if (pieRef.current && typeof pieRef.current.resize === 'function') {
+                        pieRef.current.resize();
+                        if (typeof pieRef.current.update === 'function') pieRef.current.update();
+                    }
+                    if (lineRef.current && typeof lineRef.current.resize === 'function') {
+                        lineRef.current.resize();
+                        if (typeof lineRef.current.update === 'function') lineRef.current.update();
+                    }
+                } catch (err) {
+                    console.warn('Error resizing charts after datos change:', err);
+                }
+            }, 80);
+        };
+        triggerResize();
+    }, [datos, tipoReporte]);
+
+    // Observador de tamaño + listeners para forzar resize cuando cambie el viewport (DevTools device toolbar problem)
+    useEffect(() => {
+        const resizeCharts = () => {
+            // ligero delay para dejar estabilizar layout
+            setTimeout(() => {
+                try {
+                    if (barRef.current && typeof barRef.current.resize === 'function') {
+                        barRef.current.resize();
+                        if (typeof barRef.current.update === 'function') barRef.current.update();
+                    }
+                    if (pieRef.current && typeof pieRef.current.resize === 'function') {
+                        pieRef.current.resize();
+                        if (typeof pieRef.current.update === 'function') pieRef.current.update();
+                    }
+                    if (lineRef.current && typeof lineRef.current.resize === 'function') {
+                        lineRef.current.resize();
+                        if (typeof lineRef.current.update === 'function') lineRef.current.update();
+                    }
+                } catch (err) {
+                    console.warn('Error resizing charts:', err);
+                }
+            }, 60);
+        };
+
+        let ro;
+        if (chartsContainerRef.current && window.ResizeObserver) {
+            try {
+                // Observador que además actualiza el estado con el tamaño del contenedor.
+                ro = new ResizeObserver(() => {
+                    // actualizar tamaño del contenedor para forzar remount si cambia
+                    try {
+                        const el = chartsContainerRef.current;
+                        if (el) {
+                            const rect = el.getBoundingClientRect();
+                            // redondear para evitar cambios muy pequeños que disparen remounts innecesarios
+                            const next = { width: Math.round(rect.width), height: Math.round(rect.height) };
+                            setChartsContainerSize(prev => {
+                                if (prev.width === next.width && prev.height === next.height) return prev;
+                                return next;
+                            });
+                        }
+                    } catch (err) {
+                        console.warn('Error leyendo tamaño del contenedor:', err);
+                    }
+                    resizeCharts();
+                });
+                ro.observe(chartsContainerRef.current);
+            } catch (e) {
+                console.warn('ResizeObserver falló, usando window resize fallback', e);
+            }
+        }
+
+        // listeners complementarios (focus/visibility) porque DevTools a veces cambia visibilidad/layout
+        window.addEventListener('resize', resizeCharts);
+        window.addEventListener('orientationchange', resizeCharts);
+        window.addEventListener('focus', resizeCharts);
+        document.addEventListener('visibilitychange', resizeCharts);
+        // fallback adicional: escucha cambios en la ventana para devtools toggles extremos
+        window.addEventListener('mousemove', resizeCharts);
+
+        return () => {
+            if (ro && chartsContainerRef.current) {
+                try { ro.unobserve(chartsContainerRef.current); } catch (e) { /* ignore */ }
+            }
+            window.removeEventListener('resize', resizeCharts);
+            window.removeEventListener('orientationchange', resizeCharts);
+            window.removeEventListener('focus', resizeCharts);
+            document.removeEventListener('visibilitychange', resizeCharts);
+            window.removeEventListener('mousemove', resizeCharts);
+        };
+    }, []); // solo al montar
+
     const limpiarFechas = () => {
         setFechaInicio('');
         setFechaFin('');
@@ -292,12 +397,16 @@ const Reportes = () => {
             ],
         } : null;
 
+        // clave para forzar remount si el contenedor cambia (evita que canvas quede en mal estado tras toggles DevTools)
+        const chartKeyBase = `${tipoReporte}-${filtroTipo}-${datos.length}-${chartsContainerSize.width}-${chartsContainerSize.height}`;
+
         return (
-            <div className="graficos-container">
+            <div className="graficos-container" ref={chartsContainerRef}>
                 <div className="grafico-item">
-                    <div className="chart-container bar">
+                    <div className="chart-container bar" style={{ minHeight: 220 }}>
                         <Bar
-                            ref={chartRef}
+                            key={`${chartKeyBase}-bar`}
+                            ref={barRef}
                             data={barData}
                             options={{
                                 responsive: true,
@@ -316,8 +425,10 @@ const Reportes = () => {
                     </div>
                 </div>
                 <div className="grafico-item">
-                    <div className="chart-container">
+                    <div className="chart-container" style={{ minHeight: 220 }}>
                         <Pie
+                            key={`${chartKeyBase}-pie`}
+                            ref={pieRef}
                             data={pieData}
                             options={{
                                 responsive: true,
@@ -333,9 +444,10 @@ const Reportes = () => {
                 </div>
                 {lineData && (
                     <div className="grafico-item">
-                        <div className="chart-container">
+                        <div className="chart-container" style={{ minHeight: 220 }}>
                             <Line
-                                ref={chartRef}
+                                key={`${chartKeyBase}-line`}
+                                ref={lineRef}
                                 data={lineData}
                                 options={{
                                     responsive: true,

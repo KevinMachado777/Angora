@@ -133,13 +133,30 @@ public class ReporteService implements IReporteService {
     // Metodo para calcular el total de egresos en un rango de fechas
     // Suma los totales de todas las órdenes en el período
     public Float getTotalEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
+        // 1) Ordenes
         List<Orden> ordenes = (fechaInicio == null && fechaFin == null)
                 ? ordenRepository.findAll()
                 : ordenRepository.findByFechaBetween(fechaInicio, fechaFin);
-        return ordenes.stream()
+
+        float totalOrdenes = ordenes.stream()
                 .map(o -> o.getTotal() != null ? o.getTotal() : 0f)
                 .reduce(0f, Float::sum);
+
+        // 2) Lotes manuales (o con proveedor)
+        List<Lote> lotes = (fechaInicio == null && fechaFin == null)
+                ? loteRepository.findAll()
+                : loteRepository.findByFechaIngresoBetween(fechaInicio, fechaFin);
+
+        float totalLotes = 0f;
+        for (Lote l : lotes) {
+            Float costoUnit = l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f;
+            Float cantidad = l.getCantidad() != null ? l.getCantidad() : 0f;
+            totalLotes += costoUnit * cantidad;
+        }
+
+        return totalOrdenes + totalLotes;
     }
+
 
     // Metodo para calcular el margen de utilidad restando egresos de ingresos
     public Float getUtilidadMargin(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
@@ -305,7 +322,7 @@ public class ReporteService implements IReporteService {
 
                 String nombre = esProducto ? m.getProducto().getNombre() : m.getMateriaPrima().getNombre();
 
-                // Usar SIEMPRE los valores del movimiento (snapshot)
+                // Usar SIEMPRE los valores del movimiento
                 Float cantPasada  = (m.getCantidadAnterior() != null) ? m.getCantidadAnterior()
                         : (m.getCantidadActual() != null && m.getCantidadCambio() != null
                         ? m.getCantidadActual() - m.getCantidadCambio() : 0f);
