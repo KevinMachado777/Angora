@@ -71,8 +71,17 @@ const Ventas = () => {
         setProductos(res.data);
       })
       .catch((err) => {
-        console.error("Error al cargar productos:", err.response?.status, err.response?.data);
-        abrirModal("error", `Error al cargar productos: ${err.response?.data?.message || err.message}`);
+        console.error(
+          "Error al cargar productos:",
+          err.response?.status,
+          err.response?.data
+        );
+        abrirModal(
+          "error",
+          `Error al cargar productos: ${
+            err.response?.data?.message || err.message
+          }`
+        );
       });
 
     // Cargar clientes
@@ -85,27 +94,43 @@ const Ventas = () => {
       })
       .then((res) => {
         console.log("Clientes recibidos:", res.data);
-        const consumidorFinal = { idCliente: 0, nombre: "Consumidor final", carteraActiva: false };
+        const consumidorFinal = {
+          idCliente: 0,
+          nombre: "Consumidor final",
+          carteraActiva: false,
+        };
         setClientes([consumidorFinal, ...res.data]);
       })
       .catch((err) => {
-        console.error("Error al cargar clientes:", err.response?.status, err.response?.data);
-        abrirModal("error", `Error al cargar clientes: ${err.response?.data?.message || err.message}`);
+        console.error(
+          "Error al cargar clientes:",
+          err.response?.status,
+          err.response?.data
+        );
+        abrirModal(
+          "error",
+          `Error al cargar clientes: ${
+            err.response?.data?.message || err.message
+          }`
+        );
       });
   }, [token]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
-    
+
     // Validar cantidad máxima
     if (id === "cantidad") {
       const cantidad = parseInt(value);
       if (cantidad > CANTIDAD_MAXIMA) {
-        abrirModal("advertencia", `La cantidad máxima permitida es ${CANTIDAD_MAXIMA} unidades`);
+        abrirModal(
+          "advertencia",
+          `La cantidad máxima permitida es ${CANTIDAD_MAXIMA} unidades`
+        );
         return;
       }
     }
-    
+
     setFormulario((prev) => ({ ...prev, [id]: value }));
   };
 
@@ -138,7 +163,10 @@ const Ventas = () => {
     }
 
     if (cantidadNueva > CANTIDAD_MAXIMA) {
-      abrirModal("error", `La cantidad máxima permitida es ${CANTIDAD_MAXIMA} unidades`);
+      abrirModal(
+        "error",
+        `La cantidad máxima permitida es ${CANTIDAD_MAXIMA} unidades`
+      );
       return;
     }
 
@@ -160,7 +188,10 @@ const Ventas = () => {
       if (productoExistente) {
         const cantidadTotal = productoExistente.cantidad + cantidadNueva;
         if (cantidadTotal > CANTIDAD_MAXIMA) {
-          abrirModal("error", `La cantidad total no puede exceder ${CANTIDAD_MAXIMA} unidades`);
+          abrirModal(
+            "error",
+            `La cantidad total no puede exceder ${CANTIDAD_MAXIMA} unidades`
+          );
           return;
         }
         const actualizado = {
@@ -213,7 +244,11 @@ const Ventas = () => {
     let totalWithIVA = 0;
     registros.forEach((item) => {
       const producto = productos.find((p) => p.id === item.id);
-      const precioUnitario = producto ? (producto.iva ? item.precio * 1.19 : item.precio) : item.precio;
+      const precioUnitario = producto
+        ? producto.iva
+          ? item.precio * 1.19
+          : item.precio
+        : item.precio;
       subtotal += item.cantidad * item.precio;
       totalWithIVA += item.cantidad * precioUnitario;
     });
@@ -251,7 +286,10 @@ const Ventas = () => {
     if (!clienteSeleccionado || clienteSeleccionado.idCliente === 0) {
       if (!notas.trim()) {
         setErrorNotas(true);
-        abrirModal("error", "Debes ingresar una nota cuando no hay cliente seleccionado o es Consumidor final.");
+        abrirModal(
+          "error",
+          "Debes ingresar una nota cuando no hay cliente seleccionado o es Consumidor final."
+        );
         return;
       }
     }
@@ -263,14 +301,17 @@ const Ventas = () => {
       cantidad: r.cantidad,
     }));
 
-    const clienteCompleto = clienteSeleccionado && clienteSeleccionado.idCliente !== 0
-      ? { idCliente: clienteSeleccionado.idCliente }
-      : null;
+    const clienteCompleto =
+      clienteSeleccionado && clienteSeleccionado.idCliente !== 0
+        ? { idCliente: clienteSeleccionado.idCliente }
+        : null;
 
     const cajeroCompleto = { id: user.id };
 
     const carteraCompleta =
-      metodoPago === "credito" && clienteSeleccionado?.idCliente !== 0 && carteraCliente?.idCartera
+      metodoPago === "credito" &&
+      clienteSeleccionado?.idCliente !== 0 &&
+      carteraCliente?.idCartera
         ? {
             idCartera: carteraCliente.idCartera,
             abono: 0,
@@ -279,8 +320,13 @@ const Ventas = () => {
           }
         : null;
 
+    // Fecha en formato Colombia para backend
+    const fechaColombia = new Date()
+      .toLocaleString("sv-SE", { timeZone: "America/Bogota" })
+      .replace(" ", "T");
+
     const factura = {
-      fecha: new Date().toISOString(),
+      fecha: fechaColombia,
       cliente: clienteCompleto,
       productos: productosCompletos,
       subtotal: subtotal,
@@ -311,8 +357,17 @@ const Ventas = () => {
       setCarteraCliente(null);
       setErrorNotas(false);
     } catch (err) {
-      console.error("Error al registrar venta:", err.response?.status, err.response?.data);
-      abrirModal("error", `Error al registrar la venta: ${err.response?.data?.message || err.message}`);
+      console.error(
+        "Error al registrar venta:",
+        err.response?.status,
+        err.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al registrar la venta: ${
+          err.response?.data?.message || err.message
+        }`
+      );
     }
   };
 
@@ -334,9 +389,11 @@ const Ventas = () => {
 
   // Verificar si el crédito está disponible para el cliente seleccionado
   const isCreditoDisponible = () => {
-    return clienteSeleccionado && 
-           clienteSeleccionado.idCliente !== 0 && 
-           clienteSeleccionado.carteraActiva === true;
+    return (
+      clienteSeleccionado &&
+      clienteSeleccionado.idCliente !== 0 &&
+      clienteSeleccionado.carteraActiva === true
+    );
   };
 
   return (
@@ -436,10 +493,15 @@ const Ventas = () => {
                   }
                 : null;
               setClienteSeleccionado(nuevoCliente);
-              setErrorNotas(!nuevoCliente || nuevoCliente.idCliente === 0 && !notas.trim());
+              setErrorNotas(
+                !nuevoCliente || (nuevoCliente.idCliente === 0 && !notas.trim())
+              );
 
               // Resetear método de pago si se selecciona un cliente sin crédito
-              if (metodoPago === "credito" && (!nuevoCliente || !nuevoCliente.carteraActiva)) {
+              if (
+                metodoPago === "credito" &&
+                (!nuevoCliente || !nuevoCliente.carteraActiva)
+              ) {
                 setMetodoPago("");
               }
 
@@ -456,9 +518,16 @@ const Ventas = () => {
                   );
                   setCarteraCliente(res.data);
                 } catch (error) {
-                  console.error("Error al cargar cartera:", error.response?.status, error.response?.data);
+                  console.error(
+                    "Error al cargar cartera:",
+                    error.response?.status,
+                    error.response?.data
+                  );
                   setCarteraCliente(null);
-                  abrirModal("error", "No se pudo cargar la cartera del cliente.");
+                  abrirModal(
+                    "error",
+                    "No se pudo cargar la cartera del cliente."
+                  );
                 }
               } else {
                 setCarteraCliente(null);
@@ -485,8 +554,23 @@ const Ventas = () => {
             <p>
               <strong>Ticket</strong>
             </p>
-            <p>Fecha: {new Date().toLocaleString()}</p>
-            <p>Cajero: {user?.nombre} {user?.apellido || ""}</p>
+            <p>
+              Fecha:{" "}
+              {new Date().toLocaleString("es-CO", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: false,
+                timeZone: "America/Bogota",
+              })}
+            </p>
+
+            <p>
+              Cajero: {user?.nombre} {user?.apellido || ""}
+            </p>
             <p>Cliente: {clienteSeleccionado?.nombre || "Consumidor final"}</p>
             <p>Método de pago: {metodoPago}</p>
             {notas && (
@@ -607,9 +691,16 @@ const Ventas = () => {
                 checked={metodoPago === "credito"}
                 onChange={() => setMetodoPago("credito")}
                 disabled={!isCreditoDisponible()}
-                title={!isCreditoDisponible() ? "El cliente no tiene crédito activo" : ""}
+                title={
+                  !isCreditoDisponible()
+                    ? "El cliente no tiene crédito activo"
+                    : ""
+                }
               />
-              Crédito {!isCreditoDisponible() && <span className="text-muted">(No disponible)</span>}
+              Crédito{" "}
+              {!isCreditoDisponible() && (
+                <span className="text-muted">(No disponible)</span>
+              )}
             </label>
 
             <h4>Pagó con</h4>
@@ -624,12 +715,21 @@ const Ventas = () => {
               placeholder="Ingrese el valor"
             />
 
-            <h4>Notas{!clienteSeleccionado || clienteSeleccionado.idCliente === 0 ? " (obligatorio)" : " (opcional)"}</h4>
+            <h4>
+              Notas
+              {!clienteSeleccionado || clienteSeleccionado.idCliente === 0
+                ? " (obligatorio)"
+                : " (opcional)"}
+            </h4>
             <textarea
               rows="4"
               value={notas}
               onChange={handleNotasChange}
-              placeholder={!clienteSeleccionado || clienteSeleccionado.idCliente === 0 ? "Ingresa una nota (obligatorio)" : "Escribe una nota (opcional)..."}
+              placeholder={
+                !clienteSeleccionado || clienteSeleccionado.idCliente === 0
+                  ? "Ingresa una nota (obligatorio)"
+                  : "Escribe una nota (opcional)..."
+              }
               className={errorNotas ? "error-input" : ""}
               aria-invalid={errorNotas}
             ></textarea>

@@ -127,30 +127,46 @@ const Proveedores = () => {
   };
 
   const eliminarRegistro = async () => {
-    try {
-      if (modoProveedor) {
-        await api.delete(`${urlProveedores}/${registroEliminar.idProveedor}`);
-        const response = await api.get(urlProveedores);
-        setProveedores(response.data);
-      } else {
-        await api.delete(`${urlOrdenes}/${registroEliminar.idOrden}`);
-        await cargarOrdenesPendientes(); // Usar la función reutilizable
+  try {
+    if (modoProveedor) {
+      // 1️⃣ Verificar si el proveedor tiene órdenes abiertas
+      const ordenesRes = await api.get(
+        `${urlOrdenes}?idProveedor=${registroEliminar.idProveedor}&estado=false`
+      );
+
+      if (ordenesRes.data.length > 0) {
+        abrirModal(
+          "error",
+          "No se puede eliminar este proveedor porque tiene órdenes de compra abiertas."
+        );
+        return; // Cancelar eliminación
       }
-      setConfirmarEliminacion(false);
-      setRegistroEliminar(null);
-      abrirModal("exito", "Registro eliminado correctamente.");
-    } catch (error) {
-      console.error(
-        "Error al eliminar:",
-        error.response?.status,
-        error.response?.data
-      );
-      abrirModal(
-        "error",
-        `Error al eliminar: ${error.response?.data?.message || error.message}`
-      );
+
+      // 2️⃣ Eliminar proveedor si no tiene órdenes abiertas
+      await api.delete(`${urlProveedores}/${registroEliminar.idProveedor}`);
+      const response = await api.get(urlProveedores);
+      setProveedores(response.data);
+    } else {
+      await api.delete(`${urlOrdenes}/${registroEliminar.idOrden}`);
+      await cargarOrdenesPendientes();
     }
-  };
+
+    setConfirmarEliminacion(false);
+    setRegistroEliminar(null);
+    abrirModal("exito", "Registro eliminado correctamente.");
+  } catch (error) {
+    console.error(
+      "Error al eliminar:",
+      error.response?.status,
+      error.response?.data
+    );
+    abrirModal(
+      "error",
+      `Error al eliminar: ${error.response?.data?.message || error.message}`
+    );
+  }
+};
+
 
   const guardarProveedor = async (nuevo) => {
     try {

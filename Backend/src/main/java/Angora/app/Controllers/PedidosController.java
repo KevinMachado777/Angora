@@ -195,7 +195,11 @@ public class PedidosController {
             }
 
             String productosHTML = factura.getProductos().stream().map(fp -> {
-                Float precioConIva = fp.getProducto().getIva() ? fp.getProducto().getPrecio() * 1.19f : fp.getProducto().getPrecio();
+                Float precioUnitario = Float.valueOf(fp.getProducto().getPrecio()); // sin IVA
+                Float subtotal = fp.getProducto().getIva()
+                        ? precioUnitario * 1.19f * fp.getCantidad()
+                        : precioUnitario * fp.getCantidad();
+
                 return String.format(
                         "<tr style=\"border-bottom: 1px solid #b3d4fc;\">" +
                                 "<td style=\"padding: 8px; border: 1px solid #b3d4fc;\">%s</td>" +
@@ -205,8 +209,8 @@ public class PedidosController {
                                 "</tr>",
                         fp.getProducto().getNombre(),
                         fp.getCantidad(),
-                        precioConIva,
-                        fp.getCantidad() * precioConIva
+                        precioUnitario,
+                        subtotal
                 );
             }).collect(Collectors.joining());
 
