@@ -7,11 +7,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface LoteRepository extends JpaRepository<Lote, Long> {
-    void deleteByIdMateria(Long idMateria);
 
+    Optional<Lote> findTopByIdMateriaOrderByFechaIngresoDescIdLoteDesc(Long idMateria);
     // Metodos nuevos
     // Verifica la cantidad disponible de una materia
     @Query("SELECT SUM(l.cantidadDisponible) FROM Lote l WHERE l.idMateria = :idMateria")
