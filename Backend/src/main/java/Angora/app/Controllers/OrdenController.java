@@ -111,7 +111,7 @@ public class OrdenController {
     @PostMapping("/confirmar/{idOrden}")
     public ResponseEntity<String> confirmarOrden(@PathVariable Long idOrden, @RequestBody OrdenConfirmacionDTO ordenConfirmacion) {
         try {
-            ordenService.confirmarOrden(idOrden, ordenConfirmacion.getLotes());
+            ordenService.confirmarOrden(idOrden, ordenConfirmacion);
             return ResponseEntity.ok("Orden confirmada y lotes creados exitosamente.");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

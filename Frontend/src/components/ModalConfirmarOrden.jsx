@@ -7,6 +7,7 @@ import api from "../api/axiosInstance";
 const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
   const [items, setItems] = useState([]);
   const [modalConfirmacion, setModalConfirmacion] = useState(false);
+
   const [modalMensaje, setModalMensaje] = useState({
     tipo: "",
     mensaje: "",
@@ -20,23 +21,31 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
     }, 1500);
   };
 
-  // Calcular el total de la orden
-  const calcularTotal = () => {
-    return items.reduce((total, item) => {
-      return total + (item.costoUnitario * item.cantidad);
+  const [totalOrden, setTotalOrden] = useState(0);
+  
+  useEffect(() => {
+    const total = items.reduce((total, item) => {
+      return total + item.costoUnitario * item.cantidad;
     }, 0);
-  };
+    setTotalOrden(total);
+  }, [items]);
 
   useEffect(() => {
-    
     const fetchCostos = async () => {
       try {
         const updatedItems = await Promise.all(
           orden.ordenMateriaPrimas.map(async (item) => {
             try {
-              console.log(`Consultando costo para idMateria ${item.materiaPrima.idMateria}`);
-              const response = await api.get(`/lotes/ultimo/${item.materiaPrima.idMateria}`);
-              console.log(`Respuesta para idMateria ${item.materiaPrima.idMateria}:`, response.data);
+              console.log(
+                `Consultando costo para idMateria ${item.materiaPrima.idMateria}`
+              );
+              const response = await api.get(
+                `/lotes/ultimo/${item.materiaPrima.idMateria}`
+              );
+              console.log(
+                `Respuesta para idMateria ${item.materiaPrima.idMateria}:`,
+                response.data
+              );
               return {
                 id: item.id,
                 idMateria: item.materiaPrima.idMateria,
@@ -92,10 +101,10 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
         idProveedor: orden.proveedor.idProveedor,
       }));
 
-      console.log("Lotes enviados para confirmación:", lotes);
-
-      const body = { lotes };
+      const body = { lotes, totalOrden };
       await api.post(`/ordenes/confirmar/${orden.idOrden}`, body);
+
+      console.log("Body: ",body);
 
       setModalConfirmacion(false);
       onConfirmar();
@@ -159,29 +168,31 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
             </table>
           )}
         </div>
-        
+
         {/* Campo del Total de la Orden */}
         <div className="grupo-formulario">
           <label>Total de la orden:</label>
           <input
             type="text"
-            value={`$${calcularTotal().toFixed(2)}`}
+            value={`$${totalOrden.toFixed(2)}`}
             readOnly
             className="form-control"
-            style={{ 
-              fontWeight: 'bold', 
-              fontSize: '1.1rem',
-              backgroundColor: '#f8f9fa',
-              color: '#495057'
+            style={{
+              fontWeight: "bold",
+              fontSize: "1.1rem",
+              backgroundColor: "#f8f9fa",
+              color: "#495057",
             }}
           />
         </div>
-        
+
         <div className="pie-modal">
           <BotonCancelar onClick={onClose} />
           <BotonAceptar
             onClick={() => setModalConfirmacion(true)}
-            disabled={items.length === 0 || items.some((item) => item.cantidad <= 0)}
+            disabled={
+              items.length === 0 || items.some((item) => item.cantidad <= 0)
+            }
           />
         </div>
       </Modal>

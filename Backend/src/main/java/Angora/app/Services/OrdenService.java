@@ -1,6 +1,7 @@
 package Angora.app.Services;
 
 import Angora.app.Controllers.dto.LoteDTO;
+import Angora.app.Controllers.dto.OrdenConfirmacionDTO;
 import Angora.app.Entities.Lote;
 import Angora.app.Entities.MateriaPrima;
 import Angora.app.Entities.Orden;
@@ -139,7 +140,7 @@ public class OrdenService implements IOrdenService {
     }
 
     @Transactional
-    public void confirmarOrden(Long idOrden, List<LoteDTO> lotes) {
+    public void confirmarOrden(Long idOrden, OrdenConfirmacionDTO ordenConfirmacion) {
         Orden orden = ordenRepository.findById(idOrden)
                 .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
 
@@ -148,17 +149,16 @@ public class OrdenService implements IOrdenService {
             throw new RuntimeException("La orden ya ha sido confirmada.");
         }
 
-        // Crear lotes (LoteService ya se encarga de la lógica de MateriaPrima)
-        for (LoteDTO loteDTO : lotes) {
-            // Asegúrate de que el idProveedor en el LoteDTO provenga de la orden original si es necesario
-            // Si el LoteDTO ya lo trae del frontend, no es necesario ajustarlo aquí,
-            // pero si necesitas asegurarte que sea el de la orden, lo seteas:
-            // loteDTO.setIdProveedor(orden.getProveedor().getIdProveedor());
-            loteService.save(loteDTO);
+        if (ordenConfirmacion.getLotes() != null) {
+            for (LoteDTO loteDTO : ordenConfirmacion.getLotes()) {
+                loteService.save(loteDTO);
+            }
         }
 
         // Actualizar estado de la orden a Completado
         orden.setEstado(true);
+        orden.setTotal(ordenConfirmacion.getTotalOrden());
+
         ordenRepository.save(orden);
     }
 }

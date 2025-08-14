@@ -11,4 +11,5 @@ import java.util.List;
 @NoArgsConstructor
 public class OrdenConfirmacionDTO {
     private List<LoteDTO> lotes;
+    private Float totalOrden;
 }
