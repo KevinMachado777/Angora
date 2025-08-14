@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import api from '../api/axiosInstance';
 import '../styles/reportes.css';
 import TablaReportes from '../components/TablaReportes';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
@@ -32,6 +32,78 @@ const Reportes = () => {
 
     const chartRef = useRef(null);
 
+    // Normaliza/transforma las distintas respuestas del backend
+    const normalizeResponse = (raw, tipoReporte, filtroTipo) => {
+        if (!Array.isArray(raw)) return [];
+
+        if (tipoReporte === 'inventario') {
+            // backend devuelve ReporteMovimientoDTO: { id, nombre, cantidadPasada, cantidadActual, tipoMovimiento, fechaMovimiento, productoId, materiaPrimaId }
+            return raw
+                .map(m => ({
+                    id: m.id ?? m.idMovimiento ?? m.id_movimiento,
+                    // El DTO ya expone "nombre" (producto o materia), pero si no está, intentar otros campos
+                    nombre: m.nombre ?? m.producto ?? m.materiaPrima ?? m.productoNombre ?? m.materiaPrimaNombre ?? 'Sin Nombre',
+                    cantidadPasada: m.cantidadPasada ?? m.cantidad_pasada ?? null,
+                    cantidadActual: m.cantidadActual ?? m.cantidad_actual ?? null,
+                    tipoMovimiento: m.tipoMovimiento ?? m.tipo_movimiento ?? m.tipo ?? '',
+                    fechaMovimiento: m.fechaMovimiento ?? m.fecha_movimiento ?? m.fecha ?? null,
+                    productoId: m.productoId ?? m.producto_id ?? null,
+                    materiaPrimaId: m.materiaPrimaId ?? m.materia_prima_id ?? null,
+                }))
+                // si el usuario aplica filtro (productos/materiaPrima), filtramos aquí por ids
+                .filter(item => {
+                    if (filtroTipo === 'productos') return item.productoId !== null && item.productoId !== undefined;
+                    if (filtroTipo === 'materiaPrima') return item.materiaPrimaId !== null && item.materiaPrimaId !== undefined;
+                    return true;
+                });
+        }
+
+        if (tipoReporte === 'finanzas') {
+            if (filtroTipo === 'ingresos') {
+                // ReporteIngresosDTO: { id, cliente, metodoPago, fecha, total }
+                return raw.map(r => ({
+                    id: r.id ?? r.idFactura ?? null,
+                    cliente: r.cliente ?? r.nombreCliente ?? 'Sin cliente',
+                    metodoPago: r.metodoPago ?? r.metodoPago ?? '',
+                    fecha: r.fecha ?? r.fechaFactura ?? null,
+                    total: r.total ?? 0,
+                }));
+            } else {
+                // egresos -> ReporteEgresosDTO: { id, proveedor, fecha, total }
+                return raw.map(r => ({
+                    id: r.id ?? r.idOrden ?? null,
+                    proveedor: r.proveedor ?? r.nombreProveedor ?? 'Sin proveedor',
+                    fecha: r.fecha ?? r.fechaOrden ?? null,
+                    total: r.total ?? 0,
+                }));
+            }
+        }
+
+        if (tipoReporte === 'usuarios') {
+            if (filtroTipo === 'personal') {
+                // ReportePersonalDTO: { id, nombre, accion, fecha }
+                return raw.map(r => ({
+                    id: r.id ?? r.idUsuario ?? null,
+                    nombre: r.nombre ?? 'Sin nombre',
+                    accion: r.accion ?? r.accionUsuario ?? '',
+                    fecha: r.fecha ?? null,
+                }));
+            } else {
+                // clientes -> ReporteClientesDTO: { id, nombre, estado, numeroCompras, ultimoCompra }
+                return raw.map(r => ({
+                    id: r.id ?? r.idCliente ?? null,
+                    nombre: r.nombre ?? 'Sin nombre',
+                    estado: r.estado ?? '',
+                    numeroCompras: r.numeroCompras ?? r.numero_compras ?? 0,
+                    ultimoCompra: r.ultimoCompra ?? r.ultima_compra ?? null,
+                }));
+            }
+        }
+
+        // fallback: devolver lo que venga (para seguridad)
+        return raw;
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             let endpoint = '';
@@ -57,27 +129,19 @@ const Reportes = () => {
             }
 
             try {
-                const response = await axios.get(`${urlBackend}${endpoint}`, { params });
-                const data = response.data || [];
-                console.log('Datos recibidos:', data);
+                const response = await api.get(`${urlBackend}${endpoint}`, { params });
+                const rawData = response.data || [];
+                console.log('Datos recibidos crudos:', rawData);
 
-                // Filtrar datos según filtroTipo para inventario
-                if (tipoReporte === 'inventario') {
-                    const filteredData = data.filter(item => {
-                        if (filtroTipo === 'productos' && item.productoId !== null) return true; // Usar productoId para identificar
-                        if (filtroTipo === 'materiaPrima' && item.materiaPrimaId !== null) return true; // Usar materiaPrimaId para identificar
-                        return false;
-                    });
-                    setDatos(filteredData);
-                } else {
-                    setDatos(data);
-                }
+                // Normalizar según tipoReporte y filtro
+                const normalized = normalizeResponse(rawData, tipoReporte, filtroTipo);
+                setDatos(normalized);
 
                 // Fetch métricas financieras
                 const financialParams = { ...params };
                 const [ingresosResp, egresosResp] = await Promise.all([
-                    axios.get(`${urlBackend}/reportes/totalIngresos`, { params: financialParams }),
-                    axios.get(`${urlBackend}/reportes/totalEgresos`, { params: financialParams }),
+                    api.get(`${urlBackend}/reportes/totalIngresos`, { params: financialParams }),
+                    api.get(`${urlBackend}/reportes/totalEgresos`, { params: financialParams }),
                 ]);
                 const totalIngresos = ingresosResp.data || 0;
                 const totalEgresos = egresosResp.data || 0;
@@ -91,9 +155,9 @@ const Reportes = () => {
                 if (tipoReporte === 'inventario') {
                     const inventarioParams = { ...params, tipo: 'movimientos' };
                     const [valorResp, totalProdResp, totalMatResp] = await Promise.all([
-                        axios.get(`${urlBackend}/reportes/valorInventario`, { params: inventarioParams }),
-                        axios.get(`${urlBackend}/reportes/totalProductos`, { params: inventarioParams }),
-                        axios.get(`${urlBackend}/reportes/totalMateriaPrima`, { params: inventarioParams }),
+                        api.get(`${urlBackend}/reportes/valorInventario`, { params: inventarioParams }),
+                        api.get(`${urlBackend}/reportes/totalProductos`, { params: inventarioParams }),
+                        api.get(`${urlBackend}/reportes/totalMateriaPrima`, { params: inventarioParams }),
                     ]);
                     setMetricas({
                         totalInventario: valorResp.data || 0,
@@ -174,8 +238,18 @@ const Reportes = () => {
     const renderizarGraficos = () => {
         if (!datos.length) return null;
 
+        // Labels: tratar de obtener un "nombre" visible (nombre, cliente, proveedor, producto, materiaPrima)
+        const labels = datos.map(item =>
+            item.nombre ?? item.cliente ?? item.proveedor ?? item.producto ?? item.materiaPrima ?? 'Sin Nombre'
+        );
+
+        const values = datos.map(item => {
+            // prioridad: cantidadActual (movimientos), total (finanzas), cantidad (prod/mat)
+            return item.cantidadActual ?? item.total ?? item.cantidad ?? item.cantidadActual ?? 0;
+        });
+
         const barData = {
-            labels: datos.map(item => item.nombre || item.cliente || item.proveedor || 'Sin Nombre'),
+            labels,
             datasets: [
                 {
                     label: tipoReporte === 'inventario'
@@ -183,7 +257,7 @@ const Reportes = () => {
                         : tipoReporte === 'finanzas'
                             ? 'Total'
                             : 'Acciones',
-                    data: datos.map(item => item.cantidadActual || item.total || 0),
+                    data: values,
                     backgroundColor: 'rgba(0, 80, 120, 0.8)',
                     borderColor: 'rgba(0, 120, 180, 1)',
                     borderWidth: 1,
@@ -192,10 +266,10 @@ const Reportes = () => {
         };
 
         const pieData = {
-            labels: datos.map(item => item.nombre || item.cliente || item.proveedor || 'Sin Nombre'),
+            labels,
             datasets: [
                 {
-                    data: datos.map(item => item.cantidadActual || item.total || 1),
+                    data: values.map(v => v || 1),
                     backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
                     borderColor: '#fff',
                     borderWidth: 1,
@@ -204,11 +278,11 @@ const Reportes = () => {
         };
 
         const lineData = tipoReporte === 'finanzas' ? {
-            labels: datos.map(item => item.fecha || 'Sin Fecha'),
+            labels: datos.map(item => (item.fecha ? item.fecha : item.fechaMovimiento ? item.fechaMovimiento : 'Sin Fecha')),
             datasets: [
                 {
                     label: filtroTipo === 'ingresos' ? 'Ingresos' : 'Egresos',
-                    data: datos.map(item => item.total || 0),
+                    data: datos.map(item => item.total ?? 0),
                     borderColor: 'rgba(0, 120, 180, 1)',
                     backgroundColor: 'rgba(0, 80, 120, 0.5)',
                     fill: true,
@@ -287,7 +361,7 @@ const Reportes = () => {
     const exportarAExcel = () => {
         const worksheet = XLSX.utils.json_to_sheet(datos.map(item => ({
             ...item,
-            ValorTotal: item.cantidadActual || item.total || item.cantidad || 0
+            ValorTotal: item.cantidadActual ?? item.total ?? item.cantidad ?? 0
         })));
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte');

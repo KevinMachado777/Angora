@@ -42,6 +42,9 @@ public class ProductoService {
     @Autowired
     private MateriaPrimaRepository materiaRepository;
 
+    @Autowired
+    private MovimientoRepository movimientoRepository;
+
     // Buscar todos los productos (sin cambios)
     public List<ProductoDTO> findAll() {
         var productos = productoRepository.findAll();
@@ -229,12 +232,24 @@ public class ProductoService {
     public Producto updateStock(Long idProducto, int nuevaCantidad) {
         Producto producto = productoRepository.findById(idProducto)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + idProducto));
-        int stockActual = producto.getStock() != null ? producto.getStock() : 0; // Manejar null como 0
+
+        int stockActual = producto.getStock() != null ? producto.getStock() : 0;
         int diferencia = nuevaCantidad - stockActual;
         LocalDateTime fechaActual = LocalDateTime.now();
 
+        // Si hay cambio, registrar movimiento de producto (entrada/ salida)
+        if (diferencia != 0) {
+            Movimiento movimiento = new Movimiento();
+            movimiento.setProducto(producto);
+            movimiento.setCantidadAnterior((float) stockActual);
+            movimiento.setCantidadCambio((float) Math.abs(diferencia));
+            movimiento.setTipoMovimiento(diferencia > 0 ? "entrada" : "salida");
+            movimiento.setFechaMovimiento(fechaActual);
+            movimientoRepository.save(movimiento);
+        }
+
         if (diferencia > 0) {
-            // Aumentar stock (fabricación)
+            // Aumentar stock (fabricación) - tu lógica existente
             Produccion produccion = new Produccion();
             produccion.setIdProducto(idProducto);
             produccion.setFecha(fechaActual);
@@ -256,11 +271,10 @@ public class ProductoService {
                     lote.setCantidadDisponible(lote.getCantidadDisponible() - usar);
                     loteRepository.save(lote);
 
-                    // guardamos la relacion produccion-lote (traza)
+                    // traza
                     produccionLoteRepository.save(new ProduccionLote(idProduccion, lote.getIdLote(), usar));
 
-                    // IMPORTANT: ahora guardamos LoteUsado **con idProduccion** para que no quede null en BD
-                    // Usamos el constructor completo: (id, idLote, idProducto, cantidadUsada, fechaProduccion, idProduccion)
+                    // LoteUsado con idProduccion
                     LoteUsado loteUsado = new LoteUsado(null, lote.getIdLote(), idProducto, usar, fechaActual, idProduccion);
                     loteUsadoRepository.save(loteUsado);
 
@@ -268,7 +282,7 @@ public class ProductoService {
                 }
             }
         } else if (diferencia < 0) {
-            // Reducir stock (devolución)
+            // Reducir stock (devolución) - tu lógica existente
             int cantidadDevolver = Math.abs(diferencia);
             Produccion ultimaProduccion = produccionRepository.findTopByIdProductoOrderByFechaDesc(idProducto)
                     .orElseThrow(() -> new RuntimeException("No hay producciones para devolver stock"));
@@ -295,14 +309,18 @@ public class ProductoService {
                     }
                 }
             }
-            // No eliminar ProduccionLote ni LoteUsado para mantener trazabilidad
         }
 
         producto.setStock(nuevaCantidad);
         productoRepository.save(producto);
+
+        // Actualiza cantidades de materias relacionadas
         updateMateriaCantidadForAll(producto.getMaterias().stream().map(MateriaProducto::getIdMateria).collect(Collectors.toSet()));
+
         return producto;
     }
+
+
 
     @Transactional
     private void updateMateriaCantidadForAll(Set<Long> idMaterias) {
