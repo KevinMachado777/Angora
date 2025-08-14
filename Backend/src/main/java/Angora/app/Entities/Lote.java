@@ -38,4 +38,8 @@ public class Lote {
 
     @Column(name = "id_proveedor")
     private Long idProveedor;
+
+    // Referencia opcional a la orden que generó este lote (si aplica)
+    @Column(name = "id_orden")
+    private Long idOrden;
 }

@@ -56,26 +56,11 @@ public class ReporteService implements IReporteService {
         return ingresos;
     }
 
-    // Metodo para obtener la lista de egresos basada en un rango de fechas
-    // Retorna todas las órdenes si no se especifican fechas
+    // Metodo para obtener la lista de egresos basada en un rango de fechas desde entidad de lote
     public List<ReporteEgresosDTO> getEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteEgresosDTO> egresos = new ArrayList<>();
 
-        // 1) Ordenes
-        List<Orden> ordenes = (fechaInicio == null && fechaFin == null)
-                ? ordenRepository.findAll()
-                : ordenRepository.findByFechaBetween(fechaInicio, fechaFin);
-
-        for (Orden o : ordenes) {
-            egresos.add(new ReporteEgresosDTO(
-                    o.getIdOrden(),
-                    (o.getProveedor() != null ? o.getProveedor().getNombre() : "Sin proveedor"),
-                    o.getFecha(),
-                    (o.getTotal() != null ? o.getTotal() : 0f)
-            ));
-        }
-
-        // 2) Lotes manuales
+        // Obtener lotes (manuales y generados por orden) en el rango o todos si no hay filtro
         List<Lote> lotes = (fechaInicio == null && fechaFin == null)
                 ? loteRepository.findAll()
                 : loteRepository.findByFechaIngresoBetween(fechaInicio, fechaFin);
@@ -86,19 +71,26 @@ public class ReporteService implements IReporteService {
                 proveedor = proveedorRepository.findById(l.getIdProveedor())
                         .map(Proveedor::getNombre)
                         .orElse("Proveedor #" + l.getIdProveedor());
+            } else if (l.getIdOrden() != null) {
+                // Si el lote proviene de una orden, intentar obtener proveedor desde la orden
+                Orden orden = ordenRepository.findById(l.getIdOrden()).orElse(null);
+                if (orden != null && orden.getProveedor() != null && orden.getProveedor().getNombre() != null) {
+                    proveedor = orden.getProveedor().getNombre();
+                }
             }
+
             Float total = (l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f)
                     * (l.getCantidad() != null ? l.getCantidad() : 0f);
 
             egresos.add(new ReporteEgresosDTO(
-                    l.getIdLote(), // usamos id del lote
+                    l.getIdLote(),
                     proveedor,
                     l.getFechaIngreso(),
                     total
             ));
         }
 
-        // (opcional) ordenar por fecha asc
+        // ordenar por fecha asc
         egresos.sort((a,b) -> {
             if (a.getFecha() == null && b.getFecha() == null) return 0;
             if (a.getFecha() == null) return -1;
@@ -133,16 +125,6 @@ public class ReporteService implements IReporteService {
     // Metodo para calcular el total de egresos en un rango de fechas
     // Suma los totales de todas las órdenes en el período
     public Float getTotalEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
-        // 1) Ordenes
-        List<Orden> ordenes = (fechaInicio == null && fechaFin == null)
-                ? ordenRepository.findAll()
-                : ordenRepository.findByFechaBetween(fechaInicio, fechaFin);
-
-        float totalOrdenes = ordenes.stream()
-                .map(o -> o.getTotal() != null ? o.getTotal() : 0f)
-                .reduce(0f, Float::sum);
-
-        // 2) Lotes manuales (o con proveedor)
         List<Lote> lotes = (fechaInicio == null && fechaFin == null)
                 ? loteRepository.findAll()
                 : loteRepository.findByFechaIngresoBetween(fechaInicio, fechaFin);
@@ -153,8 +135,7 @@ public class ReporteService implements IReporteService {
             Float cantidad = l.getCantidad() != null ? l.getCantidad() : 0f;
             totalLotes += costoUnit * cantidad;
         }
-
-        return totalOrdenes + totalLotes;
+        return totalLotes;
     }
 
 

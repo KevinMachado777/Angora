@@ -77,7 +77,8 @@ public class LoteService {
         loteEntity.setCantidadDisponible(loteDto.getCantidad());
         loteEntity.setFechaIngreso(LocalDateTime.now());
         loteEntity.setIdProveedor(loteDto.getIdProveedor());
-
+        // Guardar referencia a la orden en caso de que venga
+        loteEntity.setIdOrden(loteDto.getIdOrden());
         Lote savedLote = loteRepository.save(loteEntity);
 
         // recalcular total disponible y actualizar materia
@@ -107,6 +108,7 @@ public class LoteService {
         dto.setCantidadDisponible(savedLote.getCantidadDisponible());
         dto.setFechaIngreso(savedLote.getFechaIngreso());
         dto.setIdProveedor(savedLote.getIdProveedor());
+        dto.setIdOrden(savedLote.getIdOrden());
         return dto;
     }
 

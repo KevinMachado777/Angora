@@ -15,5 +15,5 @@ public class LoteDTO {
     private Float cantidadDisponible;
     private LocalDateTime fechaIngreso;
     private Long idProveedor;
-
+    private Long idOrden;
 }

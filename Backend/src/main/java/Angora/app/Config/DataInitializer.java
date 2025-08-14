@@ -310,34 +310,34 @@ public class DataInitializer implements CommandLineRunner {
             List<Lote> lotes = new ArrayList<>();
 
             // Lote para Ácido sulfónico (idMateria = 1)
-            lotes.add(new Lote(null, 1L, 3500, 50f, 50f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 1L, 3500, 50f, 50f, LocalDateTime.now(), 1L, null));
 
             // Lote para Glicerina (idMateria = 2)
-            lotes.add(new Lote(null, 2L, 2500, 40f, 40f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 2L, 2500, 40f, 40f, LocalDateTime.now(), 1L, null));
 
             // Lote para Carbonato de sodio (idMateria = 3)
-            lotes.add(new Lote(null, 3L, 1800, 60f, 60f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 3L, 1800, 60f, 60f, LocalDateTime.now(), 1L, null));
 
             // Lote para Lauril éter sulfato de sodio (idMateria = 4)
-            lotes.add(new Lote(null, 4L, 4200, 30f, 30f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 4L, 4200, 30f, 30f, LocalDateTime.now(), 1L, null));
 
             // Lote para Fragancia lavanda (idMateria = 5)
-            lotes.add(new Lote(null, 5L, 6000, 20f, 20f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 5L, 6000, 20f, 20f, LocalDateTime.now(), 1L, null));
 
             // Lote para Colorante azul (idMateria = 6)
-            lotes.add(new Lote(null, 6L, 1000, 10f, 10f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 6L, 1000, 10f, 10f, LocalDateTime.now(), 1L, null));
 
             // Lote para Formol (idMateria = 7)
-            lotes.add(new Lote(null, 7L, 1500, 15f, 15f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 7L, 1500, 15f, 15f, LocalDateTime.now(), 1L, null));
 
             // Lote para Agua destilada (idMateria = 8)
-            lotes.add(new Lote(null, 8L, 300, 100f, 100f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 8L, 300, 100f, 100f, LocalDateTime.now(), 1L, null));
 
             // Lote para Cloruro de amonio (idMateria = 9)
-            lotes.add(new Lote(null, 9L, 2000, 25f, 25f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 9L, 2000, 25f, 25f, LocalDateTime.now(), 1L, null));
 
             // Lote para Alcohol etílico (idMateria = 10)
-            lotes.add(new Lote(null, 10L, 4500, 35f, 35f, LocalDateTime.now(), 1L));
+            lotes.add(new Lote(null, 10L, 4500, 35f, 35f, LocalDateTime.now(), 1L, null));
 
             loteRepository.saveAll(lotes);
             System.out.println("Lotes predeterminados creados exitosamente");

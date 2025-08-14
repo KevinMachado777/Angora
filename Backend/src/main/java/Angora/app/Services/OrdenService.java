@@ -27,13 +27,13 @@ public class OrdenService implements IOrdenService {
     private OrdenRepository ordenRepository;
 
     @Autowired
-    private LoteService loteService; // Usaremos el servicio de lotes para guardar los lotes finales
+    private LoteService loteService;
 
     @Autowired
-    private MateriaPrimaRepository materiaPrimaRepository; // Necesario para buscar materia prima
+    private MateriaPrimaRepository materiaPrimaRepository;
 
     @Autowired
-    private OrdenMateriaPrimaRepository ordenMateriaPrimaRepository; // <--- Nuevo: Para manejar la tabla de unión
+    private OrdenMateriaPrimaRepository ordenMateriaPrimaRepository;
 
     @Autowired
     private EnviarCorreo enviarCorreo;
@@ -55,23 +55,21 @@ public class OrdenService implements IOrdenService {
                 throw new RuntimeException("La orden debe contener al menos una materia prima");
             }
 
-            // 1. Establecer valores por defecto (estado y fecha)
+            // Establecer valores por defecto (estado y fecha)
             orden.setEstado(false);
             orden.setFecha(LocalDateTime.now());
 
-            // 2. Asociar cada ítem de materia prima a la orden principal.
-            // Esto es crucial para que JPA entienda la relación y guarde los ítems.
+            // Asociar cada ítem de materia prima a la orden principal.
             for (OrdenMateriaPrima item : orden.getOrdenMateriaPrimas()) {
                 // Asignar la referencia de la orden principal a cada item
                 item.setOrden(orden);
-                // Si el costo unitario es null, puedes inicializarlo para evitar un error.
+                // Si el costo unitario es null, inicializarlo para evitar un error.
                 if (item.getCostoUnitario() == null) {
                     item.setCostoUnitario(0);
                 }
             }
 
-            // 3. Guardar la orden principal.
-            // Gracias a `cascade = CascadeType.ALL`, JPA guardará automáticamente todos los ítems asociados.
+            // Guardar la orden principal.
             Orden savedOrden = ordenRepository.save(orden);
 
             return savedOrden;
@@ -104,14 +102,12 @@ public class OrdenService implements IOrdenService {
             throw new RuntimeException("La orden debe contener al menos una materia prima.");
         }
 
-        // 1. Actualizar los campos de la Orden principal
+        // Actualizar los campos de la Orden principal
         existingOrden.setProveedor(orden.getProveedor());
         existingOrden.setNotas(orden.getNotas());
         existingOrden.setTotal(orden.getTotal());
-        // Otros campos que desees actualizar
 
-        // 2. Sincronizar la colección de OrdenMateriaPrima
-        // Limpiar la lista existente
+        // Sincronizar la colección de OrdenMateriaPrima
         existingOrden.getOrdenMateriaPrimas().clear();
 
         // Agregar todos los nuevos ítems a la lista de la orden existente
@@ -120,9 +116,6 @@ public class OrdenService implements IOrdenService {
             existingOrden.getOrdenMateriaPrimas().add(newItem);
         }
 
-        // 3. Dejar que JPA se encargue de la persistencia
-        // Gracias a `cascade=ALL` y `orphanRemoval=true`, esta única llamada
-        // guardará la orden y actualizará, agregará o eliminará los ítems de la lista.
         return ordenRepository.save(existingOrden);
     }
 
@@ -151,6 +144,8 @@ public class OrdenService implements IOrdenService {
 
         if (ordenConfirmacion.getLotes() != null) {
             for (LoteDTO loteDTO : ordenConfirmacion.getLotes()) {
+                // Marcar un lote proveniente de una orden
+                loteDTO.setIdOrden(orden.getIdOrden());
                 loteService.save(loteDTO);
             }
         }
