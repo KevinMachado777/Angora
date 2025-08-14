@@ -15,4 +15,6 @@ import java.util.Optional;
 public interface MateriaPrimaRepository extends JpaRepository<MateriaPrima, Long> {
     // Tipo de dato cambiado a Materia, antes era Object
     Optional<MateriaPrima> findByNombre(String nombreMateria);
+
+    void deleteByid(Long id);
 }

@@ -1,34 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+import api from "../api/axiosInstance";
 import Modal from "../components/Modal";
 import BotonAceptar from "../components/BotonAceptar";
 import BotonCancelar from "../components/BotonCancelar";
 import { CreadorTabla } from "./CreadorTabla";
 import "../styles/proveedores.css";
-import axios from "axios";
 import Select from "react-select";
-
-// Componente de mensajes reutilizable
-const ModalMensaje = ({ tipo, mensaje }) => {
-  const iconos = {
-    exito: "bi bi-check-circle-fill text-success display-4 mb-2",
-    error: "bi bi-x-circle-fill text-danger display-4 mb-2",
-    advertencia: "bi bi-exclamation-triangle-fill text-warning display-4 mb-2",
-  };
-
-  const titulos = {
-    exito: "¡Éxito!",
-    error: "Error",
-    advertencia: "Advertencia",
-  };
-
-  return (
-    <div className="text-center p-3">
-      <i className={iconos[tipo]}></i>
-      <h2>{titulos[tipo]}</h2>
-      <p>{mensaje}</p>
-    </div>
-  );
-};
 
 const ModalProveedor = ({
   isOpen,
@@ -37,103 +15,218 @@ const ModalProveedor = ({
   onGuardar,
   datosIniciales,
 }) => {
+  const { user } = useContext(AuthContext);
+  const token = localStorage.getItem("accessToken");
   const esOrden = tipo === "orden";
 
   const [formulario, setFormulario] = useState({
     id: "",
+    idOrden: "",
     nombre: "",
     telefono: "",
     correo: "",
     direccion: "",
     notas: "",
     items: [],
+    total: 0,
   });
 
   const [proveedoresDisponibles, setProveedoresDisponibles] = useState([]);
-  const [nuevoItem, setNuevoItem] = useState({ nombre: "", cantidad: "" });
+  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState(
+    []
+  );
+  const [nuevoItem, setNuevoItem] = useState({
+    idMateria: "",
+    nombre: "",
+    cantidad: "",
+  });
   const [modalEdicionProducto, setModalEdicionProducto] = useState(false);
   const [productoEditando, setProductoEditando] = useState(null);
-
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [modalTipo, setModalTipo] = useState("exito");
-  const [modalMensaje, setModalMensaje] = useState("");
+  const [modalMensaje, setModalMensaje] = useState({
+    tipo: "",
+    mensaje: "",
+    visible: false,
+  });
+  
+  // Nuevo estado para el checkbox de envío de correo
+  const [enviarCorreo, setEnviarCorreo] = useState(false);
 
   const abrirModal = (tipo, mensaje) => {
-    setModalTipo(tipo);
-    setModalMensaje(mensaje);
-    setModalAbierto(true);
+    setModalMensaje({ tipo, mensaje, visible: true });
+    setTimeout(() => {
+      setModalMensaje({ tipo: "", mensaje: "", visible: false });
+    }, 1500);
   };
 
-  const verificarCorreoExistente = async (correo) => {
+  const enviarOrdenPorCorreo = async () => {
+    if (!formulario.idOrden) {
+      abrirModal("advertencia", "Debe tener una orden válida para enviar.");
+      return false;
+    }
+
+    if (!formulario.id || !formulario.nombre) {
+      abrirModal("advertencia", "Debe seleccionar un proveedor válido.");
+      return false;
+    }
+
+    const proveedor = proveedoresDisponibles.find(
+      (p) => p.idProveedor === parseInt(formulario.id)
+    );
+
+    if (!proveedor?.correo) {
+      abrirModal("advertencia", "El proveedor no tiene un correo registrado.");
+      return false;
+    }
+
     try {
-      const response = await fetch(
-        `http://localhost:8080/angora/api/v1/user/exists/${correo}`
+      await api.post("/ordenes/enviar-orden", {
+        idOrden: formulario.idOrden,
+        enviarCorreo: true,
+      });
+
+      abrirModal(
+        "exito",
+        "Lista de compras enviada correctamente al proveedor."
       );
-      if (!response.ok) return false;
-      const exists = await response.json();
-      return exists;
+      return true;
     } catch (error) {
-      console.error("Error al verificar correo:", error);
+      console.error(
+        "Error al enviar lista de compras:",
+        error.response?.status,
+        error.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al enviar lista de compras: ${
+          error.response?.data || error.message
+        }`
+      );
       return false;
     }
   };
 
+  const verificarCorreoExistente = async (correo, idProveedor = 0) => {
+    try {
+      const response = await api.get(
+        `/proveedores/exists/${correo}/${idProveedor}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error al verificar correo:", error);
+      return true;
+    }
+  };
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !token) {
+      if (!token) {
+        abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      }
+      return;
+    }
 
     if (esOrden) {
-      axios
-        .get("http://localhost:8080/angora/api/v1/proveedores")
+      api
+        .get("/proveedores")
         .then((res) => setProveedoresDisponibles(res.data))
-        .catch((err) => console.error("Error al cargar proveedores:", err));
+        .catch((err) => {
+          console.error(
+            "Error al cargar proveedores:",
+            err.response?.status,
+            err.response?.data
+          );
+          abrirModal(
+            "error",
+            `Error al cargar proveedores: ${
+              err.response?.data?.message || err.message
+            }`
+          );
+        });
+
+      api
+        .get("/inventarioMateria")
+        .then((res) => {
+          console.log("Materias primas recibidas:", res.data);
+          setMateriasPrimasDisponibles(res.data);
+        })
+        .catch((err) => {
+          console.error(
+            "Error al cargar materias primas:",
+            err.response?.status,
+            err.response?.data
+          );
+          abrirModal(
+            "error",
+            `Error al cargar materias primas: ${
+              err.response?.data?.message || err.message
+            }`
+          );
+        });
     }
 
     if (datosIniciales) {
-      setFormulario({
-        id: datosIniciales.id || datosIniciales.idProveedor || "",
-        nombre: datosIniciales.nombre || "",
-        telefono: datosIniciales.telefono || "",
-        correo: datosIniciales.correo || "",
-        direccion: datosIniciales.direccion || "",
-        notas: datosIniciales.notas || "",
-        items: datosIniciales.items || [],
-      });
+      console.log("datosIniciales recibidos:", datosIniciales); // Debug
+      if (tipo === "proveedor") {
+        setFormulario({
+          id: datosIniciales.idProveedor || "", // Mapear idProveedor a id
+          nombre: datosIniciales.nombre || "",
+          telefono: datosIniciales.telefono || "",
+          correo: datosIniciales.correo || "",
+          direccion: datosIniciales.direccion || "",
+          idOrden: "",
+          notas: "",
+          items: [],
+          total: 0,
+        });
+      } else if (tipo === "orden") {
+        setFormulario({
+          id: datosIniciales.proveedor?.idProveedor || "", // ID del proveedor
+          idOrden: datosIniciales.idOrden || "",
+          nombre: datosIniciales.proveedor?.nombre || "",
+          telefono: "", // No se usa para órdenes
+          correo: datosIniciales.proveedor?.correo || "", // Para enviarCorreoOrden
+          direccion: "", // No se usa para órdenes
+          notas: datosIniciales.notas || "",
+          total: datosIniciales.total || 0,
+          items:
+            datosIniciales.ordenMateriaPrimas &&
+            Array.isArray(datosIniciales.ordenMateriaPrimas)
+              ? datosIniciales.ordenMateriaPrimas.map((omp) => {
+                  console.log("Mapeando omp:", omp); // Debug
+                  return {
+                    id: omp.id,
+                    idMateria: omp.materiaPrima?.idMateria,
+                    nombre: omp.materiaPrima?.nombre || "",
+                    cantidad: omp.cantidad || 0,
+                  };
+                })
+              : [],
+        });
+      }
     } else {
       setFormulario({
         id: "",
+        idOrden: "",
         nombre: "",
         telefono: "",
         correo: "",
         direccion: "",
         notas: "",
         items: [],
+        total: 0,
       });
     }
 
-    setNuevoItem({ nombre: "", cantidad: "" });
-  }, [isOpen, datosIniciales, esOrden]);
+    setNuevoItem({ idMateria: "", nombre: "", cantidad: "" });
+    // Resetear el checkbox cuando se abre el modal
+    setEnviarCorreo(false);
+  }, [isOpen, datosIniciales, tipo, token]);
 
-  // Controla cuánto dura visible el mensaje modal (ModalMensaje)
   useEffect(() => {
-    if (modalAbierto) {
-      let duracion = 2000;
-      if (modalTipo === "advertencia") duracion = 2000;
-      if (modalTipo === "error") duracion = 2000;
-
-      const timer = setTimeout(() => {
-        setModalAbierto(false); // Solo cerramos el mensaje aquí
-      }, duracion);
-
-      return () => clearTimeout(timer);
+    if (!modalMensaje.visible && modalMensaje.tipo === "exito") {
+      onClose();
     }
-  }, [modalAbierto, modalTipo]);
-
-  // Cierra la modal principal solo cuando se haya cerrado el mensaje y haya sido de tipo 'exito'
-  useEffect(() => {
-    if (!modalAbierto && modalTipo === "exito") {
-      onClose(); // Ahora sí cerramos ModalProveedor después del mensaje de éxito
-    }
-  }, [modalAbierto, modalTipo]);
+  }, [modalMensaje.visible, modalMensaje.tipo, onClose]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -146,65 +239,65 @@ const ModalProveedor = ({
   };
 
   const agregarItem = () => {
-    if (!nuevoItem.nombre.trim()) {
-      abrirModal(
-        "advertencia",
-        "El nombre de la materia prima no puede estar vacío."
-      );
+    console.log("nuevoItem antes de agregar:", nuevoItem); // Debug
+    const idMateria = parseInt(nuevoItem.idMateria);
+    if (!idMateria || isNaN(idMateria) || idMateria <= 0) {
+      abrirModal("advertencia", "Debe seleccionar una materia prima válida.");
       return;
     }
-
-    const cantidad = parseInt(nuevoItem.cantidad);
+    const cantidad = parseFloat(nuevoItem.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
       abrirModal("advertencia", "La cantidad debe ser mayor a 0.");
       return;
     }
-
     const repetido = formulario.items.some(
-      (item) => item.nombre.toLowerCase() === nuevoItem.nombre.toLowerCase()
+      (item) => parseInt(item.idMateria) === idMateria
     );
     if (repetido) {
       abrirModal("advertencia", "Ya has agregado esa materia prima.");
       return;
     }
-
     const nuevo = {
+      idMateria: idMateria,
       nombre: nuevoItem.nombre,
       cantidad: cantidad,
     };
-
     setFormulario((prev) => ({
       ...prev,
       items: [...prev.items, nuevo],
     }));
-
-    setNuevoItem({ nombre: "", cantidad: "" });
+    setNuevoItem({ idMateria: null, nombre: "", cantidad: "" });
   };
 
   const editarProducto = (item) => {
     const index = formulario.items.findIndex(
-      (i) => i.nombre === item.nombre && i.cantidad === item.cantidad
+      (i) => i.idMateria === item.idMateria
     );
     if (index !== -1) {
+      console.log("Item seleccionado para edición:", item); // Añade este log
       setProductoEditando({ ...item, index });
+      setModalEdicionProducto(true);
     }
-    setModalEdicionProducto(true);
   };
 
   const guardarProductoEditado = () => {
     if (
       !productoEditando ||
       !productoEditando.nombre ||
-      parseInt(productoEditando.cantidad) <= 0
+      parseFloat(productoEditando.cantidad) <= 0
     ) {
       abrirModal("advertencia", "La cantidad debe ser mayor a 0.");
       return;
     }
 
     const itemEditado = {
+      id: productoEditando.id,
+      idMateria: productoEditando.idMateria,
       nombre: productoEditando.nombre,
-      cantidad: parseInt(productoEditando.cantidad),
+      cantidad: parseFloat(productoEditando.cantidad),
     };
+
+    console.log("Editando: ", itemEditado);
 
     const nuevosItems = [...formulario.items];
     nuevosItems[productoEditando.index] = itemEditado;
@@ -214,21 +307,23 @@ const ModalProveedor = ({
   };
 
   const eliminarItem = (item) => {
-    const index = formulario.items.findIndex(
-      (i) => i.nombre === item.nombre && i.cantidad === item.cantidad
-    );
-    if (index !== -1) {
-      setFormulario((prev) => ({
-        ...prev,
-        items: prev.items.filter((_, i) => i !== index),
-      }));
-    }
+    setFormulario((prev) => ({
+      ...prev,
+      items: prev.items.filter((i) => i.idMateria !== item.idMateria),
+    }));
   };
 
+  // Función modificada para incluir el envío de correo automático
   const guardar = async (e) => {
     e.preventDefault();
 
+    if (!token) {
+      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      return;
+    }
+
     if (esOrden) {
+      // Validaciones para la orden
       if (!formulario.id) {
         abrirModal(
           "advertencia",
@@ -242,68 +337,72 @@ const ModalProveedor = ({
         return;
       }
 
-      const cantidad = formulario.items.reduce(
-        (acc, item) => acc + (parseInt(item.cantidad) || 0),
-        0
+      // Validar que no haya idMateria inválidos
+      const hasInvalidItem = formulario.items.some(
+        (item) =>
+          !item.idMateria ||
+          isNaN(parseInt(item.idMateria)) ||
+          parseInt(item.idMateria) <= 0
       );
-
-      onGuardar({
-        ...formulario,
-        cantidadArticulos: cantidad,
-        total: 0,
-      });
-
-      abrirModal("exito", "Orden registrada correctamente.");
-
-      setFormulario({
-        id: "",
-        nombre: "",
-        telefono: "",
-        correo: "",
-        direccion: "",
-        notas: "",
-        items: [],
-      });
-
-      if(modalAbierto == false){
-        onClose();
+      if (hasInvalidItem) {
+        abrirModal(
+          "error",
+          "Uno o más ítems tienen un ID de materia prima inválido."
+        );
+        return;
       }
-    }
 
-    const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
-    if (!correoValido) {
-      abrirModal("advertencia", "Por favor ingresa un correo válido.");
-      return;
-    }
+      // Preparar los datos planos que el componente padre espera
+      const datosOrdenParaGuardar = {
+        id: formulario.id,
+        idOrden: formulario.idOrden,
+        notas: formulario.notas,
+        items: formulario.items, // Ya están en la estructura correcta (plana)
+        total: formulario.total,
+      };
 
-    const telefonoValido = /^\d{10}$/.test(formulario.telefono);
-    if (!telefonoValido) {
-      abrirModal(
-        "advertencia",
-        "El teléfono debe tener exactamente 10 dígitos."
+      // Llamada única a la función de guardado del padre
+      onGuardar(datosOrdenParaGuardar);
+
+      // Si el checkbox está marcado y hay una orden existente, enviar correo
+      if (enviarCorreo && formulario.idOrden) {
+        // Dar un pequeño delay para que se complete el guardado antes de enviar
+        setTimeout(async () => {
+          const exitoEnvio = await enviarOrdenPorCorreo();
+          if (!exitoEnvio) {
+            // Si hay error en el envío, mostrar mensaje pero no bloquear el cierre
+            console.log("Error al enviar correo, pero la orden se guardó correctamente");
+          }
+        }, 500);
+      }
+    } else {
+      // Lógica de guardado para proveedores (no necesita cambios)
+      const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
+      if (!correoValido) {
+        abrirModal("advertencia", "Por favor ingresa un correo válido.");
+        return;
+      }
+
+      const telefonoValido = /^\d{10}$/.test(formulario.telefono);
+      if (!telefonoValido) {
+        abrirModal(
+          "advertencia",
+          "El teléfono debe tener exactamente 10 dígitos."
+        );
+        return;
+      }
+
+      const existe = await verificarCorreoExistente(
+        formulario.correo,
+        formulario.id || 0
       );
-      return;
+      if (existe) {
+        abrirModal("advertencia", "Ya existe un proveedor con ese correo.");
+        return;
+      }
+
+      onGuardar({ ...formulario });
     }
-
-    const existe = await verificarCorreoExistente(formulario.correo);
-    if (existe) {
-      abrirModal("advertencia", "Ya existe un usuario con ese correo.");
-      return;
-    }
-
-    onGuardar({ ...formulario, idMateria: [] });
-
-    abrirModal("exito", "Proveedor guardado correctamente.");
-
-    setFormulario({
-      id: "",
-      nombre: "",
-      telefono: "",
-      correo: "",
-      direccion: "",
-      notas: "",
-      items: [],
-    });
   };
 
   if (!isOpen) return null;
@@ -322,7 +421,7 @@ const ModalProveedor = ({
             </h2>
           </div>
 
-          {datosIniciales && (
+          {datosIniciales && !esOrden && (
             <div className="grupo-formulario">
               <label>ID del proveedor:</label>
               <input
@@ -362,6 +461,7 @@ const ModalProveedor = ({
                     ...prev,
                     id: proveedor.idProveedor,
                     nombre: proveedor.nombre,
+                    correo: proveedor.correo,
                   }));
                 }}
                 placeholder="Seleccione un proveedor..."
@@ -427,12 +527,59 @@ const ModalProveedor = ({
                 <h3 className="proveedores subtitulo">
                   Registro de materia prima
                 </h3>
-                <input
-                  placeholder="Nombre"
-                  name="nombre"
-                  value={nuevoItem.nombre}
-                  onChange={handleItemChange}
-                  className="form-control"
+                <Select
+                  options={materiasPrimasDisponibles.map((m) => ({
+                    value: m.idMateria,
+                    label: m.nombre,
+                  }))}
+                  value={
+                    nuevoItem.idMateria && !isNaN(parseInt(nuevoItem.idMateria))
+                      ? {
+                          value: parseInt(nuevoItem.idMateria),
+                          label:
+                            materiasPrimasDisponibles.find(
+                              (m) =>
+                                m.idMateria === parseInt(nuevoItem.idMateria)
+                            )?.nombre || "Materia prima seleccionada",
+                        }
+                      : null
+                  }
+                  onChange={(selected) => {
+                    console.log("Selected option:", selected); // Debug: Ver qué valor llega
+                    if (!selected || !selected.value) {
+                      setNuevoItem((prev) => ({
+                        ...prev,
+                        idMateria: null,
+                        nombre: "",
+                      }));
+                      abrirModal(
+                        "advertencia",
+                        "Por favor seleccione una materia prima válida."
+                      );
+                      return;
+                    }
+                    const materia = materiasPrimasDisponibles.find(
+                      (m) => m.idMateria === selected.value
+                    );
+                    console.log("Found materia:", materia); // Debug: Verificar si materia existe
+                    if (!materia || isNaN(parseInt(materia.idMateria))) {
+                      abrirModal(
+                        "error",
+                        "Materia prima no encontrada o ID inválido."
+                      );
+                      setNuevoItem((prev) => ({
+                        ...prev,
+                        idMateria: null,
+                        nombre: "",
+                      }));
+                      return;
+                    }
+                    setNuevoItem((prev) => ({
+                      ...prev,
+                      idMateria: parseInt(materia.idMateria),
+                      nombre: materia.nombre,
+                    }));
+                  }}
                 />
                 <input
                   placeholder="Cantidad"
@@ -441,6 +588,7 @@ const ModalProveedor = ({
                   value={nuevoItem.cantidad}
                   onChange={handleItemChange}
                   className="form-control"
+                  step="0.01"
                 />
                 <button
                   type="button"
@@ -454,6 +602,8 @@ const ModalProveedor = ({
               <CreadorTabla
                 cabeceros={["Nombre", "Cantidad"]}
                 registros={formulario.items.map((item) => ({
+                  id: item.id,
+                  idMateria: item.idMateria,
                   nombre: item.nombre || "",
                   cantidad: item.cantidad || "",
                 }))}
@@ -470,6 +620,22 @@ const ModalProveedor = ({
                   className="form-control"
                   rows="3"
                 />
+              </div>
+
+              {/* Checkbox para envío automático de correo - Se muestra tanto para agregar como editar órdenes */}
+              <div className="grupo-formulario">
+                <div className="form-check">
+                  <input
+                    type="checkbox"
+                    id="enviarCorreo"
+                    checked={enviarCorreo}
+                    onChange={(e) => setEnviarCorreo(e.target.checked)}
+                    className="form-check-input"
+                  />
+                  <label htmlFor="enviarCorreo" className="form-check-label">
+                    Enviar orden al proveedor
+                  </label>
+                </div>
               </div>
             </>
           )}
@@ -515,6 +681,7 @@ const ModalProveedor = ({
                 }))
               }
               className="form-control"
+              step="0.01"
             />
           </div>
           <div className="pie-modal">
@@ -529,8 +696,29 @@ const ModalProveedor = ({
         </Modal>
       )}
 
-      <Modal isOpen={modalAbierto} onClose={() => setModalAbierto(false)}>
-        <ModalMensaje tipo={modalTipo} mensaje={modalMensaje} />
+      <Modal
+        isOpen={modalMensaje.visible}
+        onClose={() => setModalMensaje({ ...modalMensaje, visible: false })}
+      >
+        <div className="text-center p-3">
+          <i
+            className={
+              modalMensaje.tipo === "exito"
+                ? "bi bi-check-circle-fill text-success display-4 mb-2"
+                : modalMensaje.tipo === "error"
+                ? "bi bi-x-circle-fill text-danger display-4 mb-2"
+                : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
+            }
+          ></i>
+          <h2>
+            {modalMensaje.tipo === "exito"
+              ? "¡Éxito!"
+              : modalMensaje.tipo === "error"
+              ? "Error"
+              : "Advertencia"}
+          </h2>
+          <p>{modalMensaje.mensaje}</p>
+        </div>
       </Modal>
     </>
   );

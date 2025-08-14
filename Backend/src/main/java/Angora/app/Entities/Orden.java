@@ -1,5 +1,6 @@
 package Angora.app.Entities;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,7 +13,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-
 public class Orden {
 
     @Id
@@ -23,13 +23,10 @@ public class Orden {
     @JoinColumn(name = "idProveedor")
     private Proveedor proveedor;
 
-    @ManyToMany
-    @JoinTable(
-            name = "orden-materia",
-            joinColumns = @JoinColumn(name = "idMateria"),
-            inverseJoinColumns = @JoinColumn(name = "idOrden")
-    )
-    private List<MateriaPrima> materiaPrima;
+    @OneToMany(mappedBy = "orden", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference // Esta anotación evita el loop infinito
+    private List<OrdenMateriaPrima> ordenMateriaPrimas;
+
     private String notas;
     private Boolean estado;
     private LocalDateTime fecha;
