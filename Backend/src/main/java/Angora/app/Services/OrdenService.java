@@ -39,7 +39,7 @@ public class OrdenService implements IOrdenService {
 
     @Override
     public List<Orden> listarOrdenes() {
-        return ordenRepository.findAllWithDetails(); // <-- Usa la nueva consulta personalizada
+        return ordenRepository.findAllWithDetails();
     }
 
     @Override

@@ -118,7 +118,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.PUT,"/ordenes/**").permitAll();
 
                     // Al principio de las requestMatchers (antes de anyRequest)
-                    http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").permitAll(); // o hasAuthority("INVENTARIOS")
+                    http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/ordenes/confirmar/**").hasAuthority("PEDIDOS"); // o permitAll según tu política
 // Si quieres permitir POST /lotes (creación directa)
                     http.requestMatchers(HttpMethod.POST, "/lotes/**").hasAuthority("INVENTARIOS");

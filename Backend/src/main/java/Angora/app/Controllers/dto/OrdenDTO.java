@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 public class OrdenDTO {
     private Long idOrden;
-    private Long idProveedor; // Solo el ID del proveedor
+    private Long idProveedor;
     private List<OrdenMateriaPrimaDTO> ordenMateriaPrimas;
     private String notas;
     private boolean estado;

@@ -1,21 +1,37 @@
-<div class="factura-container">
-    <div class="titulo">Orden de Compra - Fraganceys</div>
-    <table class="info-table">
+<div class="factura-container" style="padding: 20px;">
+    <div class="titulo" style="font-size: 24px; font-weight: bold; color: #003049; margin-bottom: 20px;">
+        Orden de Compra - Fraganceys
+    </div>
+    <table class="info-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
         <tr>
-            <td><strong>Proveedor:</strong></td>
-            <td>{{nombre}}</td>
+            <td style="padding: 8px; font-weight: bold; width: 30%;">Proveedor:</td>
+            <td style="padding: 8px;">{{nombre}}</td>
         </tr>
         <tr>
-            <td><strong>Orden N°:</strong></td>
-            <td>{{factura}}</td>
+            <td style="padding: 8px; font-weight: bold;">Orden N°:</td>
+            <td style="padding: 8px;">{{factura}}</td>
         </tr>
         <tr>
-            <td><strong>Monto:</strong></td>
-            <td>${{monto}}</td>
+            <td style="padding: 8px; font-weight: bold;">Monto:</td>
+            <td style="padding: 8px;">${{monto}}</td>
         </tr>
     </table>
-    <div class="mensaje-final">
+    <table class="items-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+        <tr style="background-color: #f4f9ff;">
+            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: left;">Producto</th>
+            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: right;">Cantidad</th>
+            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: right;">Precio Unitario</th>
+            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: right;">Total</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{items}}
+        </tbody>
+    </table>
+    {{notas}}
+    <div class="mensaje-final" style="margin-top: 20px; font-size: 14px;">
         Gracias por su colaboración.<br>
-        ¿Tienes dudas? Escríbenos a <a href="mailto:angorasystem@gmail.com">angorasystem@gmail.com</a>
+        ¿Tienes dudas? Escríbenos a <a href="mailto:angorasystem@gmail.com" style="color: #034078;">angorasystem@gmail.com</a>
     </div>
 </div>

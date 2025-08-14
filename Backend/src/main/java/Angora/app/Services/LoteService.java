@@ -40,7 +40,7 @@ public class LoteService {
     }
 
     public LoteDTO findUltimoLotePorMateria(Long idMateria) {
-        Optional<Lote> loteOptional = loteRepository.findTopByIdMateriaOrderByFechaIngresoDesc(idMateria);
+        Optional<Lote> loteOptional = loteRepository.findTopByIdMateriaOrderByFechaIngresoDescIdLoteDesc(idMateria);
         if (loteOptional.isEmpty()) {
             return null;
         }

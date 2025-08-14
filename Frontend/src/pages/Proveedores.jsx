@@ -10,7 +10,7 @@ import BotonProveedores from "../components/BotonProveedores";
 import Modal from "../components/Modal";
 import BotonCancelar from "../components/BotonCancelar";
 import BotonAceptar from "../components/BotonAceptar";
-import { CreadorTablaOrdenes } from "../components/CreadorTablaOrdenes"; // Import the new component
+import { CreadorTablaOrdenes } from "../components/CreadorTablaOrdenes";
 
 const Proveedores = () => {
   const { user } = useContext(AuthContext);
@@ -19,7 +19,7 @@ const Proveedores = () => {
   const [proveedores, setProveedores] = useState([]);
   const [ordenes, setOrdenes] = useState([]);
   const [modalAbierta, setModalAbierta] = useState(false);
-  const [editando, setEditando] = useState(null); // 'editando' holds the original object being edited
+  const [editando, setEditando] = useState(null);
   const [tipoModal, setTipoModal] = useState("proveedor");
   const [confirmarEliminacion, setConfirmarEliminacion] = useState(false);
   const [registroEliminar, setRegistroEliminar] = useState(null);
@@ -41,8 +41,31 @@ const Proveedores = () => {
   const urlProveedores = "/proveedores";
   const urlOrdenes = "/ordenes";
 
+  // Función reutilizable para cargar órdenes pendientes
+  const cargarOrdenesPendientes = async () => {
+    try {
+      const response = await api.get(urlOrdenes);
+      console.log("Órdenes recibidas:", response.data);
+      const ordenesPendientes = response.data.filter((orden) => orden.estado === false);
+      setOrdenes(ordenesPendientes);
+    } catch (error) {
+      console.error(
+        "Error al cargar órdenes:",
+        error.response?.status,
+        error.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al cargar órdenes: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+      setOrdenes([]);
+    }
+  };
+
   const abrirModalAgregar = () => {
-    setEditando(null); // Ensure 'editando' is null for new entries
+    setEditando(null);
     setTipoModal(modoProveedor ? "proveedor" : "orden");
     setModalAbierta(true);
   };
@@ -77,44 +100,20 @@ const Proveedores = () => {
       }
     };
 
-    cargarProveedores();
-  }, [token]);
-
-  useEffect(() => {
-    if (!token) {
-      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
-      return;
+    if (modoProveedor) {
+      cargarProveedores();
+    } else {
+      cargarOrdenesPendientes();
     }
-
-    const cargarOrdenes = async () => {
-      try {
-        const response = await api.get(urlOrdenes);
-        setOrdenes(response.data);
-      } catch (error) {
-        console.error(
-          "Error al cargar órdenes:",
-          error.response?.status,
-          error.response?.data
-        );
-        abrirModal(
-          "error",
-          `Error al cargar órdenes: ${
-            error.response?.data?.message || error.message
-          }`
-        );
-      }
-    };
-
-    cargarOrdenes();
-  }, [token]);
+  }, [modoProveedor, token]);
 
   const abrirModalEditar = (registro) => {
     const registroOriginal = modoProveedor
       ? proveedores.find((p) => p.idProveedor === registro.idProveedor)
       : ordenes.find((o) => o.idOrden === registro.idOrden);
     if (registroOriginal) {
-      console.log("Registro original para edición:", registroOriginal); // Añade este log
-      setEditando(registroOriginal); // Sets 'editando' with the full original object
+      console.log("Registro original para edición:", registroOriginal);
+      setEditando(registroOriginal);
       setTipoModal(modoProveedor ? "proveedor" : "orden");
       setModalAbierta(true);
     } else {
@@ -135,8 +134,7 @@ const Proveedores = () => {
         setProveedores(response.data);
       } else {
         await api.delete(`${urlOrdenes}/${registroEliminar.idOrden}`);
-        const response = await api.get(urlOrdenes);
-        setOrdenes(response.data);
+        await cargarOrdenesPendientes(); // Usar la función reutilizable
       }
       setConfirmarEliminacion(false);
       setRegistroEliminar(null);
@@ -157,16 +155,14 @@ const Proveedores = () => {
   const guardarProveedor = async (nuevo) => {
     try {
       if (editando) {
-        // If 'editando' exists, it's an update
         await api.put(`${urlProveedores}`, {
-          idProveedor: nuevo.id, // 'id' from formulario is idProveedor
+          idProveedor: nuevo.id,
           nombre: nuevo.nombre,
           telefono: nuevo.telefono,
           correo: nuevo.correo,
           direccion: nuevo.direccion,
         });
       } else {
-        // Otherwise, it's a new entry
         await api.post(urlProveedores, {
           nombre: nuevo.nombre,
           telefono: nuevo.telefono,
@@ -191,14 +187,13 @@ const Proveedores = () => {
         }`
       );
     }
-  }; // Modificar la función guardarOrden para construir el objeto correctamente
+  };
 
   const guardarOrden = async (nuevaOrden) => {
     try {
       console.log("nuevaOrden recibida en guardarOrden:", nuevaOrden);
 
       const ordenData = {
-        // Usar el ID de la orden solo si existe (para edición)
         idOrden: nuevaOrden.idOrden || undefined,
         proveedor: { idProveedor: parseInt(nuevaOrden.id) },
         ordenMateriaPrimas: nuevaOrden.items.map((item) => {
@@ -210,26 +205,22 @@ const Proveedores = () => {
             parsedIdMateria <= 0
           ) {
             throw new Error(
-              `ID de Materia Prima inválido para el ítem: ${JSON.stringify(
-                item
-              )}`
+              `ID de Materia Prima inválido para el ítem: ${JSON.stringify(item)}`
             );
           }
 
-          // Construir el objeto para el backend. Incluye el 'id' solo si existe.
           const ordenMateriaPrimaObj = {
             materiaPrima: { idMateria: parsedIdMateria },
             cantidad: parseFloat(item.cantidad),
           };
 
-          // Si el item tiene un ID (es una edición), lo añadimos al objeto.
           if (item.id) {
             ordenMateriaPrimaObj.id = item.id;
           }
 
           return ordenMateriaPrimaObj;
         }),
-        notas: nuevaOrden.notas || null, // Usar los datos originales para los campos no modificados
+        notas: nuevaOrden.notas || null,
         estado: editando?.estado ?? false,
         fecha: editando?.fecha ?? new Date().toISOString(),
         total: nuevaOrden.total || 0,
@@ -245,8 +236,7 @@ const Proveedores = () => {
         await api.post(urlOrdenes, ordenData);
       }
 
-      const response = await api.get(urlOrdenes);
-      setOrdenes(response.data);
+      await cargarOrdenesPendientes(); // Usar la función reutilizable
       setModalAbierta(false);
       abrirModal("exito", "Orden guardada correctamente.");
     } catch (error) {
@@ -275,53 +265,53 @@ const Proveedores = () => {
     "ID Orden",
     "Nombre Proveedor",
     "Cantidad Artículos",
-    "Notas", // "Acciones" header will be added by CreadorTablaOrdenes
-  ]; // The 'registrosTabla' mapping is for CreadorTabla (for proveedores) // CreadorTablaOrdenes will directly use the 'ordenes' state
+    "Notas",
+  ];
 
   const registrosTabla = modoProveedor
     ? proveedores?.map((p) => ({
-        idProveedor: p.idProveedor,
+        id: p.idProveedor,
         nombre: p.nombre,
-        telefono: p.telefono,
-        correo: p.correo,
-        direccion: p.direccion,
+        teléfono: p.telefono,
+        correoelectrónico: p.correo,
+        dirección: p.direccion,
+        original: p,
       })) ?? []
-    : []; // No mapping needed here, pass 'ordenes' directly to CreadorTablaOrdenes
+    : [];
 
   return (
     <main className="proveedores inventario">
-           {" "}
       <h1 className="titulo">
-                {modoProveedor ? "Proveedores" : "Órdenes de Compra"}     {" "}
+        {modoProveedor ? "Proveedores" : "Órdenes de Compra"}
       </h1>
-           {" "}
       <div className="proveedores opciones">
-                <BotonAgregar onClick={abrirModalAgregar} />       {" "}
+        <BotonAgregar onClick={abrirModalAgregar} />
         {modoProveedor ? (
           <BotonOrdenes onClick={() => setModoProveedor(false)} />
         ) : (
           <BotonProveedores onClick={() => setModoProveedor(true)} />
         )}
-             {" "}
       </div>
-           {" "}
       {modoProveedor ? (
         <CreadorTabla
           cabeceros={cabecerosProveedor}
-          registros={registrosTabla} // This uses the mapped data
-          onEditar={abrirModalEditar}
-          onEliminar={abrirModalEliminar}
+          registros={registrosTabla}
+          onEditar={(registro) =>
+            abrirModalEditar(registro.original || registro)
+          }
+          onEliminar={(registro) =>
+            abrirModalEliminar(registro.original || registro)
+          }
         />
       ) : (
-        <CreadorTablaOrdenes // Use the specific table for orders
+        <CreadorTablaOrdenes
           cabeceros={cabecerosOrden}
-          registros={ordenes} // Pass the raw 'ordenes' array
+          registros={ordenes}
           onEditar={abrirModalEditar}
           onEliminar={abrirModalEliminar}
           onConfirmar={abrirModalConfirmarOrden}
         />
       )}
-           {" "}
       <ModalProveedor
         isOpen={modalAbierta}
         onClose={() => setModalAbierta(false)}
@@ -329,7 +319,6 @@ const Proveedores = () => {
         onGuardar={modoProveedor ? guardarProveedor : guardarOrden}
         datosIniciales={editando}
       />
-           {" "}
       <ModalConfirmarOrden
         isOpen={modalConfirmarOrden}
         onClose={() => setModalConfirmarOrden(false)}
@@ -339,47 +328,36 @@ const Proveedores = () => {
           setOrdenConfirmar(null);
           abrirModal("exito", "Orden confirmada correctamente.");
           try {
-            const response = await api.get(urlOrdenes);
-            setOrdenes(response.data);
+            await cargarOrdenesPendientes(); // Usar la función reutilizable
           } catch (error) {
             console.error("Error al recargar órdenes:", error);
             abrirModal("error", "Error al recargar la lista de órdenes.");
           }
         }}
       />
-           {" "}
       {confirmarEliminacion && (
         <Modal
           isOpen={confirmarEliminacion}
           onClose={() => setConfirmarEliminacion(false)}
         >
-                   {" "}
           <div className="encabezado-modal">
-                        <h2>Confirmar Eliminación</h2>         {" "}
+            <h2>Confirmar Eliminación</h2>
           </div>
-                   {" "}
           <p>
-                        ¿Desea eliminar{" "}
-            {modoProveedor ? "el proveedor" : "la orden"}            {" "}
-            <strong>{registroEliminar?.nombre}</strong>?          {" "}
+            ¿Desea eliminar {modoProveedor ? "el proveedor" : "la orden"}{" "}
+            <strong>{registroEliminar?.nombre}</strong>?
           </p>
-                   {" "}
           <div className="pie-modal">
-                       {" "}
             <BotonCancelar onClick={() => setConfirmarEliminacion(false)} />
-                        <BotonAceptar onClick={eliminarRegistro} />         {" "}
+            <BotonAceptar onClick={eliminarRegistro} />
           </div>
-                 {" "}
         </Modal>
       )}
-           {" "}
       <Modal
         isOpen={modalMensaje.visible}
         onClose={() => setModalMensaje({ ...modalMensaje, visible: false })}
       >
-               {" "}
         <div className="text-center p-3">
-                   {" "}
           <i
             className={
               modalMensaje.tipo === "exito"
@@ -389,21 +367,16 @@ const Proveedores = () => {
                 : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
             }
           ></i>
-                   {" "}
           <h2>
-                       {" "}
             {modalMensaje.tipo === "exito"
               ? "¡Éxito!"
               : modalMensaje.tipo === "error"
               ? "Error"
               : "Advertencia"}
-                     {" "}
           </h2>
-                    <p>{modalMensaje.mensaje}</p>       {" "}
+          <p>{modalMensaje.mensaje}</p>
         </div>
-             {" "}
       </Modal>
-         {" "}
     </main>
   );
 };

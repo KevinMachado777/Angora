@@ -16,15 +16,6 @@ export const CreadorTablaOrdenes = ({ cabeceros = [], registros = [], onEditar, 
     );
   }
 
-  // Si no hay registros, mostrar mensaje
-  if (registros.length === 0) {
-    return (
-      <div className="empty-state">
-        <p>No hay órdenes disponibles.</p>
-      </div>
-    );
-  }
-
   return (
     <table>
       <thead>

@@ -115,73 +115,82 @@ const ModalProveedor = ({
   };
 
   useEffect(() => {
-    if (!isOpen || !token) {
-      if (!token) {
-        abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
-      }
-      return;
+  if (!isOpen || !token) {
+    if (!token) {
+      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
     }
+    return;
+  }
 
-    if (esOrden) {
-      api
-        .get("/proveedores")
-        .then((res) => setProveedoresDisponibles(res.data))
-        .catch((err) => {
-          console.error(
-            "Error al cargar proveedores:",
-            err.response?.status,
-            err.response?.data
-          );
-          abrirModal(
-            "error",
-            `Error al cargar proveedores: ${
-              err.response?.data?.message || err.message
-            }`
-          );
-        });
+  if (esOrden) {
+    api
+      .get("/proveedores")
+      .then((res) => setProveedoresDisponibles(res.data))
+      .catch((err) => {
+        console.error(
+          "Error al cargar proveedores:",
+          err.response?.status,
+          err.response?.data
+        );
+        abrirModal(
+          "error",
+          `Error al cargar proveedores: ${
+            err.response?.data?.message || err.message
+          }`
+        );
+      });
 
-      api
-        .get("/inventarioMateria")
-        .then((res) => {
-          console.log("Materias primas recibidas:", res.data);
-          setMateriasPrimasDisponibles(res.data);
-        })
-        .catch((err) => {
-          console.error(
-            "Error al cargar materias primas:",
-            err.response?.status,
-            err.response?.data
-          );
-          abrirModal(
-            "error",
-            `Error al cargar materias primas: ${
-              err.response?.data?.message || err.message
-            }`
-          );
-        });
-    }
+    api
+      .get("/inventarioMateria")
+      .then((res) => {
+        console.log("Materias primas recibidas:", res.data);
+        setMateriasPrimasDisponibles(res.data);
+      })
+      .catch((err) => {
+        console.error(
+          "Error al cargar materias primas:",
+          err.response?.status,
+          err.response?.data
+        );
+        abrirModal(
+          "error",
+          `Error al cargar materias primas: ${
+            err.response?.data?.message || err.message
+          }`
+        );
+      });
+  }
 
-    if (datosIniciales) {
-      console.log("datosIniciales recibidos:", datosIniciales); // Debug
+  if (datosIniciales) {
+    console.log("datosIniciales recibidos:", datosIniciales); // Debug
+    if (tipo === "proveedor") {
       setFormulario({
-        // ...
-        // Asegurarse de que el ID de la orden se cargue en el campo 'id'
-        // y el ID del proveedor en 'idProveedor'
+        id: datosIniciales.idProveedor || "", // Mapear idProveedor a id
+        nombre: datosIniciales.nombre || "",
+        telefono: datosIniciales.telefono || "",
+        correo: datosIniciales.correo || "",
+        direccion: datosIniciales.direccion || "",
+        idOrden: "",
+        notas: "",
+        items: [],
+        total: 0,
+      });
+    } else if (tipo === "orden") {
+      setFormulario({
         id: datosIniciales.proveedor?.idProveedor || "", // ID del proveedor
-        idOrden: datosIniciales.idOrden || "", // ID de la orden
+        idOrden: datosIniciales.idOrden || "",
         nombre: datosIniciales.proveedor?.nombre || "",
-        telefono: datosIniciales.proveedor?.telefono || "",
-        correo: datosIniciales.proveedor?.correo || "",
-        direccion: datosIniciales.proveedor?.direccion || "",
+        telefono: "", // No se usa para órdenes
+        correo: datosIniciales.proveedor?.correo || "", // Para enviarCorreoOrden
+        direccion: "", // No se usa para órdenes
         notas: datosIniciales.notas || "",
         total: datosIniciales.total || 0,
         items:
           datosIniciales.ordenMateriaPrimas &&
           Array.isArray(datosIniciales.ordenMateriaPrimas)
             ? datosIniciales.ordenMateriaPrimas.map((omp) => {
-              console.log("Mapeando omp:", omp); // Añade este log para verificar
+                console.log("Mapeando omp:", omp); // Debug
                 return {
-                  // Asegúrate de guardar el ID del ítem aquí
                   id: omp.id,
                   idMateria: omp.materiaPrima?.idMateria,
                   nombre: omp.materiaPrima?.nombre || "",
@@ -190,22 +199,23 @@ const ModalProveedor = ({
               })
             : [],
       });
-    } else {
-      setFormulario({
-        id: "",
-        idOrden: "",
-        nombre: "",
-        telefono: "",
-        correo: "",
-        direccion: "",
-        notas: "",
-        items: [],
-        total: 0,
-      });
     }
+  } else {
+    setFormulario({
+      id: "",
+      idOrden: "",
+      nombre: "",
+      telefono: "",
+      correo: "",
+      direccion: "",
+      notas: "",
+      items: [],
+      total: 0,
+    });
+  }
 
-    setNuevoItem({ idMateria: "", nombre: "", cantidad: "" });
-  }, [isOpen, datosIniciales, esOrden, token]);
+  setNuevoItem({ idMateria: "", nombre: "", cantidad: "" });
+}, [isOpen, datosIniciales, tipo, token]);
 
   useEffect(() => {
     if (!modalMensaje.visible && modalMensaje.tipo === "exito") {
@@ -573,7 +583,7 @@ const ModalProveedor = ({
               </div>
 
               <CreadorTabla
-                cabeceros={["Id", "Nombre", "Cantidad"]}
+                cabeceros={["Nombre", "Cantidad"]}
                 registros={formulario.items.map((item) => ({
                   id: item.id,
                   idMateria: item.idMateria,

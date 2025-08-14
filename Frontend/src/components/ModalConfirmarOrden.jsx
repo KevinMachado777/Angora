@@ -21,38 +21,50 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
   };
 
   useEffect(() => {
-    if (!isOpen || !orden) return;
+    if (!isOpen || !orden || !orden.ordenMateriaPrimas) {
+      console.log("Orden no válida o sin ítems:", orden);
+      abrirModal("error", "No se encontraron ítems en la orden.");
+      setItems([]);
+      return;
+    }
 
     const fetchCostos = async () => {
       try {
         const updatedItems = await Promise.all(
-          orden.materiaPrima.map(async (item) => {
+          orden.ordenMateriaPrimas.map(async (item) => {
             try {
-              const response = await api.get(`/lotes/ultimo/${item.idMateria}`);
+              console.log(`Consultando costo para idMateria ${item.materiaPrima.idMateria}`);
+              const response = await api.get(`/lotes/ultimo/${item.materiaPrima.idMateria}`);
+              console.log(`Respuesta para idMateria ${item.materiaPrima.idMateria}:`, response.data);
               return {
-                idMateria: item.idMateria,
-                nombre: item.nombre || "",
+                id: item.id,
+                idMateria: item.materiaPrima.idMateria,
+                nombre: item.materiaPrima.nombre || "",
                 cantidad: parseFloat(item.cantidad) || 0,
-                costoUnitario: parseInt(response.data.costoUnitario) || 0,
+                costoUnitario: parseFloat(response.data.costoUnitario) || 0,
               };
             } catch (error) {
               console.error(
-                `Error al cargar costo para idMateria ${item.idMateria}:`,
-                error
+                `Error al cargar costo para idMateria ${item.materiaPrima.idMateria}:`,
+                error.response?.status,
+                error.response?.data
               );
               return {
-                idMateria: item.idMateria,
-                nombre: item.nombre || "",
+                id: item.id,
+                idMateria: item.materiaPrima.idMateria,
+                nombre: item.materiaPrima.nombre || "",
                 cantidad: parseFloat(item.cantidad) || 0,
                 costoUnitario: 0,
               };
             }
           })
         );
+        console.log("Ítems actualizados:", updatedItems);
         setItems(updatedItems);
       } catch (error) {
-        console.error("Error al cargar costos:", error);
-        abrirModal("error", "Error al cargar costos de los lotes.");
+        console.error("Error general al procesar ítems:", error);
+        abrirModal("error", "Error al procesar los ítems de la orden.");
+        setItems([]);
       }
     };
 
@@ -63,7 +75,7 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
     setItems((prev) =>
       prev.map((item) =>
         item.idMateria === idMateria
-          ? { ...item, costoUnitario: parseInt(value) || 0 }
+          ? { ...item, costoUnitario: parseFloat(value) || 0 }
           : item
       )
     );
@@ -72,18 +84,18 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
   const confirmarOrden = async () => {
     try {
       const lotes = items.map((item) => ({
+        id: item.id || null,
         idMateria: item.idMateria,
         costoUnitario: item.costoUnitario,
         cantidad: item.cantidad,
         idProveedor: orden.proveedor.idProveedor,
       }));
 
-      // --- CORRECCIÓN AQUÍ: Llamar a la nueva ruta de confirmación ---
-      // Se envía el id de la orden en el path y el objeto OrdenConfirmacionDTO en el body
-      const body = { lotes }; // El body debe ser un objeto con la lista de lotes
+      console.log("Lotes enviados para confirmación:", lotes);
+
+      const body = { lotes };
       await api.post(`/ordenes/confirmar/${orden.idOrden}`, body);
 
-      // Si la llamada es exitosa, cerramos el modal y actualizamos
       setModalConfirmacion(false);
       onConfirmar();
     } catch (error) {
@@ -111,42 +123,44 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
         </div>
         <div className="grupo-formulario">
           <h3>Productos</h3>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Cantidad</th>
-                <th>Costo Unitario</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.idMateria}>
-                  <td>{item.nombre}</td>
-                  <td>{item.cantidad.toFixed(2)}</td>
-                  <td>
-                    <input
-                      type="number"
-                      value={item.costoUnitario}
-                      onChange={(e) =>
-                        handleCostoChange(item.idMateria, e.target.value)
-                      }
-                      className="form-control"
-                      step="1"
-                    />
-                  </td>
+          {items.length === 0 ? (
+            <p>No hay ítems para mostrar.</p>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Cantidad</th>
+                  <th>Costo Unitario</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.idMateria}>
+                    <td>{item.nombre}</td>
+                    <td>{item.cantidad.toFixed(2)}</td>
+                    <td>
+                      <input
+                        type="number"
+                        value={item.costoUnitario}
+                        onChange={(e) =>
+                          handleCostoChange(item.idMateria, e.target.value)
+                        }
+                        className="form-control"
+                        step="0.01"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
         <div className="pie-modal">
           <BotonCancelar onClick={onClose} />
           <BotonAceptar
             onClick={() => setModalConfirmacion(true)}
-            disabled={items.some(
-              (item) => item.costoUnitario <= 0 || item.cantidad <= 0
-            )}
+            disabled={items.length === 0 || items.some((item) => item.cantidad <= 0)}
           />
         </div>
       </Modal>
