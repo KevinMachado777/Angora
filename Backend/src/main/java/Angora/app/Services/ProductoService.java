@@ -122,15 +122,19 @@ public class ProductoService {
     // Crear un producto recibiendo los datos en dto (sin cambios)
     @Transactional
     public ProductoDTO crearProductoDesdeDTO(ProductoDTO productoDTO) {
-        Categoria categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
+        Categoria categoria = null;
+        if (productoDTO.getIdCategoria() != null) {
+            // buscar la categoria si el DTO la trae
+            categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
+                    .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
+        }
         Producto producto = Producto.builder()
                 .nombre(productoDTO.getNombre())
                 .precio(productoDTO.getPrecio())
                 .costo(productoDTO.getCosto())
-                .stock(productoDTO.getStock())
+                .stock(productoDTO.getStock() != null ? productoDTO.getStock() : 0)
                 .iva(productoDTO.getIva())
-                .idCategoria(categoria)
+                .idCategoria(categoria) // puede ser null
                 .build();
         producto = productoRepository.save(producto);
         Producto finalProducto = producto;
@@ -151,6 +155,7 @@ public class ProductoService {
 
         return productoDTO;
     }
+
 
     @Transactional
     public ProductoDTO actualizarProductoDesdeDTO(ProductoDTO productoDTO) {
@@ -250,8 +255,15 @@ public class ProductoService {
                     float usar = Math.min(lote.getCantidadDisponible(), restante);
                     lote.setCantidadDisponible(lote.getCantidadDisponible() - usar);
                     loteRepository.save(lote);
+
+                    // guardamos la relacion produccion-lote (traza)
                     produccionLoteRepository.save(new ProduccionLote(idProduccion, lote.getIdLote(), usar));
-                    loteUsadoRepository.save(new LoteUsado(idProducto, lote.getIdLote(), usar, fechaActual));
+
+                    // IMPORTANT: ahora guardamos LoteUsado **con idProduccion** para que no quede null en BD
+                    // Usamos el constructor completo: (id, idLote, idProducto, cantidadUsada, fechaProduccion, idProduccion)
+                    LoteUsado loteUsado = new LoteUsado(null, lote.getIdLote(), idProducto, usar, fechaActual, idProduccion);
+                    loteUsadoRepository.save(loteUsado);
+
                     restante -= usar;
                 }
             }

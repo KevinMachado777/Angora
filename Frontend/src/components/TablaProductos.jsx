@@ -26,7 +26,7 @@ const TablaProductos = forwardRef(
         const [produccionesLotes, setProduccionesLotes] = useState([]);
         const [costoTotal, setCostoTotal] = useState(0);
         const [costoModificadoManually, setCostoModificadoManually] = useState(false);
-        const [formularioTemp, setFormularioTemp] = useState({ porcentajeGanancia: 15, nombre: "", idCategoria: "" });
+        const [formularioTemp, setFormularioTemp] = useState({ porcentajeGanancia: 15, nombre: "", idCategoria: "", iva: null });
         const [maxFabricable, setMaxFabricable] = useState(null);
         const [currentPage, setCurrentPage] = useState(1); // Paginación productos
         const [itemsPerPage] = useState(5); // Cantidad de items por página (productos)
@@ -154,13 +154,19 @@ const TablaProductos = forwardRef(
                 setMateriasProducto([]);
                 setCostoTotal(0);
                 setCostoModificadoManually(false);
-                setFormularioTemp({ porcentajeGanancia: 15, nombre: "", idCategoria: "" });
+                setFormularioTemp({ porcentajeGanancia: 15, nombre: "", idCategoria: "", iva: null });
                 setCostoInput(0);
                 setPrecioInput(0);
                 setPrecioModificadoManually(false);
                 setModalAbierta(true);
             },
         }));
+
+        // Helper: obtener costo unitario de un lote (intenta varios nombres de campo)
+        const getLoteCosto = (lote) => {
+            if (!lote) return 0;
+            return lote.costo ?? lote.precioUnitario ?? lote.precio ?? lote.valorUnitario ?? 0;
+        };
 
         // Calcular costo total y precio basado en materias (redondeando a múltiplos de 50)
         useEffect(() => {
@@ -195,6 +201,101 @@ const TablaProductos = forwardRef(
             }
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [formularioTemp.porcentajeGanancia, costoInput]);
+
+        // Cuando cambian lotesMateriaPrima -> actualizar costos por materia (promedio ponderado) y recalcular productos
+        useEffect(() => {
+            if (!lotesMateriaPrima) return;
+
+            // calcular mapa { idMateria: costoPromedio }
+            const materiaCostMap = {};
+            const lotesByMateria = {};
+            for (const lote of lotesMateriaPrima) {
+                const idM = lote.idMateria;
+                if (!idM) continue;
+                if (!lotesByMateria[idM]) lotesByMateria[idM] = [];
+                lotesByMateria[idM].push(lote);
+            }
+            Object.keys(lotesByMateria).forEach((idM) => {
+                const lotes = lotesByMateria[idM];
+                // weighted average por cantidad (si cantidad está disponible)
+                let numer = 0;
+                let denom = 0;
+                for (const lote of lotes) {
+                    const c = getLoteCosto(lote);
+                    const q = (Number(lote.cantidad) || 0);
+                    numer += c * q;
+                    denom += q;
+                }
+                const avg = denom > 0 ? Math.round((numer / denom) / 1) : 0; // sin redondeo aún
+                materiaCostMap[Number(idM)] = avg || 0;
+            });
+
+            // Recalcular productos que usan estas materias
+            const updated = registros.map((p) => {
+                if (!p.materias || p.materias.length === 0) return p;
+                let changed = false;
+                let newCostoRaw = 0;
+                for (const m of p.materias) {
+                    const costoMat = materiaCostMap[m.idMateria] ?? (registrosMateria.find(r => r.idMateria === m.idMateria)?.costo ?? 0);
+                    newCostoRaw += (costoMat || 0) * (m.cantidad || 0);
+                }
+                const newCosto = Math.round(newCostoRaw / 50) * 50;
+                // calcular precio con el mismo markup actual si posible
+                const oldCosto = Number(p.costo || 0);
+                const oldPrecio = Number(p.precio || 0);
+                let newPrecio = oldPrecio;
+                if (oldCosto > 0) {
+                    const markup = oldPrecio / oldCosto;
+                    newPrecio = Math.round(newCosto * markup / 50) * 50;
+                } else {
+                    // fallback: usar porcentaje default 15%
+                    newPrecio = Math.round(newCosto * 1.15 / 50) * 50;
+                }
+                if (newCosto !== p.costo || newPrecio !== p.precio) {
+                    changed = true;
+                }
+                return changed ? { ...p, costo: newCosto, precio: newPrecio } : p;
+            });
+
+            const changed = JSON.stringify(updated) !== JSON.stringify(registros);
+            if (changed) {
+                setRegistros(updated);
+                localStorage.setItem("productos", JSON.stringify(updated));
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [lotesMateriaPrima]);
+
+        // También recalcular si cambian registrosMateria (por si ahi se guarda la forma "oficial" del costo de la materia)
+        useEffect(() => {
+            if (!registrosMateria || registrosMateria.length === 0) return;
+            const updated = registros.map((p) => {
+                if (!p.materias || p.materias.length === 0) return p;
+                const newCostoRaw = p.materias.reduce((acc, m) => {
+                    const mat = registrosMateria.find((rm) => rm.idMateria === m.idMateria);
+                    return acc + ((mat?.costo || 0) * (m.cantidad || 0));
+                }, 0);
+                const newCosto = Math.round(newCostoRaw / 50) * 50;
+                const oldCosto = Number(p.costo || 0);
+                const oldPrecio = Number(p.precio || 0);
+                let newPrecio = oldPrecio;
+                if (oldCosto > 0) {
+                    const markup = oldPrecio / oldCosto;
+                    newPrecio = Math.round(newCosto * markup / 50) * 50;
+                } else {
+                    newPrecio = Math.round(newCosto * 1.15 / 50) * 50;
+                }
+                if (newCosto !== p.costo || newPrecio !== p.precio) {
+                    return { ...p, costo: newCosto, precio: newPrecio };
+                }
+                return p;
+            });
+            const changed = JSON.stringify(updated) !== JSON.stringify(registros);
+            if (changed) {
+                setRegistros(updated);
+                localStorage.setItem("productos", JSON.stringify(updated));
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [registrosMateria]);
 
         // Formatear fechas y monedas
         const formatDateTime = (dateString) => {
@@ -234,6 +335,7 @@ const TablaProductos = forwardRef(
                 precio: precioVal,
                 porcentajeGanancia: Number.isFinite(porcentajeComputed) ? porcentajeComputed : (formularioTemp.porcentajeGanancia || 15),
                 idCategoria: producto.idCategoria?.idCategoria || "",
+                iva: producto.iva === undefined || producto.iva === null ? false : Boolean(producto.iva),
             });
             setCostoInput(costoVal);
             setPrecioInput(precioVal);
@@ -268,6 +370,54 @@ const TablaProductos = forwardRef(
             setProductoLotesSeleccionado(producto);
             setCurrentPageLotes(1); // reset paginación al abrir
             setModalLotesUsados(true);
+        };
+
+        // Resolución robusta de idProduccion para un registro de lote usado (lu)
+        const resolveIdProduccionForLu = (lu) => {
+            // 1) Si backend ya envía idProduccion -> devuélvelo
+            if (lu.idProduccion !== undefined && lu.idProduccion !== null) {
+                return lu.idProduccion;
+            }
+
+            // 2) Intentar buscar en `producciones` por idProducto y fecha cercana
+            if (producciones && producciones.length > 0 && lu.fechaProduccion) {
+                try {
+                    const fechaLu = new Date(lu.fechaProduccion).getTime();
+                    // buscar produccion que tenga mismo idProducto y fecha dentro de 2 minutos (120000 ms)
+                    const candidate = producciones.find(p => {
+                        if (Number(p.idProducto) !== Number(lu.idProducto)) return false;
+                        const fp = p.fechaProduccion ?? p.fecha ?? p.createdAt ?? null;
+                        if (!fp) return false;
+                        const diff = Math.abs(new Date(fp).getTime() - fechaLu);
+                        return diff <= 120000; // 2 minutos de tolerancia
+                    });
+                    if (candidate) return candidate.idProduccion ?? candidate.id ?? candidate.id_produccion ?? "N/A";
+                } catch {
+                    // ignore parse errors
+                }
+            }
+
+            // 3) Intentar emparejar en produccionesLotes por idLote + cantidad + fecha cercana
+            if (produccionesLotes && produccionesLotes.length > 0) {
+                const qtyLu = Number(lu.cantidadUsada ?? lu.cantidad ?? 0);
+                const fechaLu = lu.fechaProduccion ? new Date(lu.fechaProduccion).getTime() : null;
+                // prefer exact idLote + cantidad match
+                let candidate = produccionesLotes.find(pl => Number(pl.idLote) === Number(lu.idLote) && Math.abs((Number(pl.cantidadUsadaDelLote ?? pl.cantidadUsada ?? 0) - qtyLu)) < 1e-6);
+                if (!candidate && fechaLu) {
+                    // fallback a proximidad temporal + idLote
+                    candidate = produccionesLotes.find(pl => {
+                        if (Number(pl.idLote) !== Number(lu.idLote)) return false;
+                        const fp = pl.fechaProduccion ?? pl.fecha ?? null;
+                        if (!fp) return false;
+                        const diff = Math.abs(new Date(fp).getTime() - fechaLu);
+                        return diff <= 120000;
+                    });
+                }
+                if (candidate) return (candidate.idProduccion ?? candidate.id_produccion ?? candidate.id) || "N/A";
+            }
+
+            // 4) Fallback: "N/A"
+            return "N/A";
         };
 
         // Reconstruye y filtra lotesUsadosProducto de forma reactiva,
@@ -311,9 +461,7 @@ const TablaProductos = forwardRef(
                     : "Manual";
 
                 // Buscar produccionLote para obtener idProduccion si existe (si usas produccionesLotes)
-                const produccionLote = produccionesLotes.find(
-                    (pl) => pl.idLote === lu.idLote && Math.abs((pl.cantidadUsadaDelLote ?? 0) - (lu.cantidadUsada ?? 0)) < 1e-6
-                );
+                const idProduccionResolved = resolveIdProduccionForLu(lu);
 
                 return {
                     // conservamos el id interno del registro 'lotesUsadosEnProductos'
@@ -329,7 +477,7 @@ const TablaProductos = forwardRef(
                     fechaProduccion,       // para mostrar
                     fechaIngresoRaw,
                     fechaProduccionRaw,
-                    idProduccion: produccionLote?.idProduccion || lu.idProduccion || "N/A",
+                    idProduccion: idProduccionResolved,
                     // guardamos cantidadDisponible actual del lote también (estado actual)
                     cantidadDisponibleActual: lote?.cantidadDisponible ?? 0,
                 };
@@ -360,7 +508,8 @@ const TablaProductos = forwardRef(
             lotesMateriaPrima,
             produccionesLotes,
             registrosMateria,
-            proveedores
+            proveedores,
+            producciones
         ]);
 
         // Verificar si un producto puede eliminarse (sin lotes usados ni producciones)
@@ -475,6 +624,12 @@ const TablaProductos = forwardRef(
                 return;
             }
 
+            // Validar IVA seleccionado en creación
+            if (!productoSeleccionado && (formularioTemp.iva === null || formularioTemp.iva === undefined)) {
+                setError("Debes seleccionar si el producto tiene IVA (Sí/No).");
+                return;
+            }
+
             // Validar que tenga al menos 1 materia (evita porcentajes extraños y errores en backend)
             if (!materiasProducto || materiasProducto.length === 0) {
                 setError("El producto debe tener al menos 1 materia prima asociada.");
@@ -504,7 +659,7 @@ const TablaProductos = forwardRef(
                         costo: costoRedondeado,
                         precio: precioRedondeado,
                         stock: productoSeleccionado.stock ?? 0, // preservamos stock
-                        iva: productoSeleccionado.iva ?? 0,
+                        iva: productoSeleccionado.iva ? true : Boolean(formularioTemp.iva), // si ya tiene iva -> preserve true, else allow chosen value
                         materias: materiasProducto,
                     };
                     // incluir idCategoria explícitamente (si está vacío -> null)
@@ -527,7 +682,7 @@ const TablaProductos = forwardRef(
                         costo: costoRedondeado,
                         precio: precioRedondeado,
                         stock: 0,
-                        iva: 0,
+                        iva: Boolean(formularioTemp.iva),
                         materias: materiasProducto,
                     };
                     // idCategoria puede ser null (backend debe aceptar null; ver nota abajo)
@@ -547,7 +702,7 @@ const TablaProductos = forwardRef(
                 setMateriasProducto([]);
                 setCostoTotal(costoRedondeado);
                 setCostoModificadoManually(false);
-                setFormularioTemp({ porcentajeGanancia: formularioTemp.porcentajeGanancia ?? 15, nombre: "", idCategoria: "" });
+                setFormularioTemp({ porcentajeGanancia: formularioTemp.porcentajeGanancia ?? 15, nombre: "", idCategoria: "", iva: null });
                 setCostoInput(costoRedondeado);
                 setPrecioInput(precioRedondeado);
                 setPrecioModificadoManually(false);
@@ -875,6 +1030,89 @@ const TablaProductos = forwardRef(
                                     Si modificas el precio manualmente, ese valor se conservará; si solo cambias el porcentaje, el precio se recalculará automáticamente.
                                 </small>
                             </div>
+
+                            {/* IVA: obligatorio en creación, en edición no se puede desactivar si ya estaba activado */}
+                            <div className="mb-3">
+                                <label className="form-label">¿Tiene IVA?</label>
+                                {!productoSeleccionado ? (
+                                    <div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="ivaRadio"
+                                                id="ivaSi"
+                                                value="true"
+                                                checked={formularioTemp.iva === true}
+                                                onChange={() => setFormularioTemp((p) => ({ ...p, iva: true }))}
+                                                required
+                                            />
+                                            <label className="form-check-label" htmlFor="ivaSi">Sí</label>
+                                        </div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="ivaRadio"
+                                                id="ivaNo"
+                                                value="false"
+                                                checked={formularioTemp.iva === false}
+                                                onChange={() => setFormularioTemp((p) => ({ ...p, iva: false }))}
+                                                required
+                                            />
+                                            <label className="form-check-label" htmlFor="ivaNo">No</label>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="ivaRadioEdit"
+                                                id="ivaSiEdit"
+                                                value="true"
+                                                checked={Boolean(formularioTemp.iva)}
+                                                onChange={() => {
+                                                    // si ya tenía iva activado en el producto, no permitir desactivar (pero permitir activar si estaba en false)
+                                                    if (productoSeleccionado.iva) {
+                                                        // ya tiene iva -> preserve true
+                                                        setFormularioTemp((p) => ({ ...p, iva: true }));
+                                                    } else {
+                                                        setFormularioTemp((p) => ({ ...p, iva: true }));
+                                                    }
+                                                }}
+                                            />
+                                            <label className="form-check-label" htmlFor="ivaSiEdit">Sí</label>
+                                        </div>
+                                        <div className="form-check form-check-inline">
+                                            <input
+                                                className="form-check-input"
+                                                type="radio"
+                                                name="ivaRadioEdit"
+                                                id="ivaNoEdit"
+                                                value="false"
+                                                checked={!formularioTemp.iva}
+                                                onChange={() => {
+                                                    // solo permitir desactivar si el producto no tenía iva previamente
+                                                    if (productoSeleccionado.iva) {
+                                                        // no permitir desactivar -> forzar true
+                                                        setFormularioTemp((p) => ({ ...p, iva: true }));
+                                                    } else {
+                                                        setFormularioTemp((p) => ({ ...p, iva: false }));
+                                                    }
+                                                }}
+                                                disabled={productoSeleccionado?.iva === true}
+                                            />
+                                            <label className="form-check-label" htmlFor="ivaNoEdit">No</label>
+                                        </div>
+                                        {productoSeleccionado?.iva === true && (
+                                            <div className="form-text text-muted">El IVA ya está activado y no puede desactivarse.</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="mb-3">
                                 <label className="form-label">Categoría</label>
                                 <select
@@ -1231,16 +1469,11 @@ const TablaProductos = forwardRef(
                     </Modal>
                 )}
 
-                {/* Error modal general */}
                 {error && (
                     <Modal isOpen={!!error} onClose={() => setError(null)}>
-                        <div className="encabezado-modal">
-                            <h2>Error</h2>
-                        </div>
+                        <div className="encabezado-modal"><h2>Error</h2></div>
                         <p className="text-center">{error}</p>
-                        <div className="modal-footer">
-                            <BotonAceptar onClick={() => setError(null)} />
-                        </div>
+                        <div className="modal-footer"><BotonAceptar onClick={() => setError(null)} /></div>
                     </Modal>
                 )}
             </div>
