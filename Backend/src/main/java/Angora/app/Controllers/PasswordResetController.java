@@ -3,6 +3,7 @@ package Angora.app.Controllers;
 import Angora.app.Controllers.dto.CambiarPasswordDTO;
 import Angora.app.Controllers.dto.PasswordResetDTO;
 import Angora.app.Services.PasswordResetService;
+import Angora.app.Repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,9 @@ public class PasswordResetController {
 
     @Autowired
     private PasswordResetService passwordResetService;
+
+    @Autowired
+    private UsuarioRepository usuarioRepository;
 
     // Solicitar codigo por correo
     @PostMapping

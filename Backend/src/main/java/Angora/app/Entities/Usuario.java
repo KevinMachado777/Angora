@@ -53,4 +53,7 @@ public class Usuario {
     private List<Permiso> permisos = new ArrayList<>();
 
     private String foto;
+
+    @Column(name = "primer_login")
+    private Boolean primerLogin = true;
 }

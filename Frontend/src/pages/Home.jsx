@@ -5,6 +5,7 @@ import "animate.css";
 import "../styles/Home.css";
 
 import { AuthContext } from "../context/AuthContext";
+import ModalCambiarContrasena from '../components/ModalContrasena'; // Importa el nuevo componente modal
 
 import producto1 from "../assets/images/gallery/producto1.jpg";
 import producto2 from "../assets/images/gallery/producto2.jpg";
@@ -49,8 +50,9 @@ const useScrollAnimation = (threshold = 0.1) => {
 
 const Home = () => {
   const [mostrarAlerta, setMostrarAlerta] = useState(false);
-
-  const { user } = useContext(AuthContext);
+  // Extraemos 'user', 'setUser' y 'loading' del AuthContext
+  const { user, setUser, loading } = useContext(AuthContext); 
+  const [mostrarModalContrasena, setMostrarModalContrasena] = useState(false); // Estado para controlar la visibilidad del modal de contraseña
 
   const [slogan, setSlogan] = useState("");
   const [hoverTitle, setHoverTitle] = useState(false);
@@ -68,21 +70,32 @@ const Home = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Nuevo useEffect para manejar la lógica del modal de contraseña y el toast de bienvenida
   useEffect(() => {
-  const toastShown = sessionStorage.getItem("bienvenidaMostrada");
-  if (!toastShown && user?.nombre) {
-    setMostrarToast(true); // ✅ Este es el estado correcto
-    sessionStorage.setItem("bienvenidaMostrada", "true");
-  }
-}, [user]);
-useEffect(() => {
-  if (mostrarToast) {
-    const timer = setTimeout(() => setMostrarToast(false), 5000);
-    return () => clearTimeout(timer);
-  }
-}, [mostrarToast]);
+    // Si la carga de autenticación ha terminado y el usuario existe
+    if (!loading && user) {
+      // Si el usuario tiene 'firstLogin' en true, muestra el modal de contraseña
+      if (user.primerLogin) {
+        setMostrarModalContrasena(true);
+      } else {
+        setMostrarModalContrasena(false); // Asegúrate de que el modal esté oculto si firstLogin es false
+      }
 
+      // Lógica para el toast de bienvenida
+      const toastShown = sessionStorage.getItem("bienvenidaMostrada");
+      if (!toastShown && user.nombre) {
+        setMostrarToast(true);
+        sessionStorage.setItem("bienvenidaMostrada", "true");
+      }
+    }
+  }, [user, loading]); // Dependencias: user y loading, para reaccionar cuando cambien
 
+  useEffect(() => {
+    if (mostrarToast) {
+      const timer = setTimeout(() => setMostrarToast(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [mostrarToast]);
 
   const gallery = [...productos, ...productos];
 
@@ -99,6 +112,16 @@ useEffect(() => {
             ¡Hola, <strong>{user.nombre}</strong>! Bienvenido de nuevo.
           </span>
         </div>
+      )}
+
+      {/* Modal para cambiar la contraseña, se muestra si mostrarModalContrasena es true y el usuario existe */}
+      {user && (
+        <ModalCambiarContrasena
+          isOpen={mostrarModalContrasena}
+          onClose={() => setMostrarModalContrasena(false)} // Función para cerrar el modal
+          user={user} // Pasa el objeto usuario a la modal
+          setUser={setUser} // Pasa la función setUser para que la modal pueda actualizar el contexto
+        />
       )}
 
       <section className="hero text-center py-5">

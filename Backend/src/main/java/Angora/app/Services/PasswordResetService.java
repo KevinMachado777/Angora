@@ -124,6 +124,9 @@ public class PasswordResetService {
 
         Usuario usuario = usuarioRepository.findUsuarioByCorreo(cambiarPasswordDTO.getCorreo()).orElse(null);
         usuario.setContraseña(passwordEncoder.encode(cambiarPasswordDTO.getPassword()));
+        if (usuario.getPrimerLogin() != null && usuario.getPrimerLogin()) {
+            usuario.setPrimerLogin(false);
+        }
         usuarioRepository.save(usuario);
         PasswordResetResponse response = new PasswordResetResponse("Contraseña cambiada correctamente", true);
         return response;

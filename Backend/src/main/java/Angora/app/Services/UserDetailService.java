@@ -242,6 +242,7 @@ public class UserDetailService implements UserDetailsService{
                 .accountNoExpired(true)
                 .accountNoLocked(true)
                 .credentialNoExpired(true)
+                .primerLogin(true)
                 .build();
 
         // Guardamos el usuario

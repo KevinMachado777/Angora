@@ -1,0 +1,273 @@
+/* --- ANIMACIÓN DE ENTRADA --- */
+@keyframes floatIn {
+    from {
+        opacity: 0;
+        transform: translateY(50px) scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* --- ANIMACIÓN DE FUNDO --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* --- CONTENEDOR DEL FONDO DEL MODAL --- */
+.modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(0, 0, 0, 0.95) !important; /* Solo fondo oscuro */    
+    backdrop-filter: blur(12px) !important; /* Forzado con !important */
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    z-index: 2000 !important;
+    animation: fadeIn 0.4s ease-out !important;
+    background-color: transparent !important;
+}
+
+/* --- CONTENEDOR PRINCIPAL DEL MODAL --- */
+.modal-content {
+    position: relative !important;
+    z-index: 2001 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.change-password-modal-content {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+    backdrop-filter: blur(20px) saturate(200%);
+    border-radius: 24px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+    padding: 35px 30px;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    font-family: 'Inter', 'Segoe UI', 'Roboto', sans-serif;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    animation: floatIn 0.7s cubic-bezier(0.25, 0.8, 0.25, 1);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Fondo animado en degradado con transición suave */
+.change-password-modal-content::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #2a6e78, #1a4066);
+    opacity: 0.8;
+    z-index: -2;
+    transition: opacity 0.5s ease;
+}
+
+/* Efecto hover para el fondo del modal */
+.change-password-modal-content:hover::before {
+    opacity: 0.85;
+}
+
+/* --- ENCABEZADO --- */
+.change-password-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.change-password-icon {
+    font-size: 3.5rem;
+    color: #ffffff;
+    text-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease;
+}
+
+.change-password-header:hover .change-password-icon {
+    transform: scale(1.1);
+}
+
+.change-password-header h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    margin: 0;
+}
+
+/* --- DESCRIPCIÓN --- */
+.change-password-body p {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.92);
+    text-align: center;
+    line-height: 1.6;
+    margin: 0;
+}
+
+/* --- FORMULARIO --- */
+.change-password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.change-password-form-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+
+/* --- INPUTS --- */
+.change-password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.change-password-input {
+    width: 100%;
+    padding: 12px 40px 12px 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    backdrop-filter: blur(12px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.change-password-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 0 3px rgba(42, 110, 120, 0.5);
+    transform: translateY(-1px);
+}
+
+.change-password-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+/* Icono ojo */
+.change-password-eye-icon {
+    position: absolute;
+    right: 12px;
+    font-size: 1.15rem;
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.change-password-eye-icon:hover {
+    color: #ffffff;
+    transform: scale(1.1);
+}
+
+/* --- ERROR --- */
+.change-password-error-message {
+    background: rgba(220, 38, 38, 0.3);
+    color: #ffffff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid rgba(220, 38, 38, 0.5);
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+/* --- BOTÓN ACEPTAR --- */
+.boton-aceptar {
+    background: linear-gradient(135deg, #2a6e78, #1a4066);
+    color: #ffffff;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+    box-shadow: 0 4px 15px rgba(42, 110, 120, 0.4);
+}
+
+.boton-aceptar:hover {
+    transform: translateY(-2px) scale(1.03);
+    box-shadow: 0 8px 20px rgba(42, 110, 120, 0.6);
+    background: linear-gradient(135deg, #3a8e98, #2a5076);
+}
+
+.boton-aceptar:disabled {
+    background: rgba(255, 255, 255, 0.2);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* --- SPINNER --- */
+.change-password-spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #ffffff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* --- FOOTER --- */
+.change-password-footer {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    text-align: center;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 480px) {
+    .change-password-modal-content {
+        padding: 20px 15px;
+        max-width: 90%;
+        border-radius: 18px;
+    }
+
+    .change-password-header h2 {
+        font-size: 1.5rem;
+    }
+
+    .change-password-icon {
+        font-size: 3rem;
+    }
+
+    .change-password-input {
+        padding: 10px 35px 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .boton-aceptar {
+        padding: 12px 20px;
+        font-size: 0.9rem;
+    }
+}
