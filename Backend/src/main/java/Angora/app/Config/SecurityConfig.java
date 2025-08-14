@@ -130,7 +130,11 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.PUT,"/pedidos/confirmar/**").hasAuthority("PEDIDOS");
                     http.requestMatchers(HttpMethod.POST,"/pedidos/enviar-factura/**").hasAuthority("PEDIDOS");
 
-                    // El resto necesita autenticacion
+                    // Rutas para recuperar contraseña
+                    http.requestMatchers(HttpMethod.GET, "/passwordReset/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST, "/passwordReset/**").permitAll();
+                    http.requestMatchers(HttpMethod.DELETE, "/passwordReset/**").permitAll();                    // El resto necesita autenticacion
+
                     http.anyRequest().denyAll();
                 })
                 .addFilterBefore(new JwtTokenValidator(jwtUtils), UsernamePasswordAuthenticationFilter.class)
