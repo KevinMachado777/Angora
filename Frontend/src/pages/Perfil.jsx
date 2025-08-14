@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "../styles/Perfil.css";
 import Modal from "../components/Modal";
@@ -6,6 +6,7 @@ import BotonEditar from "../components/BotonEditar";
 import BotonCancelar from "../components/BotonCancelar";
 import BotonGuardar from "../components/BotonGuardar";
 import { AuthContext } from "../context/AuthContext";
+import api from "../api/axiosInstance";
 
 const ModalMensaje = ({ tipo, mensaje }) => {
   const iconos = {
@@ -39,18 +40,24 @@ const Perfil = () => {
     correo: "",
     telefono: "",
     direccion: "",
+    foto: "",
   });
 
   const [modoEdicion, setModoEdicion] = useState(false);
   const [editado, setEditado] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [modalTipo, setModalTipo] = useState("exito"); // exito | error | advertencia
+  const [modalTipo, setModalTipo] = useState("exito");
   const [modalMensaje, setModalMensaje] = useState("");
+
+  const fileInputRef = useRef(null);
+
+  const imagenPorDefecto = "https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754451121/Perfil_xtqub7.jpg";
 
   useEffect(() => {
     if (modalAbierto) {
-      const duracion = modalTipo === "error" ? 3000 : 2000; // error = 3s, otros = 2s
+      const duracion = modalTipo === "error" ? 3000 : 2000;
       const timer = setTimeout(() => {
         setModalAbierto(false);
       }, duracion);
@@ -58,8 +65,11 @@ const Perfil = () => {
     }
   }, [modalAbierto, modalTipo]);
 
+  // ***** AJUSTE AQUÍ: useEffect para inicializar formData desde el contexto user *****
   useEffect(() => {
-    if (user && user.id) {
+    // Solo actualizamos formData si 'user' no es null y tiene al menos un ID (indicando que es un objeto de usuario cargado)
+    if (user && user.id !== undefined) {
+      console.log("Perfil.js useEffect (inicializar formData): user del contexto ha cambiado. user.foto:", user.foto);
       setFormData({
         id: user.id,
         nombre: user.nombre || "",
@@ -67,9 +77,18 @@ const Perfil = () => {
         correo: user.correo || "",
         telefono: user.telefono || "",
         direccion: user.direccion || "",
+        foto: user.foto || imagenPorDefecto, // Usa user.foto directamente
       });
+      setSelectedFile(null); // Reinicia selectedFile al cargar nuevos datos de usuario
+    } else if (user === null) {
+        // Opcional: Si el user del contexto es null (ej. logout), reiniciamos el formulario
+        setFormData({
+            id: "", nombre: "", apellido: "", correo: "",
+            telefono: "", direccion: "", foto: imagenPorDefecto,
+        });
+        setSelectedFile(null);
     }
-  }, [user]);
+  }, [user]); // Dependencia en el objeto 'user' completo
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -77,38 +96,52 @@ const Perfil = () => {
     setEditado(true);
   };
 
-  const toggleEdicion = () => {
-  if (modoEdicion) {
-    // Si estamos cancelando la edición, restauramos los datos originales
-    setFormData({
-      id: user.id || "",
-      nombre: user.nombre || "",
-      apellido: user.apellido || "",
-      correo: user.correo || "",
-      telefono: user.telefono || "",
-      direccion: user.direccion || "",
-    });
-    setEditado(false);
-  }
-  setModoEdicion(!modoEdicion);
-};
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const maxSize = 12 * 1024 * 1024;
+      if (file.size > maxSize) {
+        abrirModal("advertencia", "La imagen debe ser menor a 12MB.");
+        setSelectedFile(null);
+        setFormData({ ...formData, foto: user.foto || imagenPorDefecto });
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, foto: reader.result });
+        setEditado(true);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setSelectedFile(null);
+      setFormData({ ...formData, foto: user.foto || imagenPorDefecto });
+      setEditado(false);
+    }
+  };
 
+  const toggleEdicion = () => {
+    if (modoEdicion) {
+      // Restauramos los datos del usuario del contexto
+      setFormData({
+        id: user.id || "",
+        nombre: user.nombre || "",
+        apellido: user.apellido || "",
+        correo: user.correo || "",
+        telefono: user.telefono || "",
+        direccion: user.direccion || "",
+        foto: user.foto || imagenPorDefecto,
+      });
+      setSelectedFile(null);
+      setEditado(false);
+    }
+    setModoEdicion(!modoEdicion);
+  };
 
   const verificarCorreoExistente = async (correo) => {
     try {
-      const response = await fetch(
-        `http://localhost:8080/angora/api/v1/user/exists/${correo}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-          },
-        }
-      );
-      if (!response.ok) {
-        return false;
-      }
-      const exists = await response.json();
-      return exists;
+      const response = await api.get(`/user/exists/${correo}`);
+      return response.data;
     } catch (error) {
       console.error("Error al verificar correo:", error);
       return false;
@@ -122,87 +155,103 @@ const Perfil = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  // Validación de correo electrónico
-  const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo);
-  if (!correoValido) {
-    abrirModal("advertencia", "Por favor ingresa un correo electrónico válido.");
-    return;
-  }
-
-  // Validación de teléfono: solo 10 dígitos numéricos
-  const telefonoValido = /^\d{10}$/.test(formData.telefono);
-  if (!telefonoValido) {
-    abrirModal("advertencia", "El número de teléfono debe tener exactamente 10 dígitos.");
-    return;
-  }
-
-  try {
-    if (formData.correo !== user.correo) {
-      const existe = await verificarCorreoExistente(formData.correo);
-      if (existe) {
-        abrirModal("advertencia", "Ya existe un usuario con ese correo electrónico.");
-        return;
-      }
-    }
-
-    const response = await fetch("http://localhost:8080/angora/api/v1/user/perfil", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-      body: JSON.stringify(formData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText);
-    }
-
-    const data = await response.json();
-
-    if (formData.correo !== user.correo) {
-      abrirModal(
-        "exito",
-        "Correo actualizado correctamente. Por favor, vuelve a iniciar sesión."
-      );
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("userData");
-      setUser(null);
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 2000);
+    const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo);
+    if (!correoValido) {
+      abrirModal("advertencia", "Por favor ingresa un correo electrónico válido.");
       return;
     }
 
-    setUser(data);
-    setFormData({
-      id: data.id,
-      nombre: data.nombre || "",
-      apellido: data.apellido || "",
-      correo: data.correo || "",
-      telefono: data.telefono || "",
-      direccion: data.direccion || "",
-    });
-    localStorage.setItem("userData", JSON.stringify(data));
-    setModoEdicion(false);
-    setEditado(false);
-    abrirModal("exito", "Perfil actualizado correctamente.");
-  } catch (error) {
-    abrirModal("error", "Error al actualizar perfil: " + error.message);
-    console.error("Error:", error.message);
-  }
-};
+    const telefonoValido = /^\d{10}$/.test(formData.telefono);
+    if (!telefonoValido) {
+      abrirModal("advertencia", "El número de teléfono debe tener exactamente 10 dígitos.");
+      return;
+    }
 
+    const dataToSend = new FormData();
+    const userData = { ...formData };
+    delete userData.foto;
+
+    dataToSend.append("usuario", new Blob([JSON.stringify(userData)], { type: "application/json" }));
+
+    if (selectedFile) {
+      dataToSend.append("foto", selectedFile);
+    } else if (formData.foto === imagenPorDefecto && user.foto && user.foto !== imagenPorDefecto) {
+      dataToSend.append("foto", new Blob([], { type: 'application/octet-stream' }));
+    }
+
+    try {
+      if (formData.correo !== user.correo) {
+        const existe = await verificarCorreoExistente(formData.correo);
+        if (existe) {
+          abrirModal("advertencia", "Ya existe un usuario con ese correo electrónico.");
+          return;
+        }
+      }
+
+      const response = await api.put("/user/perfil", dataToSend);
+      const data = response.data;
+
+      if (formData.correo !== user.correo) {
+        abrirModal(
+          "exito",
+          "Correo actualizado correctamente. Por favor, vuelve a iniciar sesión."
+        );
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("userData");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+        return;
+      }
+
+      setUser(data);
+      setModoEdicion(false);
+      setEditado(false);
+      setSelectedFile(null);
+      abrirModal("exito", "Perfil actualizado correctamente.");
+    } catch (error) {
+      let errorMessage = "Error al actualizar perfil.";
+      if (error.response && error.response.data) {
+        errorMessage += " " + (error.response.data.message || JSON.stringify(error.response.data));
+      } else if (error.message) {
+        errorMessage += " " + error.message;
+      }
+      abrirModal("error", errorMessage);
+      console.error("Error al actualizar perfil:", error);
+    }
+  };
 
   return (
     <div className="perfil-wrapper d-flex align-items-center justify-content-center">
       <div className={`perfil-card p-4 ${modoEdicion ? "transicion-edicion" : ""}`}>
         <div className="text-center mb-4">
           <div className="avatar-container">
-            <i className="bi bi-person-circle icono-perfil mb-2"></i>
+            {modoEdicion ? (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  accept="image/*"
+                />
+                <img
+                  src={formData.foto || imagenPorDefecto}
+                  alt="Foto de perfil"
+                  className="icono-perfil-img editable-img"
+                  onClick={() => fileInputRef.current.click()}
+                />
+                <p className="foto-cambio-mensaje">Haz clic para cambiar la foto</p>
+              </>
+            ) : (
+              <img
+                src={formData.foto || imagenPorDefecto}
+                alt="Foto de perfil"
+                className="icono-perfil-img"
+              />
+            )}
           </div>
           <h2 className="fw-bold">
             {user?.nombre} {user?.apellido}
@@ -251,14 +300,13 @@ const Perfil = () => {
             {modoEdicion ? (
               <>
                 <BotonCancelar onClick={toggleEdicion} />
-                {editado && <BotonGuardar onClick={handleSubmit} />}
+                {editado && <BotonGuardar type="submit" />}
               </>
             ) : (
               <BotonEditar onClick={toggleEdicion} />
             )}
           </div>
         </form>
-
       </div>
 
       <Modal isOpen={modalAbierto} onClose={() => setModalAbierto(false)}>

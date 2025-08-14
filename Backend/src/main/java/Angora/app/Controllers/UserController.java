@@ -61,14 +61,19 @@ public class UserController {
                 .telefono(usuario.getTelefono())
                 .direccion(usuario.getDireccion())
                 .permisos(usuario.getPermisos())
+                .foto(usuario.getFoto())
                 .build();
         return new ResponseEntity<>(usuarioAutenticado, HttpStatus.OK);
     }
 
     // Endpoint para la actualizacion del usuario en el perfil
-    @PutMapping("/perfil")
-    public ResponseEntity<Usuario> editarUsuario(@RequestBody Usuario usuarioActualizado) {
-        Usuario actualizado = userDetailService.actualizarUsuario(usuarioActualizado);
+    @PutMapping(value = "/perfil", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Usuario> editarUsuario(
+            @RequestPart("usuario") Usuario usuarioActualizado, // Los datos del usuario como JSON
+            @RequestPart(value = "foto", required = false) MultipartFile foto) throws IOException { // La nueva foto, opcional
+        // Aquí deberás manejar la lógica en tu UserDetailService
+        // para actualizar los datos del usuario y la foto.
+        Usuario actualizado = userDetailService.actualizarPerfil(usuarioActualizado, foto);
         return ResponseEntity.ok(actualizado);
     }
 

@@ -127,6 +127,7 @@ public class AuthenticationController {
                 .telefono(usuario.getTelefono())
                 .direccion(usuario.getDireccion())
                 .permisos(usuario.getPermisos())
+                .foto(usuario.getFoto())
                 .build();
 
         System.out.println("Usuario autenticado buscado por correo: " + usuarioAutenticado);

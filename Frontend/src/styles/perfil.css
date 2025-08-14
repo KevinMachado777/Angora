@@ -8,13 +8,18 @@
   justify-content: center;
   align-items: center;
   padding: 2rem;
-  border-radius: 50px;
 }
 
 @keyframes fondoDesplazar {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* Tarjeta estilo glassmorphism con animación de entrada */
@@ -49,15 +54,89 @@
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
-/* Ícono de perfil y avatar con efecto glow */
+/* Contenedor del avatar con posición relativa para el overlay */
+.avatar-container {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.avatar-container:hover {
+  box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+}
+
+/* Estilo para la imagen de perfil */
+.icono-perfil-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  transition: transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
+  cursor: default;
+}
+
+/* Estilo para el ícono de perfil de Bootstrap Icons */
 .icono-perfil {
   font-size: 5rem;
   color: #343a40;
   text-shadow: 0 2px 4px rgba(255, 255, 255, 0.4);
   transition: transform 0.3s ease, filter 0.3s ease;
   filter: drop-shadow(0 0 8px rgba(0, 123, 255, 0.4));
+  display: block;
 }
 
+/* Capa superpuesta para el mensaje de "cambiar foto" */
+.overlay-foto {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Color oscuro semi-transparente */
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  opacity: 0; /* Oculto por defecto */
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.overlay-foto i {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Mostrar el overlay solo en modo de edición y al pasar el ratón */
+.perfil-card.transicion-edicion .avatar-container:hover .overlay-foto {
+  opacity: 1;
+}
+
+/* En modo de edición, la imagen se oscurece ligeramente */
+.perfil-card.transicion-edicion .icono-perfil-img {
+  filter: brightness(0.7);
+  transition: filter 0.3s ease;
+  cursor: pointer;
+}
+
+/* Estilo para el mensaje "Haz clic para cambiar la foto", ahora oculto */
+.foto-cambio-mensaje {
+  display: none;
+}
+
+/* Ícono de perfil y avatar con efecto glow */
 .avatar-container:hover .icono-perfil {
   transform: scale(1.1);
   filter: drop-shadow(0 0 12px rgba(52, 152, 219, 0.6));
@@ -76,8 +155,14 @@
 }
 
 @keyframes expandBar {
-  from { width: 0; opacity: 0; }
-  to { width: 60px; opacity: 1; }
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 60px;
+    opacity: 1;
+  }
 }
 
 /* Inputs dinámicos y validados */
@@ -92,8 +177,14 @@ input:enabled {
 }
 
 @keyframes fadeInput {
-  from { opacity: 0.7; transform: scale(0.98); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* Encabezado modal */
@@ -132,6 +223,7 @@ input:enabled {
   margin-top: 1rem;
   display: flex;
   justify-content: center;
+  gap: 10px;
 }
 
 /* Responsive */
@@ -139,11 +231,13 @@ input:enabled {
   .perfil-card {
     padding: 1.2rem;
   }
-
+  .avatar-container {
+    width: 120px;
+    height: 120px;
+  }
   .icono-perfil {
     font-size: 4rem;
   }
-
   .encabezado-modal i {
     font-size: 2.2rem;
   }
