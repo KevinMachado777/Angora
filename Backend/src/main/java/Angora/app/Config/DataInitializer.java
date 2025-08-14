@@ -99,7 +99,7 @@ public class DataInitializer implements CommandLineRunner {
                 .id(1026134871L)
                 .nombre("Johan")
                 .apellido("Rios")
-                .correo("johanestebarios11@gmail.com")
+                .correo("johanestebanrios11@gmail.com")
                 .contraseña("1234")
                 .telefono("3002950000")
                 .direccion("Versalles")

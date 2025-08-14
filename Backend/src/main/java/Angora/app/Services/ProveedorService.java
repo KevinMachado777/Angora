@@ -36,4 +36,9 @@ public class ProveedorService implements IProveedorService {
         proveedorRepository.deleteById(idProveedor);
 
     }
+
+    public boolean existeCorreoEnProveedor(String correo, Long idProveedor) {
+        // Verifica si existe otro proveedor con el mismo correo y que no sea el mismo proveedor que se está editando
+        return proveedorRepository.findByCorreoAndIdProveedorNot(correo, idProveedor).isPresent();
+    }
 }

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class LoteService {
@@ -25,13 +26,11 @@ public class LoteService {
 
     @Autowired
     private MovimientoRepository movimientoRepository;
-
-    // Metodo para listar
     public List<Lote> findAll() {
         return loteRepository.findAll();
     }
 
-    // Metodo para buscar un lote
+    // Busca un lote por sy ID
     public LoteDTO findById(Long id) {
         Lote loteEntity = loteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
@@ -47,6 +46,23 @@ public class LoteService {
     }
 
     // Metodo para guardar un lote (entrada)
+    public LoteDTO findUltimoLotePorMateria(Long idMateria) {
+        Optional<Lote> loteOptional = loteRepository.findTopByIdMateriaOrderByFechaIngresoDescIdLoteDesc(idMateria);
+        if (loteOptional.isEmpty()) {
+            return null;
+        }
+        Lote loteEntity = loteOptional.get();
+        LoteDTO loteDto = new LoteDTO();
+        loteDto.setIdLote(loteEntity.getIdLote());
+        loteDto.setIdMateria(loteEntity.getIdMateria());
+        loteDto.setCostoUnitario(loteEntity.getCostoUnitario());
+        loteDto.setCantidad(loteEntity.getCantidad());
+        loteDto.setCantidadDisponible(loteEntity.getCantidadDisponible());
+        loteDto.setFechaIngreso(loteEntity.getFechaIngreso());
+        loteDto.setIdProveedor(loteEntity.getIdProveedor());
+        return loteDto;
+    }
+
     @Transactional
     public LoteDTO save(LoteDTO loteDto) {
         MateriaPrima materia = materiaPrimaRepository.findById(loteDto.getIdMateria())
