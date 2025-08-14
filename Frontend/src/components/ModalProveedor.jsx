@@ -47,6 +47,9 @@ const ModalProveedor = ({
     mensaje: "",
     visible: false,
   });
+  
+  // Nuevo estado para el checkbox de envío de correo
+  const [enviarCorreo, setEnviarCorreo] = useState(false);
 
   const abrirModal = (tipo, mensaje) => {
     setModalMensaje({ tipo, mensaje, visible: true });
@@ -55,50 +58,50 @@ const ModalProveedor = ({
     }, 1500);
   };
 
-  const enviarCorreoOrden = async () => {
-    if (
-      !formulario.id ||
-      !formulario.nombre ||
-      !proveedoresDisponibles.length
-    ) {
+  const enviarOrdenPorCorreo = async () => {
+    if (!formulario.idOrden) {
+      abrirModal("advertencia", "Debe tener una orden válida para enviar.");
+      return false;
+    }
+
+    if (!formulario.id || !formulario.nombre) {
       abrirModal("advertencia", "Debe seleccionar un proveedor válido.");
-      return;
+      return false;
     }
 
     const proveedor = proveedoresDisponibles.find(
       (p) => p.idProveedor === parseInt(formulario.id)
     );
+
     if (!proveedor?.correo) {
       abrirModal("advertencia", "El proveedor no tiene un correo registrado.");
-      return;
+      return false;
     }
 
     try {
-      const formData = new FormData();
-      formData.append("email", proveedor.correo);
-      formData.append("nombre", proveedor.nombre);
-      formData.append("ordenNumero", formulario.idOrden?.toString() || "N/A");
-      formData.append("monto", formulario.total?.toFixed(2) || "0.00");
-
-      await api.post("/api/email/enviar", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      await api.post("/ordenes/enviar-orden", {
+        idOrden: formulario.idOrden,
+        enviarCorreo: true,
       });
 
-      abrirModal("exito", "Correo enviado correctamente al proveedor.");
+      abrirModal(
+        "exito",
+        "Lista de compras enviada correctamente al proveedor."
+      );
+      return true;
     } catch (error) {
       console.error(
-        "Error al enviar correo:",
+        "Error al enviar lista de compras:",
         error.response?.status,
         error.response?.data
       );
       abrirModal(
         "error",
-        `Error al enviar correo: ${
-          error.response?.data?.message || error.message
+        `Error al enviar lista de compras: ${
+          error.response?.data || error.message
         }`
       );
+      return false;
     }
   };
 
@@ -115,107 +118,109 @@ const ModalProveedor = ({
   };
 
   useEffect(() => {
-  if (!isOpen || !token) {
-    if (!token) {
-      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+    if (!isOpen || !token) {
+      if (!token) {
+        abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
+      }
+      return;
     }
-    return;
-  }
 
-  if (esOrden) {
-    api
-      .get("/proveedores")
-      .then((res) => setProveedoresDisponibles(res.data))
-      .catch((err) => {
-        console.error(
-          "Error al cargar proveedores:",
-          err.response?.status,
-          err.response?.data
-        );
-        abrirModal(
-          "error",
-          `Error al cargar proveedores: ${
-            err.response?.data?.message || err.message
-          }`
-        );
-      });
+    if (esOrden) {
+      api
+        .get("/proveedores")
+        .then((res) => setProveedoresDisponibles(res.data))
+        .catch((err) => {
+          console.error(
+            "Error al cargar proveedores:",
+            err.response?.status,
+            err.response?.data
+          );
+          abrirModal(
+            "error",
+            `Error al cargar proveedores: ${
+              err.response?.data?.message || err.message
+            }`
+          );
+        });
 
-    api
-      .get("/inventarioMateria")
-      .then((res) => {
-        console.log("Materias primas recibidas:", res.data);
-        setMateriasPrimasDisponibles(res.data);
-      })
-      .catch((err) => {
-        console.error(
-          "Error al cargar materias primas:",
-          err.response?.status,
-          err.response?.data
-        );
-        abrirModal(
-          "error",
-          `Error al cargar materias primas: ${
-            err.response?.data?.message || err.message
-          }`
-        );
-      });
-  }
+      api
+        .get("/inventarioMateria")
+        .then((res) => {
+          console.log("Materias primas recibidas:", res.data);
+          setMateriasPrimasDisponibles(res.data);
+        })
+        .catch((err) => {
+          console.error(
+            "Error al cargar materias primas:",
+            err.response?.status,
+            err.response?.data
+          );
+          abrirModal(
+            "error",
+            `Error al cargar materias primas: ${
+              err.response?.data?.message || err.message
+            }`
+          );
+        });
+    }
 
-  if (datosIniciales) {
-    console.log("datosIniciales recibidos:", datosIniciales); // Debug
-    if (tipo === "proveedor") {
+    if (datosIniciales) {
+      console.log("datosIniciales recibidos:", datosIniciales); // Debug
+      if (tipo === "proveedor") {
+        setFormulario({
+          id: datosIniciales.idProveedor || "", // Mapear idProveedor a id
+          nombre: datosIniciales.nombre || "",
+          telefono: datosIniciales.telefono || "",
+          correo: datosIniciales.correo || "",
+          direccion: datosIniciales.direccion || "",
+          idOrden: "",
+          notas: "",
+          items: [],
+          total: 0,
+        });
+      } else if (tipo === "orden") {
+        setFormulario({
+          id: datosIniciales.proveedor?.idProveedor || "", // ID del proveedor
+          idOrden: datosIniciales.idOrden || "",
+          nombre: datosIniciales.proveedor?.nombre || "",
+          telefono: "", // No se usa para órdenes
+          correo: datosIniciales.proveedor?.correo || "", // Para enviarCorreoOrden
+          direccion: "", // No se usa para órdenes
+          notas: datosIniciales.notas || "",
+          total: datosIniciales.total || 0,
+          items:
+            datosIniciales.ordenMateriaPrimas &&
+            Array.isArray(datosIniciales.ordenMateriaPrimas)
+              ? datosIniciales.ordenMateriaPrimas.map((omp) => {
+                  console.log("Mapeando omp:", omp); // Debug
+                  return {
+                    id: omp.id,
+                    idMateria: omp.materiaPrima?.idMateria,
+                    nombre: omp.materiaPrima?.nombre || "",
+                    cantidad: omp.cantidad || 0,
+                  };
+                })
+              : [],
+        });
+      }
+    } else {
       setFormulario({
-        id: datosIniciales.idProveedor || "", // Mapear idProveedor a id
-        nombre: datosIniciales.nombre || "",
-        telefono: datosIniciales.telefono || "",
-        correo: datosIniciales.correo || "",
-        direccion: datosIniciales.direccion || "",
+        id: "",
         idOrden: "",
+        nombre: "",
+        telefono: "",
+        correo: "",
+        direccion: "",
         notas: "",
         items: [],
         total: 0,
       });
-    } else if (tipo === "orden") {
-      setFormulario({
-        id: datosIniciales.proveedor?.idProveedor || "", // ID del proveedor
-        idOrden: datosIniciales.idOrden || "",
-        nombre: datosIniciales.proveedor?.nombre || "",
-        telefono: "", // No se usa para órdenes
-        correo: datosIniciales.proveedor?.correo || "", // Para enviarCorreoOrden
-        direccion: "", // No se usa para órdenes
-        notas: datosIniciales.notas || "",
-        total: datosIniciales.total || 0,
-        items:
-          datosIniciales.ordenMateriaPrimas &&
-          Array.isArray(datosIniciales.ordenMateriaPrimas)
-            ? datosIniciales.ordenMateriaPrimas.map((omp) => {
-                console.log("Mapeando omp:", omp); // Debug
-                return {
-                  id: omp.id,
-                  idMateria: omp.materiaPrima?.idMateria,
-                  nombre: omp.materiaPrima?.nombre || "",
-                  cantidad: omp.cantidad || 0,
-                };
-              })
-            : [],
-      });
     }
-  } else {
-    setFormulario({
-      id: "",
-      idOrden: "",
-      nombre: "",
-      telefono: "",
-      correo: "",
-      direccion: "",
-      notas: "",
-      items: [],
-      total: 0,
-    });
-  }
 
-  setNuevoItem({ idMateria: "", nombre: "", cantidad: "" });
-}, [isOpen, datosIniciales, tipo, token]);
+    setNuevoItem({ idMateria: "", nombre: "", cantidad: "" });
+    // Resetear el checkbox cuando se abre el modal
+    setEnviarCorreo(false);
+  }, [isOpen, datosIniciales, tipo, token]);
 
   useEffect(() => {
     if (!modalMensaje.visible && modalMensaje.tipo === "exito") {
@@ -292,7 +297,7 @@ const ModalProveedor = ({
       cantidad: parseFloat(productoEditando.cantidad),
     };
 
-    console.log("Editando: " , itemEditado)
+    console.log("Editando: ", itemEditado);
 
     const nuevosItems = [...formulario.items];
     nuevosItems[productoEditando.index] = itemEditado;
@@ -308,7 +313,7 @@ const ModalProveedor = ({
     }));
   };
 
-  // ModalProveedor.jsx - Reemplaza toda la función 'guardar' con esto
+  // Función modificada para incluir el envío de correo automático
   const guardar = async (e) => {
     e.preventDefault();
 
@@ -358,6 +363,18 @@ const ModalProveedor = ({
 
       // Llamada única a la función de guardado del padre
       onGuardar(datosOrdenParaGuardar);
+
+      // Si el checkbox está marcado y hay una orden existente, enviar correo
+      if (enviarCorreo && formulario.idOrden) {
+        // Dar un pequeño delay para que se complete el guardado antes de enviar
+        setTimeout(async () => {
+          const exitoEnvio = await enviarOrdenPorCorreo();
+          if (!exitoEnvio) {
+            // Si hay error en el envío, mostrar mensaje pero no bloquear el cierre
+            console.log("Error al enviar correo, pero la orden se guardó correctamente");
+          }
+        }, 500);
+      }
     } else {
       // Lógica de guardado para proveedores (no necesita cambios)
       const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
@@ -605,17 +622,21 @@ const ModalProveedor = ({
                 />
               </div>
 
-              {datosIniciales && (
-                <div className="grupo-formulario">
-                  <button
-                    type="button"
-                    onClick={enviarCorreoOrden}
-                    className="btn btn-primary"
-                  >
-                    Enviar a proveedor por correo
-                  </button>
+              {/* Checkbox para envío automático de correo - Se muestra tanto para agregar como editar órdenes */}
+              <div className="grupo-formulario">
+                <div className="form-check">
+                  <input
+                    type="checkbox"
+                    id="enviarCorreo"
+                    checked={enviarCorreo}
+                    onChange={(e) => setEnviarCorreo(e.target.checked)}
+                    className="form-check-input"
+                  />
+                  <label htmlFor="enviarCorreo" className="form-check-label">
+                    Enviar orden al proveedor
+                  </label>
                 </div>
-              )}
+              </div>
             </>
           )}
 

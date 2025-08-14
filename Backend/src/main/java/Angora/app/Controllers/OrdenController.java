@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -117,36 +118,68 @@ public class OrdenController {
         }
     }
 
-    @PostMapping("/enviar")
-    public ResponseEntity<String> enviarOrden(
-            @RequestParam String email,
-            @RequestParam String nombre,
-            @RequestParam String ordenNumero,
-            @RequestParam String monto,
-            @RequestParam(required = false) MultipartFile adjunto // PDF opcional
-    ) {
+    @PostMapping("/enviar-orden")
+    public ResponseEntity<?> enviarOrdenBasica(@RequestBody Map<String, Object> request) {
         try {
-            byte[] archivo = adjunto != null ? adjunto.getBytes() : null;
+            Long idOrden = Long.valueOf(request.get("idOrden").toString());
+            Boolean enviarCorreoHabilitado = (Boolean) request.get("enviarCorreo");
 
+            // Obtener la orden completa
+            Orden orden = ordenService.obtenerOrdenPorId(idOrden);
+            if (orden == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Orden no encontrada: " + idOrden);
+            }
+
+            // Verificar que el proveedor tenga correo
+            if (!enviarCorreoHabilitado || orden.getProveedor() == null ||
+                    orden.getProveedor().getCorreo() == null || orden.getProveedor().getCorreo().isEmpty()) {
+                return ResponseEntity.ok("Correo no enviado: proveedor sin correo registrado");
+            }
+
+            // Generar HTML de productos (solo nombre y cantidad)
+            String productosHTML = orden.getOrdenMateriaPrimas().stream().map(omp -> {
+                return String.format(
+                        "<tr style=\"border-bottom: 1px solid #e4ecf4;\">" +
+                                "<td style=\"padding: 12px;\">%s</td>" +
+                                "<td style=\"padding: 12px; text-align: right;\">%s</td>" +
+                                "</tr>",
+                        omp.getMateriaPrima().getNombre(),
+                        omp.getCantidad().toString()
+                );
+            }).collect(Collectors.joining());
+
+            // Generar HTML de notas si existen
+            String notasHTML = orden.getNotas() != null && !orden.getNotas().isEmpty()
+                    ? "<tr><td><strong>Notas:</strong></td><td>" + orden.getNotas() + "</td></tr>"
+                    : "";
+
+            // Preparar variables para la plantilla
             Map<String, String> variables = Map.of(
-                    "nombre", nombre,
-                    "factura", ordenNumero,
-                    "monto", monto
+                    "nombre", orden.getProveedor().getNombre(),
+                    "fecha", orden.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),
+                    "productos", productosHTML,
+                    "notas", notasHTML
             );
 
+            // Enviar correo usando la plantilla básica
             enviarCorreo.enviarConPlantilla(
-                    email,
-                    "Resumen de tu orden en Fraganceys",
+                    orden.getProveedor().getCorreo(),
+                    "Orden de Compra - Fraganceys",
                     "orden-body.html",
                     variables,
-                    archivo,
-                    archivo != null ? "orden_" + ordenNumero + ".pdf" : null
+                    null,
+                    null
             );
 
-            return ResponseEntity.ok("Correo enviado exitosamente.");
+            return ResponseEntity.ok("Lista de compras enviada correctamente al proveedor");
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error al enviar la lista de compras: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Error al enviar correo: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error inesperado: " + e.getMessage());
         }
     }
 }

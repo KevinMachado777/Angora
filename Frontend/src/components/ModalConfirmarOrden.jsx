@@ -20,14 +20,15 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
     }, 1500);
   };
 
-  useEffect(() => {
-    if (!isOpen || !orden || !orden.ordenMateriaPrimas) {
-      console.log("Orden no válida o sin ítems:", orden);
-      abrirModal("error", "No se encontraron ítems en la orden.");
-      setItems([]);
-      return;
-    }
+  // Calcular el total de la orden
+  const calcularTotal = () => {
+    return items.reduce((total, item) => {
+      return total + (item.costoUnitario * item.cantidad);
+    }, 0);
+  };
 
+  useEffect(() => {
+    
     const fetchCostos = async () => {
       try {
         const updatedItems = await Promise.all(
@@ -132,6 +133,7 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                   <th>Nombre</th>
                   <th>Cantidad</th>
                   <th>Costo Unitario</th>
+                  <th>Subtotal</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,12 +152,31 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                         step="0.01"
                       />
                     </td>
+                    <td>${(item.costoUnitario * item.cantidad).toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
         </div>
+        
+        {/* Campo del Total de la Orden */}
+        <div className="grupo-formulario">
+          <label>Total de la orden:</label>
+          <input
+            type="text"
+            value={`$${calcularTotal().toFixed(2)}`}
+            readOnly
+            className="form-control"
+            style={{ 
+              fontWeight: 'bold', 
+              fontSize: '1.1rem',
+              backgroundColor: '#f8f9fa',
+              color: '#495057'
+            }}
+          />
+        </div>
+        
         <div className="pie-modal">
           <BotonCancelar onClick={onClose} />
           <BotonAceptar

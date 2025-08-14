@@ -114,6 +114,7 @@ public class SecurityConfig {
                     // Ordenes
                     http.requestMatchers(HttpMethod.GET,"/ordenes").permitAll();
                     http.requestMatchers(HttpMethod.POST,"/ordenes/**").permitAll();
+                    http.requestMatchers(HttpMethod.POST,"/ordenes/enviar-orden").permitAll();
                     http.requestMatchers(HttpMethod.DELETE,"/ordenes/**").permitAll();
                     http.requestMatchers(HttpMethod.PUT,"/ordenes/**").permitAll();
 

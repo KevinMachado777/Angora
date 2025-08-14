@@ -1,37 +1,143 @@
-<div class="factura-container" style="padding: 20px;">
-    <div class="titulo" style="font-size: 24px; font-weight: bold; color: #003049; margin-bottom: 20px;">
-        Orden de Compra - Fraganceys
-    </div>
-    <table class="info-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden de Compra - Fraganceys</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f9ff;
+            margin: 0;
+            padding: 40px 20px;
+            color: #003049;
+        }
+
+        .orden-container {
+            max-width: 750px;
+            margin: auto;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+            border: 1px solid #dceeff;
+        }
+
+        .titulo {
+            font-size: 28px;
+            color: #034078;
+            text-align: center;
+            margin-bottom: 35px;
+            font-weight: bold;
+        }
+
+        .info-table {
+            width: 100%;
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 35px;
+        }
+
+        .info-table td {
+            padding: 6px 0;
+        }
+
+        .subtitulo {
+            font-size: 18px;
+            font-weight: bold;
+            color: #023e8a;
+            margin-bottom: 15px;
+        }
+
+        .productos-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .productos-table thead {
+            background-color: #e0f0ff;
+        }
+
+        .productos-table th {
+            padding: 14px 12px;
+            color: #034078;
+            font-weight: 600;
+            border-bottom: 2px solid #b3d4fc;
+            text-align: center;
+        }
+
+        .productos-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e4ecf4;
+            text-align: center;
+        }
+
+        .productos-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .mensaje-final {
+            font-size: 15px;
+            text-align: center;
+            color: #5a6e8c;
+            margin-top: 45px;
+        }
+
+        .mensaje-final a {
+            color: #034078;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .orden-container {
+                padding: 25px 15px;
+            }
+
+            .productos-table th,
+            .productos-table td {
+                font-size: 13px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="orden-container">
+    <div class="titulo">Orden de compra - Fraganceys</div>
+
+    <table class="info-table">
         <tr>
-            <td style="padding: 8px; font-weight: bold; width: 30%;">Proveedor:</td>
-            <td style="padding: 8px;">{{nombre}}</td>
+            <td><strong>Proveedor:</strong></td>
+            <td>{{nombre}}</td>
         </tr>
         <tr>
-            <td style="padding: 8px; font-weight: bold;">Orden N°:</td>
-            <td style="padding: 8px;">{{factura}}</td>
+            <td><strong>Fecha:</strong></td>
+            <td>{{fecha}}</td>
         </tr>
-        <tr>
-            <td style="padding: 8px; font-weight: bold;">Monto:</td>
-            <td style="padding: 8px;">${{monto}}</td>
-        </tr>
+        {{notas}}
     </table>
-    <table class="items-table" style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+
+    <div class="subtitulo">📋 Lista de productos requeridos</div>
+    <table class="productos-table">
         <thead>
-        <tr style="background-color: #f4f9ff;">
-            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: left;">Producto</th>
-            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: right;">Cantidad</th>
-            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: right;">Precio Unitario</th>
-            <th style="padding: 8px; border: 1px solid #b3d4fc; text-align: right;">Total</th>
+        <tr>
+            <th>Producto</th>
+            <th>Cantidad</th>
         </tr>
         </thead>
         <tbody>
-        {{items}}
+        {{productos}}
         </tbody>
     </table>
-    {{notas}}
-    <div class="mensaje-final" style="margin-top: 20px; font-size: 14px;">
-        Gracias por su colaboración.<br>
-        ¿Tienes dudas? Escríbenos a <a href="mailto:angorasystem@gmail.com" style="color: #034078;">angorasystem@gmail.com</a>
+
+    <div class="mensaje-final">
+        Por favor, confirme disponibilidad y tiempos de entrega.<br>
+        ¿Tiene dudas? Escríbanos a <a href="mailto:angorasystem@gmail.com">angorasystem@gmail.com</a>
     </div>
 </div>
+
+</body>
+</html>
