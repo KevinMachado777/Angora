@@ -4,7 +4,7 @@ import api from "../api/axiosInstance";
 import { CreadorTabla } from "../components/CreadorTabla";
 import ModalProveedor from "../components/ModalProveedor";
 import ModalConfirmarOrden from "../components/ModalConfirmarOrden";
-import BotonAgregar from "../components/BotonAgregar";
+import BotonAgregar from "../components/botonAgregar";
 import BotonOrdenes from "../components/BotonOrdenes";
 import BotonProveedores from "../components/BotonProveedores";
 import Modal from "../components/Modal";

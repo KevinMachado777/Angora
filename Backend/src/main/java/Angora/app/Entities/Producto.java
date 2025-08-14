@@ -19,8 +19,6 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @Table(name = "producto")
-// Listener para que la tabla de movimientos le pueda hacer seguimiento a esta entidad
-// @EntityListeners(Angora.app.Entities.MovimientoListener.class)
 public class Producto implements Inventariable {
 
     @Id

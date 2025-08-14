@@ -23,6 +23,9 @@ public class ReporteService implements IReporteService {
     @Autowired private MovimientoRepository movimientoRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private ClienteRepository clienteRepository;
+    @Autowired private LoteRepository loteRepository;
+    @Autowired(required = false) private ProveedorRepository proveedorRepository;
+
 
     // Metodo para obtener la lista de ingresos basada en un rango de fechas
     // Si no se proporcionan fechas, retorna todos los ingresos disponibles
@@ -57,19 +60,52 @@ public class ReporteService implements IReporteService {
     // Retorna todas las órdenes si no se especifican fechas
     public List<ReporteEgresosDTO> getEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteEgresosDTO> egresos = new ArrayList<>();
+
+        // 1) Ordenes
         List<Orden> ordenes = (fechaInicio == null && fechaFin == null)
-                ? ordenRepository.findAll() // Obtiene todas las órdenes si no hay filtro
-                : ordenRepository.findByFechaBetween(fechaInicio, fechaFin); // Filtra por rango de fechas
+                ? ordenRepository.findAll()
+                : ordenRepository.findByFechaBetween(fechaInicio, fechaFin);
 
         for (Orden o : ordenes) {
             egresos.add(new ReporteEgresosDTO(
                     o.getIdOrden(),
-                    // Nombre del proveedor o valor por defecto
-                    o.getProveedor() != null ? o.getProveedor().getNombre() : "Sin proveedor",
+                    (o.getProveedor() != null ? o.getProveedor().getNombre() : "Sin proveedor"),
                     o.getFecha(),
-                    o.getTotal() != null ? o.getTotal() : 0f // Total de la orden con valor por defecto
+                    (o.getTotal() != null ? o.getTotal() : 0f)
             ));
         }
+
+        // 2) Lotes manuales
+        List<Lote> lotes = (fechaInicio == null && fechaFin == null)
+                ? loteRepository.findAll()
+                : loteRepository.findByFechaIngresoBetween(fechaInicio, fechaFin);
+
+        for (Lote l : lotes) {
+            String proveedor = "Ingreso manual";
+            if (l.getIdProveedor() != null && proveedorRepository != null) {
+                proveedor = proveedorRepository.findById(l.getIdProveedor())
+                        .map(Proveedor::getNombre)
+                        .orElse("Proveedor #" + l.getIdProveedor());
+            }
+            Float total = (l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f)
+                    * (l.getCantidad() != null ? l.getCantidad() : 0f);
+
+            egresos.add(new ReporteEgresosDTO(
+                    l.getIdLote(), // usamos id del lote
+                    proveedor,
+                    l.getFechaIngreso(),
+                    total
+            ));
+        }
+
+        // (opcional) ordenar por fecha asc
+        egresos.sort((a,b) -> {
+            if (a.getFecha() == null && b.getFecha() == null) return 0;
+            if (a.getFecha() == null) return -1;
+            if (b.getFecha() == null) return 1;
+            return a.getFecha().compareTo(b.getFecha());
+        });
+
         return egresos;
     }
 
@@ -97,13 +133,30 @@ public class ReporteService implements IReporteService {
     // Metodo para calcular el total de egresos en un rango de fechas
     // Suma los totales de todas las órdenes en el período
     public Float getTotalEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
+        // 1) Ordenes
         List<Orden> ordenes = (fechaInicio == null && fechaFin == null)
                 ? ordenRepository.findAll()
                 : ordenRepository.findByFechaBetween(fechaInicio, fechaFin);
-        return ordenes.stream()
+
+        float totalOrdenes = ordenes.stream()
                 .map(o -> o.getTotal() != null ? o.getTotal() : 0f)
                 .reduce(0f, Float::sum);
+
+        // 2) Lotes manuales (o con proveedor)
+        List<Lote> lotes = (fechaInicio == null && fechaFin == null)
+                ? loteRepository.findAll()
+                : loteRepository.findByFechaIngresoBetween(fechaInicio, fechaFin);
+
+        float totalLotes = 0f;
+        for (Lote l : lotes) {
+            Float costoUnit = l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f;
+            Float cantidad = l.getCantidad() != null ? l.getCantidad() : 0f;
+            totalLotes += costoUnit * cantidad;
+        }
+
+        return totalOrdenes + totalLotes;
     }
+
 
     // Metodo para calcular el margen de utilidad restando egresos de ingresos
     public Float getUtilidadMargin(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
@@ -248,60 +301,45 @@ public class ReporteService implements IReporteService {
     // Metodo para obtener movimientos de inventario filtrados por tipo y fechas
     // Permite segmentar por productos o materias primas
     public List<ReporteMovimientoDTO> getMovimientosInventario(LocalDateTime fechaInicio, LocalDateTime fechaFin, String tipo) {
+        // filtrar por fecha si llega
         List<Movimiento> movimientos = (fechaInicio == null && fechaFin == null)
                 ? movimientoRepository.findAll()
                 : movimientoRepository.findAll().stream()
-                .filter(m -> m.getFechaMovimiento() != null && (fechaInicio == null || m.getFechaMovimiento().isAfter(fechaInicio))
-                        && (fechaFin == null || m.getFechaMovimiento().isBefore(fechaFin)))
+                .filter(m -> m.getFechaMovimiento() != null
+                        && (fechaInicio == null || !m.getFechaMovimiento().isBefore(fechaInicio))
+                        && (fechaFin    == null || !m.getFechaMovimiento().isAfter(fechaFin)))
                 .toList();
 
         List<ReporteMovimientoDTO> resultado = new ArrayList<>();
+
         for (Movimiento m : movimientos) {
-            if ("movimientos".equals(tipo)) {
-                if (m.getProducto() != null) {
-                    resultado.add(new ReporteMovimientoDTO(
-                            m.getIdMovimiento(),
-                            m.getProducto().getNombre(),
-                            m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() - m.getCantidadCambio() : 0f),
-                            m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() : 0f,
-                            m.getTipoMovimiento(),
-                            m.getFechaMovimiento(),
-                            m.getProducto() != null ? m.getProducto().getId() : null,
-                            null
-                    ));
-                } else if (m.getMateriaPrima() != null) {
-                    resultado.add(new ReporteMovimientoDTO(
-                            m.getIdMovimiento(),
-                            m.getMateriaPrima().getNombre(),
-                            m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() - m.getCantidadCambio() : 0f),
-                            m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() : 0f,
-                            m.getTipoMovimiento(),
-                            m.getFechaMovimiento(),
-                            null,
-                            m.getMateriaPrima() != null ? m.getMateriaPrima().getId() : null
-                    ));
-                }
-            } else if ("productos".equals(tipo) && m.getProducto() != null) {
+            boolean esProducto = (m.getProducto() != null);
+            boolean esMateria  = (m.getMateriaPrima() != null);
+
+            if ("movimientos".equals(tipo)
+                    || ("productos".equals(tipo) && esProducto)
+                    || ("materiaPrima".equals(tipo) && esMateria)) {
+
+                String nombre = esProducto ? m.getProducto().getNombre() : m.getMateriaPrima().getNombre();
+
+                // Usar SIEMPRE los valores del movimiento
+                Float cantPasada  = (m.getCantidadAnterior() != null) ? m.getCantidadAnterior()
+                        : (m.getCantidadActual() != null && m.getCantidadCambio() != null
+                        ? m.getCantidadActual() - m.getCantidadCambio() : 0f);
+
+                Float cantActual  = (m.getCantidadActual() != null) ? m.getCantidadActual()
+                        : (cantPasada != null && m.getCantidadCambio() != null
+                        ? cantPasada + m.getCantidadCambio() : 0f);
+
                 resultado.add(new ReporteMovimientoDTO(
                         m.getIdMovimiento(),
-                        m.getProducto().getNombre(),
-                        m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() - m.getCantidadCambio() : 0f),
-                        m.getProducto().getCantidad() != null ? m.getProducto().getCantidad() : 0f,
+                        nombre,
+                        cantPasada != null ? cantPasada : 0f,
+                        cantActual != null ? cantActual : 0f,
                         m.getTipoMovimiento(),
                         m.getFechaMovimiento(),
-                        m.getProducto().getId(),
-                        null
-                ));
-            } else if ("materiaPrima".equals(tipo) && m.getMateriaPrima() != null) {
-                resultado.add(new ReporteMovimientoDTO(
-                        m.getIdMovimiento(),
-                        m.getMateriaPrima().getNombre(),
-                        m.getCantidadAnterior() != null ? m.getCantidadAnterior() : (m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() - m.getCantidadCambio() : 0f),
-                        m.getMateriaPrima().getCantidad() != null ? m.getMateriaPrima().getCantidad() : 0f,
-                        m.getTipoMovimiento(),
-                        m.getFechaMovimiento(),
-                        null,
-                        m.getMateriaPrima().getId()
+                        esProducto ? m.getProducto().getId() : null,
+                        esMateria  ? m.getMateriaPrima().getId() : null
                 ));
             }
         }

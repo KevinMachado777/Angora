@@ -3,8 +3,10 @@ package Angora.app.Services;
 import Angora.app.Controllers.dto.MateriaDTO;
 import Angora.app.Entities.Lote;
 import Angora.app.Entities.MateriaPrima;
+import Angora.app.Entities.Movimiento;
 import Angora.app.Repositories.LoteRepository;
 import Angora.app.Repositories.MateriaPrimaRepository;
+import Angora.app.Repositories.MovimientoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,9 @@ public class MateriaPrimaService {
 
     @Autowired
     private ProductoService productoService;
+
+    @Autowired
+    private MovimientoRepository movimientoRepository;
 
     // Listar las materias
     public List<MateriaDTO> findAll() {
@@ -79,33 +84,37 @@ public class MateriaPrimaService {
     // Actualizar una materia prima
     @Transactional
     public MateriaDTO update(MateriaDTO materia) {
-        if (materia == null || materia.getIdMateria() == null) {
-            throw new RuntimeException("ID de materia requerido para actualizar");
-        }
-
-        // Buscar la entidad existente
-        MateriaPrima existente = materiaPrimaRepository.findById(materia.getIdMateria())
+        MateriaPrima existing = materiaPrimaRepository.findById(materia.getIdMateria())
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
 
-        // Actualizar campos (solo si vienen en el DTO)
-        if (materia.getNombre() != null) existente.setNombre(materia.getNombre());
-        if (materia.getCantidad() != null) existente.setCantidad(materia.getCantidad());
-        if (materia.getCosto() != null) existente.setCosto(materia.getCosto());
-        if (materia.getVenta() != null) existente.setVenta(materia.getVenta());
+        Float previo = existing.getCantidad();
+        existing.setNombre(materia.getNombre());
+        existing.setCantidad(materia.getCantidad());
+        existing.setCosto(materia.getCosto());
+        existing.setVenta(materia.getVenta());
 
-        // Guardar cambios
-        MateriaPrima saved = materiaPrimaRepository.save(existente);
+        materiaPrimaRepository.save(existing);
 
-        // Recalcular productos que usan esta materia (backend)
-        productoService.recalculateProductsCostByMateria(saved.getIdMateria());
+        // registrar movimiento si la cantidad cambió
+        if (previo == null) previo = 0f;
+        Float actual = existing.getCantidad() != null ? existing.getCantidad() : 0f;
+        if (!previo.equals(actual)) {
+            Movimiento movimiento = new Movimiento();
+            movimiento.setMateriaPrima(existing);
+            movimiento.setCantidadAnterior(previo);
+            movimiento.setCantidadCambio(Math.abs(actual - previo));
+            movimiento.setTipoMovimiento(actual > previo ? "entrada" : "salida");
+            movimiento.setFechaMovimiento(LocalDateTime.now());
+            movimientoRepository.save(movimiento);
+        }
 
-        // Devolver DTO
-        MateriaDTO out = new MateriaDTO();
-        out.setIdMateria(saved.getIdMateria());
-        out.setNombre(saved.getNombre());
-        out.setCosto(saved.getCosto());
-        out.setVenta(saved.getVenta());
-        out.setCantidad(saved.getCantidad());
-        return out;
+        // construir y devolver DTO (según tu DTO)
+        MateriaDTO dto = new MateriaDTO();
+        dto.setIdMateria(existing.getIdMateria());
+        dto.setNombre(existing.getNombre());
+        dto.setCantidad(existing.getCantidad());
+        dto.setCosto(existing.getCosto());
+        dto.setVenta(existing.getVenta());
+        return dto;
     }
 }
