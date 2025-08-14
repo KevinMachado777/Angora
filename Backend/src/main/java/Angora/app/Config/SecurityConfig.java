@@ -119,9 +119,6 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.PUT, "/inventarioMateria/**").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.DELETE, "/inventarioMateria/**").denyAll();
 
-                    // Rutas de los proveedores
-                    http.requestMatchers(HttpMethod.GET,"/proveedores/**").permitAll();
-
                     // Rutas de ventas
                     http.requestMatchers(HttpMethod.POST, "/ventas/**").permitAll();
                     http.requestMatchers(HttpMethod.GET,"/activos-con-cartera/**").hasAnyAuthority("CLIENTES", "VENTAS");
@@ -135,24 +132,24 @@ public class SecurityConfig {
                     // Rutas para recuperar contraseña
                     http.requestMatchers(HttpMethod.GET, "/passwordReset/**").permitAll();
                     http.requestMatchers(HttpMethod.POST, "/passwordReset/**").permitAll();
-                    http.requestMatchers(HttpMethod.DELETE, "/passwordReset/**").permitAll();                    // El resto necesita autenticacion
+                    http.requestMatchers(HttpMethod.DELETE, "/passwordReset/**").permitAll();
 
                     // Proveedores
-                    http.requestMatchers(HttpMethod.GET,"/proveedores/**").permitAll();
-                    http.requestMatchers(HttpMethod.POST,"/proveedores/**").permitAll();
-                    http.requestMatchers(HttpMethod.PUT,"/proveedores/**").permitAll();
-                    http.requestMatchers(HttpMethod.DELETE,"/proveedores/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET,"/proveedores/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.POST,"/proveedores/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.PUT,"/proveedores/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.DELETE,"/proveedores/**").hasAuthority("PROVEEDORES");
 
                     // Ordenes
-                    http.requestMatchers(HttpMethod.GET,"/ordenes").permitAll();
-                    http.requestMatchers(HttpMethod.POST,"/ordenes/**").permitAll();
-                    http.requestMatchers(HttpMethod.POST,"/ordenes/enviar-orden").permitAll();
-                    http.requestMatchers(HttpMethod.DELETE,"/ordenes/**").permitAll();
-                    http.requestMatchers(HttpMethod.PUT,"/ordenes/**").permitAll();
+                    http.requestMatchers(HttpMethod.GET,"/ordenes").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.POST,"/ordenes/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.POST,"/ordenes/enviar-orden").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.DELETE,"/ordenes/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.PUT,"/ordenes/**").hasAuthority("PROVEEDORES");
 
                     // Al principio de las requestMatchers (antes de anyRequest)
-                    http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").permitAll();
-                    http.requestMatchers(HttpMethod.POST, "/ordenes/confirmar/**").hasAuthority("PEDIDOS"); // o permitAll según tu política
+                    http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.POST, "/ordenes/confirmar/**").hasAuthority("PROVEEDORES"); // o permitAll según tu política
 // Si quieres permitir POST /lotes (creación directa)
                     http.requestMatchers(HttpMethod.POST, "/lotes/**").hasAuthority("INVENTARIOS");
 
