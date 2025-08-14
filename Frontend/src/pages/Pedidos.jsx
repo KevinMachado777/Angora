@@ -200,37 +200,77 @@ const Pedidos = () => {
     }
   };
 
+  // Función corregida para generar PDF con precios correctos
   const generarPDF = (pedido) => {
     const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Fragancey's", 105, 15, { align: "center" });
     doc.setFontSize(12);
-    doc.text(`Factura - Ticket #${pedido.idFactura}`, 10, 10);
+    doc.text(`Factura - Ticket #${pedido.idFactura}`, 10, 25);
     doc.text(
       `Cliente: ${pedido.cliente ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}` : "Consumidor final"}`,
       10,
-      20
+      35
     );
-    doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 30);
-    doc.text(`Cajero: ${pedido.cajero ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}` : "Sin cajero asignado"}`, 10, 40);
-    let y = 50;
+    doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 45);
+    doc.text(`Cajero: ${pedido.cajero ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}` : "Sin cajero asignado"}`, 10, 55);
+    
+    let y = 65;
     if (pedido.notas) {
       doc.text(`Notas: ${pedido.notas}`, 10, y);
       y += 10;
     }
-    doc.text("Productos:", 10, y);
+    
+    // Línea separadora
+    doc.line(10, y, 200, y);
     y += 10;
+    
+    // Encabezados de tabla
+    doc.setFontSize(10);
+    doc.text("Producto", 10, y);
+    doc.text("Cant.", 80, y);
+    doc.text("P. Unit. (sin IVA)", 100, y);
+    doc.text("P. Unit. (con IVA)", 140, y);
+    doc.text("Total", 180, y);
+    y += 10;
+    
+    // Línea separadora
+    doc.line(10, y - 5, 200, y - 5);
+    
+    // Productos con precios corregidos
     pedido.productos.forEach((p) => {
-      const precioUnitario = p.iva ? p.precio * 1.19 : p.precio;
-      const totalProducto = p.cantidad * precioUnitario;
-      doc.text(
-        `- ${p.nombre} x${p.cantidad} ($${precioUnitario.toFixed(2)}) [IVA: ${p.iva ? "Sí" : "No"}] = $${totalProducto.toFixed(2)}`,
-        10,
-        y
-      );
-      y += 10;
+      // Precio unitario SIN IVA (precio base)
+      const precioSinIva = p.precio;
+      // Precio unitario CON IVA (si aplica)
+      const precioConIva = p.iva ? p.precio * 1.19 : p.precio;
+      // Total del producto (cantidad × precio con IVA)
+      const totalProducto = p.cantidad * precioConIva;
+      
+      doc.text(`${p.nombre}`, 10, y);
+      doc.text(`${p.cantidad}`, 80, y);
+      doc.text(`$${precioSinIva.toLocaleString()}`, 100, y);
+      doc.text(`$${precioConIva.toLocaleString()}`, 140, y);
+      doc.text(`$${totalProducto.toLocaleString()}`, 180, y);
+      y += 8;
     });
-    doc.text(`Subtotal (sin IVA): $${pedido.subtotal.toFixed(2)}`, 10, y);
+    
+    // Línea separadora
+    y += 5;
+    doc.line(10, y, 200, y);
     y += 10;
-    doc.text(`Total: $${roundToNearest50(pedido.total).toFixed(2)}`, 10, y);
+    
+    // Totales
+    doc.setFontSize(11);
+    doc.text(`Subtotal (sin IVA): $${pedido.subtotal.toLocaleString()}`, 120, y);
+    y += 8;
+    doc.setFontSize(12);
+    doc.text(`TOTAL: $${roundToNearest50(pedido.total).toLocaleString()}`, 120, y);
+    
+    // Pie de página
+    y += 20;
+    doc.setFontSize(10);
+    doc.text("¡Gracias por tu compra!", 105, y, { align: "center" });
+    
     doc.save(`Factura_Ticket_${pedido.idFactura}.pdf`);
   };
 
@@ -528,39 +568,46 @@ const Pedidos = () => {
               <tr>
                 <th>Nombre</th>
                 <th>Cant.</th>
-                <th>Precio</th>
+                <th>Precio (sin IVA)</th>
+                <th>Subtotal (con IVA)</th>
                 <th>IVA</th>
-                <th>Total</th>
               </tr>
             </thead>
             <tbody>
-              {productosAConfirmar.map((item, i) => (
-                <tr key={i}>
-                  <td>{item.nombre}</td>
-                  <td>{item.cantidad}</td>
-                  <td>
-                    <NumericFormat
-                      value={item.precio}
-                      displayType="text"
-                      thousandSeparator="."
-                      decimalSeparator=","
-                      prefix="$"
-                    />
-                  </td>
-                  <td>{item.iva ? "Sí" : "No"}</td>
-                  <td>
-                    <NumericFormat
-                      value={
-                        item.cantidad * (item.iva ? item.precio * 1.19 : item.precio)
-                      }
-                      displayType="text"
-                      thousandSeparator="."
-                      decimalSeparator=","
-                      prefix="$"
-                    />
-                  </td>
-                </tr>
-              ))}
+              {productosAConfirmar.map((item, i) => {
+                // Precio sin IVA (precio base)
+                const precioSinIva = item.precio;
+                // Precio con IVA si aplica
+                const precioConIva = item.iva ? item.precio * 1.19 : item.precio;
+                // Subtotal = cantidad × precio con IVA
+                const subtotalProducto = item.cantidad * precioConIva;
+                
+                return (
+                  <tr key={i}>
+                    <td>{item.nombre}</td>
+                    <td>{item.cantidad}</td>
+                    <td>
+                      <NumericFormat
+                        value={precioSinIva}
+                        displayType="text"
+                        thousandSeparator="."
+                        decimalSeparator=","
+                        prefix="$"
+                      />
+                    </td>
+                    <td>
+                      <NumericFormat
+                        value={subtotalProducto}
+                        displayType="text"
+                        thousandSeparator="."
+                        decimalSeparator=","
+                        prefix="$"
+                      />
+                    </td>
+                    <td>{item.iva ? "Sí" : "No"}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <hr />
@@ -596,6 +643,9 @@ const Pedidos = () => {
           />
           <label className="form-check-label" htmlFor="enviarCorreo">
             Enviar factura por correo electrónico
+            {!pedidoAConfirmar?.cliente?.correo && (
+              <span className="text-muted"> (Cliente sin correo)</span>
+            )}
           </label>
         </div>
         <div className="pie-modal">

@@ -42,6 +42,9 @@ const Ventas = () => {
     visible: false,
   });
 
+  // Constantes para límites
+  const CANTIDAD_MAXIMA = 1000;
+
   const abrirModal = (tipo, mensaje) => {
     setModalMensaje({ tipo, mensaje, visible: true });
     setTimeout(() => {
@@ -93,6 +96,16 @@ const Ventas = () => {
 
   const handleChange = (e) => {
     const { id, value } = e.target;
+    
+    // Validar cantidad máxima
+    if (id === "cantidad") {
+      const cantidad = parseInt(value);
+      if (cantidad > CANTIDAD_MAXIMA) {
+        abrirModal("advertencia", `La cantidad máxima permitida es ${CANTIDAD_MAXIMA} unidades`);
+        return;
+      }
+    }
+    
     setFormulario((prev) => ({ ...prev, [id]: value }));
   };
 
@@ -124,6 +137,11 @@ const Ventas = () => {
       return;
     }
 
+    if (cantidadNueva > CANTIDAD_MAXIMA) {
+      abrirModal("error", `La cantidad máxima permitida es ${CANTIDAD_MAXIMA} unidades`);
+      return;
+    }
+
     const precio = parseInt(producto.precio);
 
     if (modoEdicion) {
@@ -141,6 +159,10 @@ const Ventas = () => {
       );
       if (productoExistente) {
         const cantidadTotal = productoExistente.cantidad + cantidadNueva;
+        if (cantidadTotal > CANTIDAD_MAXIMA) {
+          abrirModal("error", `La cantidad total no puede exceder ${CANTIDAD_MAXIMA} unidades`);
+          return;
+        }
         const actualizado = {
           ...productoExistente,
           cantidad: cantidadTotal,
@@ -310,6 +332,13 @@ const Ventas = () => {
     return Math.round(value / 50) * 50;
   };
 
+  // Verificar si el crédito está disponible para el cliente seleccionado
+  const isCreditoDisponible = () => {
+    return clienteSeleccionado && 
+           clienteSeleccionado.idCliente !== 0 && 
+           clienteSeleccionado.carteraActiva === true;
+  };
+
   return (
     <main className="main-home ventas inventario">
       <h1 className="titulo">Facturación</h1>
@@ -352,12 +381,14 @@ const Ventas = () => {
         </div>
 
         <div>
-          <label htmlFor="cantidad">Cantidad</label>
+          <label htmlFor="cantidad">Cantidad (máx. {CANTIDAD_MAXIMA})</label>
           <input
             type="number"
             id="cantidad"
             value={formulario.cantidad}
             onChange={handleChange}
+            min="1"
+            max={CANTIDAD_MAXIMA}
           />
         </div>
 
@@ -367,7 +398,7 @@ const Ventas = () => {
       </form>
 
       <CreadorTabla
-        cabeceros={["ID", "Nombre", "Cantidad", "Precio unitario"]}
+        cabeceros={["Nombre", "Cantidad", "Precio unitario"]}
         registros={registros}
         onEditar={handleEditar}
         onEliminar={handleEliminar}
@@ -406,6 +437,11 @@ const Ventas = () => {
                 : null;
               setClienteSeleccionado(nuevoCliente);
               setErrorNotas(!nuevoCliente || nuevoCliente.idCliente === 0 && !notas.trim());
+
+              // Resetear método de pago si se selecciona un cliente sin crédito
+              if (metodoPago === "credito" && (!nuevoCliente || !nuevoCliente.carteraActiva)) {
+                setMetodoPago("");
+              }
 
               if (selected && selected.value !== 0) {
                 try {
@@ -570,9 +606,10 @@ const Ventas = () => {
                 name="metodoPago"
                 checked={metodoPago === "credito"}
                 onChange={() => setMetodoPago("credito")}
-                disabled={!clienteSeleccionado || clienteSeleccionado.idCliente === 0}
+                disabled={!isCreditoDisponible()}
+                title={!isCreditoDisponible() ? "El cliente no tiene crédito activo" : ""}
               />
-              Crédito
+              Crédito {!isCreditoDisponible() && <span className="text-muted">(No disponible)</span>}
             </label>
 
             <h4>Pagó con</h4>

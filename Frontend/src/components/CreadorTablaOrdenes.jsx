@@ -2,6 +2,7 @@ import React from "react";
 import BotonEditar from "../components/BotonEditar";
 import BotonEliminar from "../components/BotonEliminar";
 import BotonAceptar from "../components/BotonAceptar";
+import "../styles/botones.css"
 import "../styles/inventario.css";
 
 // Componente creador de tablas para Órdenes de Compra
@@ -56,8 +57,8 @@ export const CreadorTablaOrdenes = ({ cabeceros = [], registros = [], onEditar, 
                 {onEliminar && (
                   <BotonEliminar onClick={() => onEliminar(registro)} />
                 )}
-                {onConfirmar && !estado && ( // Mostrar botón Confirmar solo si la orden NO está confirmada
-                  <BotonAceptar onClick={() => onConfirmar(registro)}>Confirmar Orden</BotonAceptar>
+                {onConfirmar && !estado && (
+                  <BotonAceptar className="btn-aceptar-pequeno" onClick={() => onConfirmar(registro)}></BotonAceptar>
                 )}
               </td>
             </tr>

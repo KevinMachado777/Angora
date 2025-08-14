@@ -124,6 +124,20 @@
   transform: scale(1.05);
 }
 
+.btn-aceptar-pequeno {
+  padding: 5px 10px !important;
+  font-size: 14px !important;
+  margin: 5px !important;
+
+}
+
+.btn-aceptar-pequeno:hover {
+  background-color: #218838; /* hover original de aceptar */
+  transform: scale(1.05);
+}
+
+
+
 /* Cartera */
 .btn-cartera {
   background-color: #026773;
