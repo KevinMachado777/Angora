@@ -37,4 +37,7 @@ public class Movimiento {
 
     @Column(name = "cantidad_anterior")
     private Float cantidadAnterior;
+
+    @Column(name = "cantidad_actual")
+    private Float cantidadActual;
 }

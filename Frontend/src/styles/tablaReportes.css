@@ -57,3 +57,122 @@
         font-size: 0.9rem;
     }
 }
+
+/* ============================
+   Estilos del paginador
+   ============================ */
+
+/* Contenedor del paginador: alineación y separación con la tabla */
+.paginador {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 6px 4px;
+}
+
+/* Texto informativo (mostrando X - Y de Z) */
+.paginador-info small {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.85rem;
+    display: inline-block;
+}
+
+/* Controles del paginador: grupo de botones */
+.paginador-controles {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Botones del paginador - estilo base */
+.btn-page {
+    background: rgba(0, 50, 100, 0.9);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 120ms ease, background 150ms ease, box-shadow 150ms ease;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.35);
+    min-width: 44px;
+    text-align: center;
+}
+
+/* Botones numéricos */
+.btn-page.page-number {
+    background: rgba(0, 40, 80, 0.6);
+    border: 1px solid rgba(255,255,255,0.04);
+    min-width: 38px;
+    padding: 5px 8px;
+}
+
+/* Estado activo de la página */
+.btn-page.page-number.active,
+.btn-page.page-number[aria-current="page"] {
+    background: linear-gradient(180deg, rgba(0,120,180,1), rgba(0,80,140,1));
+    box-shadow: 0 6px 18px rgba(0,120,180,0.25);
+    transform: translateY(-1px);
+    border: 1px solid rgba(255,255,255,0.14);
+    font-weight: 700;
+}
+
+/* Hover en botones (no aplica cuando está deshabilitado) */
+.btn-page:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+}
+
+/* Botones deshabilitados */
+.btn-page:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    filter: grayscale(0.15);
+}
+
+/* Enfoque accesible (teclado) */
+.btn-page:focus {
+    outline: 2px solid rgba(255,255,255,0.08);
+    outline-offset: 2px;
+}
+
+/* Ajustes para pantallas pequeñas: barra vertical y centrado */
+@media (max-width: 520px) {
+    .paginador {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .paginador-info {
+        text-align: center;
+    }
+
+    .paginador-controles {
+        justify-content: center;
+    }
+
+    .btn-page {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 8px 6px;
+    }
+
+    .btn-page.page-number {
+        min-width: 34px;
+        padding: 6px 6px;
+    }
+}
+
+/* Pequeños detalles visuales para mantener consistencia con la tabla */
+.paginador .btn-page svg,
+.paginador .btn-page .icon {
+    vertical-align: middle;
+    margin-right: 6px;
+}

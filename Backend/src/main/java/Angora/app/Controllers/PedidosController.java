@@ -7,6 +7,7 @@ import Angora.app.Entities.Factura;
 import Angora.app.Entities.Producto;
 import Angora.app.Repositories.*;
 import Angora.app.Services.Email.EnviarCorreo;
+import Angora.app.Services.MovimientoInventarioService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
@@ -39,6 +40,9 @@ public class PedidosController {
 
     @Autowired
     private EnviarCorreo enviarCorreo;
+
+    @Autowired
+    private MovimientoInventarioService movimientoInventarioService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -137,21 +141,9 @@ public class PedidosController {
             // Cambiar estado a CONFIRMADO
             factura.setEstado("CONFIRMADO");
 
-            // Actualizar inventario
+            // Actualizar inventario: delegar a MovimientoInventarioService que bloquea y registra movimiento
             for (ConfirmarFacturaDTO.FacturaProductoDTO fp : dto.getProductos()) {
-                Producto producto = entityManager.find(Producto.class, fp.getIdProducto(), LockModeType.PESSIMISTIC_WRITE);
-                if (producto == null) {
-                    throw new RuntimeException("Producto no encontrado: " + fp.getIdProducto());
-                }
-                if (producto.getStock() == null) {
-                    throw new RuntimeException("Stock no definido para el producto: " + producto.getNombre());
-                }
-                int nuevoStock = producto.getStock() - fp.getCantidad();
-                if (nuevoStock < 0) {
-                    throw new RuntimeException("Stock insuficiente para el producto: " + producto.getNombre());
-                }
-                producto.setStock(nuevoStock);
-                entityManager.merge(producto);
+                movimientoInventarioService.descontarPorVenta(fp.getIdProducto(), fp.getCantidad());
             }
 
             // Gestionar cartera si saldoPendiente > 0
@@ -180,6 +172,7 @@ public class PedidosController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
         }
     }
+
 
     @PostMapping("/enviar-factura")
     public ResponseEntity<?> enviarFactura(@RequestBody Map<String, Object> request) {
