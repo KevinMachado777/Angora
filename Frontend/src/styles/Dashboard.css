@@ -1,4 +1,3 @@
-/* Dashboard.css */
 .dashboard-wrapper {
   padding: 2rem;
   background-color: #f4f6fa;
@@ -140,7 +139,7 @@
 /* Gráficos principales */
 .graficas-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr;
   gap: 2rem;
   margin-bottom: 2.5rem;
   opacity: 0;
@@ -172,7 +171,7 @@ canvas {
 /* Información adicional */
 .info-adicional-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
   opacity: 0;
   transform: translateY(20px);
@@ -185,6 +184,7 @@ canvas {
   padding: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  min-height: 200px;
 }
 
 .alertas-inventario h5,
@@ -238,27 +238,13 @@ canvas {
   font-size: 0.8rem;
 }
 
-.badge {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 6px;
-  text-transform: uppercase;
-}
-
-.badge-critico {
-  background-color: #dc3545;
-  color: white;
-}
-
-.badge-alto {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.badge-medio {
-  background-color: #0dcaf0;
-  color: #212529;
+.no-datos {
+  padding: 0.75rem;
+  color: #6c757d;
+  font-size: 0.9rem;
+  text-align: center;
+  background-color: #f8f9fa;
+  border-radius: 8px;
 }
 
 /* Información adicional */
@@ -377,10 +363,6 @@ canvas {
     gap: 1rem;
   }
   
-  .grafica-container {
-    padding: 1rem;
-  }
-  
   .info-adicional-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -451,6 +433,11 @@ canvas {
 
 .alerta-item:focus-within {
   outline: 2px solid #ffc107;
+  outline-offset: 2px;
+}
+
+.stat-item:focus-within {
+  outline: 2px solid #0d6efd;
   outline-offset: 2px;
 }
 

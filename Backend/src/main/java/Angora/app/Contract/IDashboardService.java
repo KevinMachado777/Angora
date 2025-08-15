@@ -21,12 +21,13 @@ public interface IDashboardService {
     // Resumen mensual
     DashboardResumenDTO getResumenMensual(Integer mes, Integer anio);
 
-    // Top productos más vendidos
-    List<TopProductoDTO> getTopProductos(LocalDate fecha, int limite);
-
     // Alertas de inventario (stock bajo)
     List<AlertaInventarioDTO> getAlertasInventario(Float stockMinimo);
 
     // Comparación con período anterior
     ComparacionPeriodoDTO getComparacionPeriodo(LocalDate fechaInicio, LocalDate fechaFin);
+
+    List<OrdenPendienteDTO> getOrdenesPendientes();
+
+    List<FacturaPendienteDTO> getPedidosPendientes();
 }

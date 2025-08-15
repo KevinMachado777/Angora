@@ -11,7 +11,8 @@ import java.util.List;
 
 @Repository
 public interface OrdenRepository extends JpaRepository<Orden, Long> {
-    List<Orden> findByEstadoFalse();
+    List<Orden> findByEstado(Boolean estado);
+
     void deleteById(Long id);
 
     @Query("SELECT o FROM Orden o WHERE (:fechaInicio IS NULL OR o.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR o.fecha <= :fechaFin)")

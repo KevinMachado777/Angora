@@ -26,6 +26,7 @@ public class DashboardService implements IDashboardService {
     @Autowired private MateriaPrimaRepository materiaPrimaRepository;
     @Autowired private MovimientoRepository movimientoRepository;
     @Autowired private ClienteRepository clienteRepository;
+    @Autowired private OrdenRepository ordenRepository;
 
     @Override
     public DashboardResumenDTO getResumenDiario(LocalDate fecha) {
@@ -171,26 +172,38 @@ public class DashboardService implements IDashboardService {
         );
     }
 
-    @Override
-    public List<TopProductoDTO> getTopProductos(LocalDate fecha, int limite) {
-        LocalDateTime fechaInicio = fecha.atStartOfDay();
-        LocalDateTime fechaFin = fecha.atTime(LocalTime.MAX);
+    // NUEVOS MÉTODOS IMPLEMENTADOS
 
-        List<Factura> facturas = facturaRepository.findByFechaBetween(fechaInicio, fechaFin);
-        Map<Integer, TopProductoTemp> productosVendidos = new HashMap<>();
+    /**
+     * Obtiene todas las órdenes de compra pendientes (estado = false)
+     */
+    public List<OrdenPendienteDTO> getOrdenesPendientes() {
+        List<Orden> ordenesPendientes = ordenRepository.findByEstado(false);
 
-        // Aquí necesitarías acceso a los detalles de factura para contar productos
-        // Por ahora simulamos la lógica - necesitarías un DetalleFacturaRepository
-
-        return productosVendidos.values().stream()
-                .map(temp -> new TopProductoDTO(
-                        temp.getIdProducto(),
-                        temp.getNombre(),
-                        temp.getCantidadVendida(),
-                        temp.getTotalVentas()
+        return ordenesPendientes.stream()
+                .map(orden -> new OrdenPendienteDTO(
+                        orden.getIdOrden(),
+                        orden.getProveedor() != null ? orden.getProveedor().getNombre() : "Sin proveedor",
+                        orden.getFecha(),
+                        orden.getTotal() != null ? orden.getTotal() : 0f,
+                        orden.getNotas(),
+                        calcularDiasVencimiento(orden.getFecha())
                 ))
-                .sorted((a, b) -> b.getCantidadVendida().compareTo(a.getCantidadVendida()))
-                .limit(limite)
+                .sorted((a, b) -> a.getFecha().compareTo(b.getFecha())) // Ordenar por fecha más antigua primero
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Obtiene todos los pedidos pendientes (facturas con estado = "PENDIENTE" o estado boolean = false)
+     * En este sistema, los pedidos son facturas no confirmadas
+     */
+    public List<FacturaPendienteDTO> getPedidosPendientes() {
+        // Buscar facturas con estado false (pedidos no confirmados)
+        List<Factura> facturasPendientes = facturaRepository.findByEstado("PENDIENTE"); // o usar el método boolean si existe
+
+        return facturasPendientes.stream()
+                .map(this::convertirAFacturaPendienteDTO)
+                .sorted((a, b) -> a.getFecha().compareTo(b.getFecha())) // Ordenar por fecha más antigua primero
                 .collect(Collectors.toList());
     }
 
@@ -326,28 +339,76 @@ public class DashboardService implements IDashboardService {
         return "MEDIO";
     }
 
-    // Clase auxiliar para agrupar productos
-    private static class TopProductoTemp {
-        private Integer idProducto;
-        private String nombre;
-        private Integer cantidadVendida = 0;
-        private Float totalVentas = 0f;
+    /**
+     * Calcula los días transcurridos desde una fecha hasta hoy
+     */
+    private Integer calcularDiasVencimiento(LocalDateTime fecha) {
+        if (fecha == null) return 0;
+        return (int) (LocalDate.now().toEpochDay() - fecha.toLocalDate().toEpochDay());
+    }
 
-        // Constructor, getters y setters
-        public TopProductoTemp(Integer idProducto, String nombre) {
-            this.idProducto = idProducto;
-            this.nombre = nombre;
+    /**
+     * Convierte una entidad Factura a FacturaPendienteDTO para el dashboard
+     */
+    private FacturaPendienteDTO convertirAFacturaPendienteDTO(Factura factura) {
+        FacturaPendienteDTO dto = new FacturaPendienteDTO();
+
+        dto.setIdFactura(factura.getIdFactura());
+        dto.setFecha(factura.getFecha());
+        dto.setSubtotal(factura.getSubtotal());
+        dto.setTotal(factura.getTotal());
+        dto.setSaldoPendiente(factura.getSaldoPendiente());
+        dto.setEstado(factura.getEstado());
+        dto.setNotas(factura.getNotas());
+
+        // Convertir cliente
+        if (factura.getCliente() != null) {
+            FacturaPendienteDTO.ClienteDTO clienteDTO = new FacturaPendienteDTO.ClienteDTO();
+            clienteDTO.setIdCliente(factura.getCliente().getIdCliente());
+            clienteDTO.setNombre(factura.getCliente().getNombre());
+            clienteDTO.setApellido(factura.getCliente().getApellido());
+            clienteDTO.setCorreo(factura.getCliente().getEmail());
+            dto.setCliente(clienteDTO);
         }
 
-        public void agregarVenta(Integer cantidad, Float precio) {
-            this.cantidadVendida += cantidad;
-            this.totalVentas += cantidad * precio;
+        // Convertir cajero
+        if (factura.getCajero() != null) {
+            FacturaPendienteDTO.UsuarioDTO cajeroDTO = new FacturaPendienteDTO.UsuarioDTO();
+            cajeroDTO.setId(factura.getCajero().getId());
+            cajeroDTO.setNombre(factura.getCajero().getNombre());
+            cajeroDTO.setApellido(factura.getCajero().getApellido());
+            dto.setCajero(cajeroDTO);
         }
 
-        // Getters
-        public Integer getIdProducto() { return idProducto; }
-        public String getNombre() { return nombre; }
-        public Integer getCantidadVendida() { return cantidadVendida; }
-        public Float getTotalVentas() { return totalVentas; }
+        // Convertir cartera
+        if (factura.getIdCartera() != null) {
+            FacturaPendienteDTO.CarteraDTO carteraDTO = new FacturaPendienteDTO.CarteraDTO();
+            carteraDTO.setIdCartera(factura.getIdCartera().getIdCartera());
+            carteraDTO.setAbono(factura.getIdCartera().getAbono());
+            carteraDTO.setDeudas(factura.getIdCartera().getDeudas());
+            carteraDTO.setEstado(factura.getIdCartera().getEstado());
+            dto.setIdCartera(carteraDTO);
+        }
+
+        // Convertir productos (FacturaProducto)
+        if (factura.getProductos() != null) {
+            List<FacturaPendienteDTO.ProductoDTO> productosDTO = factura.getProductos().stream()
+                    .map(fp -> {
+                        FacturaPendienteDTO.ProductoDTO productoDTO = new FacturaPendienteDTO.ProductoDTO();
+                        if (fp.getProducto() != null) {
+                            productoDTO.setId(fp.getProducto().getId());
+                            productoDTO.setNombre(fp.getProducto().getNombre());
+                            // Asumo que FacturaProducto tiene cantidad y precio
+                            productoDTO.setCantidad(fp.getCantidad());
+                            productoDTO.setPrecio(fp.getPrecioUnitario());
+                            productoDTO.setIva(fp.getProducto().getIva());
+                        }
+                        return productoDTO;
+                    })
+                    .collect(Collectors.toList());
+            dto.setProductos(productosDTO);
+        }
+
+        return dto;
     }
 }

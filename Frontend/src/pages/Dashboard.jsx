@@ -1,12 +1,10 @@
-// Dashboard.jsx
 import React, { useState, useEffect } from "react";
-import { Bar, Doughnut, Line } from "react-chartjs-2";
+import { Bar, Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
-  ArcElement,
   PointElement,
   LineElement,
   Tooltip,
@@ -19,7 +17,6 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
-  ArcElement,
   PointElement,
   LineElement,
   Tooltip,
@@ -30,7 +27,8 @@ const Dashboard = () => {
   // Estados para los datos del dashboard
   const [resumenDiario, setResumenDiario] = useState(null);
   const [tendencias, setTendencias] = useState([]);
-  const [topProductos, setTopProductos] = useState([]);
+  const [ordenesPendientes, setOrdenesPendientes] = useState([]);
+  const [pedidosPendientes, setPedidosPendientes] = useState([]);
   const [alertasInventario, setAlertasInventario] = useState([]);
   const [metricas, setMetricas] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -61,14 +59,16 @@ const Dashboard = () => {
       setResumenDiario(resumen);
 
       // Cargar datos complementarios
-      const [tendenciasData, topProductosData, alertasData] = await Promise.all([
+      const [tendenciasData, ordenesData, pedidosData, alertasData] = await Promise.all([
         dashboardService.getTendencias(7),
-        dashboardService.getTopProductos(vistaActual === 'diario' ? fechaSeleccionada : null, 5),
+        dashboardService.getOrdenesPendientes(),
+        dashboardService.getPedidosPendientes(),
         dashboardService.getAlertasInventario(10)
       ]);
 
       setTendencias(tendenciasData);
-      setTopProductos(topProductosData);
+      setOrdenesPendientes(ordenesData);
+      setPedidosPendientes(pedidosData);
       setAlertasInventario(alertasData);
 
     } catch (err) {
@@ -124,24 +124,6 @@ const Dashboard = () => {
           borderColor: '#dc3545',
           borderRadius: 8,
         }
-      ],
-    };
-  };
-
-  const prepararDatosTopProductos = () => {
-    if (!topProductos.length) return { labels: [], datasets: [] };
-
-    return {
-      labels: topProductos.map(p => p.nombre),
-      datasets: [
-        {
-          label: 'Cantidad Vendida',
-          data: topProductos.map(p => p.cantidadVendida || 0),
-          backgroundColor: [
-            '#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1'
-          ],
-          borderWidth: 1,
-        },
       ],
     };
   };
@@ -353,38 +335,19 @@ const Dashboard = () => {
             }} 
           />
         </div>
-        <div className="grafica-container">
-          <h6 className="grafica-titulo">Top Productos Más Vendidos</h6>
-          <Doughnut 
-            data={prepararDatosTopProductos()} 
-            options={{ 
-              responsive: true,
-              plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      return `${context.label}: ${context.raw} unidades`;
-                    }
-                  }
-                }
-              }
-            }} 
-          />
-        </div>
       </div>
 
       {/* Sección de alertas y datos adicionales */}
       <div className="info-adicional-grid">
         {/* Alertas de inventario */}
-        {alertasInventario.length > 0 && (
-          <div className="alertas-inventario">
-            <h5>
-              <i className="bi bi-exclamation-triangle text-warning me-2"></i>
-              Alertas de Inventario
-            </h5>
-            <div className="alertas-lista">
-              {alertasInventario.slice(0, 5).map((alerta, i) => (
+        <div className="alertas-inventario">
+          <h5>
+            <i className="bi bi-exclamation-triangle text-warning me-2"></i>
+            Alertas de Inventario
+          </h5>
+          <div className="alertas-lista">
+            {alertasInventario.length > 0 ? (
+              alertasInventario.slice(0, 5).map((alerta, i) => (
                 <div key={i} className={`alerta-item ${alerta.nivelAlerta.toLowerCase()}`}>
                   <div className="alerta-info">
                     <strong>{alerta.nombre}</strong> ({alerta.tipo})
@@ -394,10 +357,12 @@ const Dashboard = () => {
                     {alerta.nivelAlerta}
                   </span>
                 </div>
-              ))}
-            </div>
+              ))
+            ) : (
+              <div className="no-datos">0</div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Información adicional */}
         <div className="info-adicional">
@@ -408,12 +373,12 @@ const Dashboard = () => {
               <span className="stat-value">{formatearNumero(resumenDiario?.clientesAtendidos)}</span>
             </div>
             <div className="stat-item">
-              <span className="stat-label">Valor Inventario:</span>
-              <span className="stat-value">{formatearMoneda(resumenDiario?.valorInventario)}</span>
+              <span className="stat-label">Órdenes Pendientes:</span>
+              <span className="stat-value">{formatearNumero(ordenesPendientes.length)}</span>
             </div>
             <div className="stat-item">
-              <span className="stat-label">Movimientos Inventario:</span>
-              <span className="stat-value">{formatearNumero(resumenDiario?.movimientosInventario)}</span>
+              <span className="stat-label">Pedidos Pendientes:</span>
+              <span className="stat-value">{formatearNumero(pedidosPendientes.length)}</span>
             </div>
           </div>
         </div>

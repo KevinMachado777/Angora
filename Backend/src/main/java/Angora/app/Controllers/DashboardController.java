@@ -1,8 +1,6 @@
 package Angora.app.Controllers;
 
-import Angora.app.Controllers.dto.DashboardResumenDTO;
-import Angora.app.Controllers.dto.DashboardMetricasDTO;
-import Angora.app.Controllers.dto.DashboardTendenciaDTO;
+import Angora.app.Controllers.dto.*;
 import Angora.app.Services.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -80,15 +78,25 @@ public class DashboardController {
         }
     }
 
-    // Top productos más vendidos del día
-    @GetMapping("/top-productos")
-    public ResponseEntity<List<?>> getTopProductos(
-            @RequestParam(required = false) LocalDate fecha,
-            @RequestParam(defaultValue = "5") int limite) {
+    // NUEVOS ENDPOINTS AGREGADOS:
+
+    // Órdenes de compra pendientes
+    @GetMapping("/ordenes-pendientes")
+    public ResponseEntity<List<OrdenPendienteDTO>> getOrdenesPendientes() {
         try {
-            LocalDate fechaConsulta = fecha != null ? fecha : LocalDate.now();
-            List<?> topProductos = dashboardService.getTopProductos(fechaConsulta, limite);
-            return ResponseEntity.ok(topProductos);
+            List<OrdenPendienteDTO> ordenesPendientes = dashboardService.getOrdenesPendientes();
+            return ResponseEntity.ok(ordenesPendientes);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // Pedidos pendientes (facturas no confirmadas)
+    @GetMapping("/pedidos-pendientes")
+    public ResponseEntity<List<FacturaPendienteDTO>> getPedidosPendientes() {
+        try {
+            List<FacturaPendienteDTO> pedidosPendientes = dashboardService.getPedidosPendientes();
+            return ResponseEntity.ok(pedidosPendientes);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

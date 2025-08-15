@@ -1,4 +1,4 @@
-// dashboardService.js
+// dashboardService.js - Actualizado
 import api from '../api/axiosInstance';
 
 class DashboardService {
@@ -40,15 +40,26 @@ class DashboardService {
     }
   }
 
-  // Obtener top productos más vendidos
-  async getTopProductos(fecha = null, limite = 5) {
+  // NUEVOS MÉTODOS - Reemplazan getTopProductos
+  
+  // Obtener órdenes de compra pendientes
+  async getOrdenesPendientes() {
     try {
-      const params = { limite };
-      if (fecha) params.fecha = fecha;
-      const response = await api.get('/dashboard/top-productos', { params });
+      const response = await api.get('/dashboard/ordenes-pendientes');
       return response.data;
     } catch (error) {
-      console.error('Error obteniendo top productos:', error);
+      console.error('Error obteniendo órdenes pendientes:', error);
+      throw error;
+    }
+  }
+
+  // Obtener pedidos pendientes (facturas no confirmadas)
+  async getPedidosPendientes() {
+    try {
+      const response = await api.get('/dashboard/pedidos-pendientes');
+      return response.data;
+    } catch (error) {
+      console.error('Error obteniendo pedidos pendientes:', error);
       throw error;
     }
   }
