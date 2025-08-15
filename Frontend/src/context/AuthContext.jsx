@@ -23,6 +23,7 @@ export const AuthProvider = ({ children }) => {
 
   // Efecto para verificar la sesión al cargar el componente
   useEffect(() => {
+    let isMounted = true; 
     const verificarSesion = async () => {
       const accessToken = localStorage.getItem("accessToken");
       const correo = localStorage.getItem("correo");
@@ -48,6 +49,11 @@ export const AuthProvider = ({ children }) => {
       }
     };
     verificarSesion();
+
+    // Limpieza para evitar actualizaciones de estado en componentes desmontados
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Función para iniciar sesión

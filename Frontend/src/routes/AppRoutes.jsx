@@ -1,11 +1,10 @@
-// src/routes/AppRoutes.jsx
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Layout from "../components/Layout";
 import Login from "../pages/Login";
 import Home from "../pages/Home";
 import Perfil from "../pages/Perfil";
 import Personal from "../pages/Personal";
-import Inventario  from "../pages/Inventario";
+import Inventario from "../pages/Inventario";
 import Ventas from "../pages/Ventas";
 import Portafolio from "../pages/Portafolio";
 import Pedidos from "../pages/Pedidos";
@@ -13,6 +12,7 @@ import Reportes from "../pages/Reportes";
 import Proveedores from "../pages/Proveedores";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "../routes/ProtectedRoute";
+import NotFound from "../pages/NotFound"; // Pagina para rutas no encontradas
 
 const AppRoutes = () => {
     return (
@@ -46,7 +46,7 @@ const AppRoutes = () => {
                 exact
                 path="/perfil"
                 element={
-                    <ProtectedRoute> {/* Agrega protección */}
+                    <ProtectedRoute>
                         <Layout>
                             <Perfil />
                         </Layout>
@@ -130,6 +130,8 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 }
             />
+            {/* Ruta wildcard para 404 */}
+            <Route path="*" element={<NotFound />} />
         </Routes>
     );
 };
