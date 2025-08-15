@@ -31,4 +31,6 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
 
     List<Movimiento> findByMateriaPrima_IdMateria(Long idMateria);
 
+    Integer countByFechaMovimientoBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);
+
 }

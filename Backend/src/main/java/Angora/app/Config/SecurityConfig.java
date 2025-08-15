@@ -147,6 +147,10 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.DELETE,"/ordenes/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.PUT,"/ordenes/**").hasAuthority("PROVEEDORES");
 
+                    // Dashboard
+                    http.requestMatchers(HttpMethod.GET,"/dashboard/**").hasAuthority("DASHBOARD");
+
+
                     // Al principio de las requestMatchers (antes de anyRequest)
                     http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.POST, "/ordenes/confirmar/**").hasAuthority("PROVEEDORES"); // o permitAll según tu política
