@@ -177,7 +177,7 @@
 }
 
 /* Burbujas que siguen el cursor */
-.bubble {
+.bubble-not-found {
     position: absolute;
     background: rgba(255, 255, 255, 0.22);
     border-radius: 50%;
