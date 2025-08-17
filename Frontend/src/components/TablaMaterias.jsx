@@ -15,6 +15,7 @@ const TablaMaterias = forwardRef(
         const [modalAdvertenciaIdDuplicado, setModalAdvertenciaIdDuplicado] = useState(false);
         const [modalAdvertenciaCosto, setModalAdvertenciaCosto] = useState(false);
         const [modalLotesMateria, setModalLotesMateria] = useState(false);
+        const [modalHistoricoLotes, setModalHistoricoLotes] = useState(false); // Nueva modal para histórico
         const [lotesMateriaSeleccionada, setLotesMateriaSeleccionada] = useState([]);
         const [modalLoteAbierto, setModalLoteAbierto] = useState(false);
         const [loteSeleccionado, setLoteSeleccionado] = useState(null);
@@ -29,6 +30,10 @@ const TablaMaterias = forwardRef(
         const [isLoading, setIsLoading] = useState(true);
         const [currentPage, setCurrentPage] = useState(1);
         const [itemsPerPage] = useState(5);
+        const [currentPageLotes, setCurrentPageLotes] = useState(1); // Paginación para lotes
+        const [itemsPerPageLotes] = useState(5); // 5 registros por página
+        const [fechaInicio, setFechaInicio] = useState(""); // Filtro por fechas
+        const [fechaFin, setFechaFin] = useState(""); // Filtro por fechas
 
         // Función para obtener el token desde localStorage
         const getAuthToken = () => {
@@ -69,11 +74,25 @@ const TablaMaterias = forwardRef(
             },
         }));
 
-        // Paginación: Calcular índices
+        // Paginación: Calcular índices para la tabla principal
         const indexOfLastItem = currentPage * itemsPerPage;
         const indexOfFirstItem = indexOfLastItem - itemsPerPage;
         const currentItems = registrosMateria.slice(indexOfFirstItem, indexOfLastItem);
         const totalPages = Math.ceil(registrosMateria.length / itemsPerPage);
+
+        // Paginación: Calcular índices para lotes
+        const filtrarLotes = (lotes) => {
+            return lotes.filter((lote) => {
+                const loteDate = new Date(lote.fechaIngreso);
+                const start = fechaInicio ? new Date(fechaInicio) : null;
+                const end = fechaFin ? new Date(fechaFin) : null;
+                return (!start || loteDate >= start) && (!end || loteDate <= end);
+            });
+        };
+        const indexOfLastItemLotes = currentPageLotes * itemsPerPageLotes;
+        const indexOfFirstItemLotes = indexOfLastItemLotes - itemsPerPageLotes;
+        const currentLotes = filtrarLotes(lotesMateriaSeleccionada).slice(indexOfFirstItemLotes, indexOfLastItemLotes);
+        const totalPagesLotes = Math.ceil(filtrarLotes(lotesMateriaSeleccionada).length / itemsPerPageLotes);
 
         const guardarMateria = async (e) => {
             e.preventDefault();
@@ -105,7 +124,6 @@ const TablaMaterias = forwardRef(
                 const headers = { Authorization: `Bearer ${authToken}` };
                 let updatedMaterias;
                 if (materiaSeleccionada) {
-                    // PUT: actualizar solo nombre/venta (costo y cantidad son gestionados por lotes)
                     const payload = { ...materiaSeleccionada, nombre: nueva.nombre, venta: nueva.venta };
                     await api.put(`/inventarioMateria`, payload, { headers });
                     updatedMaterias = registrosMateria.map((p) =>
@@ -135,9 +153,17 @@ const TablaMaterias = forwardRef(
         };
 
         const abrirModalLotesMateria = (materia) => {
-            const lotes = lotesMateriaPrima.filter((lote) => lote.idMateria === materia.idMateria);
-            setLotesMateriaSeleccionada(lotes);
+            const lotesDisponibles = lotesMateriaPrima.filter(
+                (lote) => lote.idMateria === materia.idMateria && lote.cantidadDisponible > 0
+            );
+            setLotesMateriaSeleccionada(lotesDisponibles);
             setModalLotesMateria(true);
+        };
+
+        const abrirModalHistoricoLotes = (materia) => {
+            const lotesHistoricos = lotesMateriaPrima.filter((lote) => lote.idMateria === materia.idMateria);
+            setLotesMateriaSeleccionada(lotesHistoricos);
+            setModalHistoricoLotes(true);
         };
 
         const abrirModalAgregarLote = (materia) => {
@@ -186,7 +212,6 @@ const TablaMaterias = forwardRef(
 
             if (loteSeleccionado) {
                 nuevoLote.idLote = loteSeleccionado.idLote;
-                // NOTA: no modificamos fechaIngreso ni proveedor para lote existente
                 if (nuevoLote.cantidadDisponible > nuevoLote.cantidad) {
                     setError("La cantidad disponible no puede ser mayor que la cantidad inicial del lote");
                     return;
@@ -204,8 +229,7 @@ const TablaMaterias = forwardRef(
                 let responseData;
 
                 if (loteSeleccionado) {
-                    responseData = await api.put(`/lotes`, { ...loteSeleccionado, ...nuevoLote }, { headers });
-                    // mapear con la información enviada
+                    responseData = await api.put(`/lotes/${loteSeleccionado.idLote}`, { ...loteSeleccionado, ...nuevoLote }, { headers });
                     updatedLotes = lotesMateriaPrima.map((l) =>
                         l.idLote === nuevoLote.idLote ? { ...l, ...nuevoLote } : l
                     );
@@ -224,11 +248,9 @@ const TablaMaterias = forwardRef(
 
                 setLotesMateriaPrima(updatedLotes);
 
-                // Actualizar también el estado `lotesMateriaSeleccionada`
                 const nuevosLotesParaModal = updatedLotes.filter(lote => lote.idMateria === nuevoLote.idMateria);
                 setLotesMateriaSeleccionada(nuevosLotesParaModal);
 
-                // Actualizar costo promedio y cantidad total en registrosMateria (si existe)
                 const lotesMateria = updatedLotes.filter((l) => l.idMateria === nuevoLote.idMateria);
                 const totalDisponible = lotesMateria.reduce((sum, l) => sum + (l.cantidadDisponible || 0), 0);
                 const costoPromedio =
@@ -241,7 +263,7 @@ const TablaMaterias = forwardRef(
 
                 const materiaActualizada = registrosMateria.find((m) => m.idMateria === nuevoLote.idMateria);
                 if (materiaActualizada) {
-                    const updatedMateria = { ...materiaActualizada, costo: costoPromedio, cantidad: totalDisponible };
+                    const updatedMateria = { ...materiaActualizada, costo: Math.round(costoPromedio / 50) * 50, quantity: totalDisponible };
                     await api.put(`/inventarioMateria`, updatedMateria, { headers });
                     setRegistrosMateria((prev) =>
                         prev.map((m) => (m.idMateria === nuevoLote.idMateria ? updatedMateria : m))
@@ -336,6 +358,12 @@ const TablaMaterias = forwardRef(
                                     >
                                         Agregar Lote
                                     </button>
+                                    <button
+                                        className="btn btn-sm btn-outline-secondary ms-1"
+                                        onClick={() => abrirModalHistoricoLotes(materia)}
+                                    >
+                                        Ver Histórico
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -380,7 +408,6 @@ const TablaMaterias = forwardRef(
                                 />
                             </div>
 
-                            {/* Mostrar mensaje de costo si la materia ya existe */}
                             {materiaSeleccionada && (
                                 <div className="mb-3">
                                     <label className="form-label">Costo Unitario (COP)</label>
@@ -422,6 +449,22 @@ const TablaMaterias = forwardRef(
                 {modalLotesMateria && (
                     <Modal isOpen={modalLotesMateria} onClose={() => setModalLotesMateria(false)}>
                         <h2 className="mb-4">Lotes de Materia Prima</h2>
+                        <div className="mb-3">
+                            <label>Fecha Inicio:</label>
+                            <input
+                                type="date"
+                                value={fechaInicio}
+                                onChange={(e) => setFechaInicio(e.target.value)}
+                                className="form-control mb-2"
+                            />
+                            <label>Fecha Fin:</label>
+                            <input
+                                type="date"
+                                value={fechaFin}
+                                onChange={(e) => setFechaFin(e.target.value)}
+                                className="form-control"
+                            />
+                        </div>
                         <table className="table table-bordered tabla-materias">
                             <thead>
                                 <tr>
@@ -435,7 +478,7 @@ const TablaMaterias = forwardRef(
                                 </tr>
                             </thead>
                             <tbody>
-                                {lotesMateriaSeleccionada.map((lote) => (
+                                {currentLotes.map((lote) => (
                                     <tr key={lote.idLote}>
                                         <td>{lote.idLote}</td>
                                         <td>{formatCurrency(lote.costoUnitario)}</td>
@@ -455,8 +498,122 @@ const TablaMaterias = forwardRef(
                                 ))}
                             </tbody>
                         </table>
+                        <nav>
+                            <ul className="pagination justify-content-center">
+                                <li className={`page-item ${currentPageLotes === 1 ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes - 1)}>
+                                        Anterior
+                                    </button>
+                                </li>
+                                {Array.from({ length: totalPagesLotes }, (_, i) => {
+                                    if (i < 5 || i >= totalPagesLotes - 5 || Math.abs(i - currentPageLotes + 1) < 2) {
+                                        return (
+                                            <li key={i + 1} className={`page-item ${currentPageLotes === i + 1 ? "active" : ""}`}>
+                                                <button className="page-link" onClick={() => setCurrentPageLotes(i + 1)}>
+                                                    {i + 1}
+                                                </button>
+                                            </li>
+                                        );
+                                    } else if (i === 5 && currentPageLotes > 7) {
+                                        return <li key="ellipsis1" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    } else if (i === totalPagesLotes - 6 && currentPageLotes < totalPagesLotes - 6) {
+                                        return <li key="ellipsis2" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    }
+                                    return null;
+                                })}
+                                <li className={`page-item ${currentPageLotes === totalPagesLotes ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes + 1)}>
+                                        Siguiente
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
                         <div className="d-flex justify-content-end">
                             <BotonAceptar onClick={() => setModalLotesMateria(false)} />
+                        </div>
+                    </Modal>
+                )}
+
+                {/* MODAL: Histórico de Lotes */}
+                {modalHistoricoLotes && (
+                    <Modal isOpen={modalHistoricoLotes} onClose={() => setModalHistoricoLotes(false)}>
+                        <h2 className="mb-4">Histórico de Lotes</h2>
+                        <div className="mb-3">
+                            <label>Fecha Inicio:</label>
+                            <input
+                                type="date"
+                                value={fechaInicio}
+                                onChange={(e) => setFechaInicio(e.target.value)}
+                                className="form-control mb-2"
+                            />
+                            <label>Fecha Fin:</label>
+                            <input
+                                type="date"
+                                value={fechaFin}
+                                onChange={(e) => setFechaFin(e.target.value)}
+                                className="form-control"
+                            />
+                        </div>
+                        <table className="table table-bordered tabla-materias">
+                            <thead>
+                                <tr>
+                                    <th>ID Lote</th>
+                                    <th>Costo Unitario</th>
+                                    <th>Cantidad Inicial</th>
+                                    <th>Cantidad Disponible</th>
+                                    <th>Fecha Ingreso</th>
+                                    <th>Proveedor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentLotes.map((lote) => (
+                                    <tr key={lote.idLote}>
+                                        <td>{lote.idLote}</td>
+                                        <td>{formatCurrency(lote.costoUnitario)}</td>
+                                        <td>{lote.cantidad}</td>
+                                        <td>{lote.cantidadDisponible}</td>
+                                        <td>{formatDate(lote.fechaIngreso)}</td>
+                                        <td>
+                                            {lote.idProveedor
+                                                ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
+                                                : "Sin proveedor"}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <nav>
+                            <ul className="pagination justify-content-center">
+                                <li className={`page-item ${currentPageLotes === 1 ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes - 1)}>
+                                        Anterior
+                                    </button>
+                                </li>
+                                {Array.from({ length: totalPagesLotes }, (_, i) => {
+                                    if (i < 5 || i >= totalPagesLotes - 5 || Math.abs(i - currentPageLotes + 1) < 2) {
+                                        return (
+                                            <li key={i + 1} className={`page-item ${currentPageLotes === i + 1 ? "active" : ""}`}>
+                                                <button className="page-link" onClick={() => setCurrentPageLotes(i + 1)}>
+                                                    {i + 1}
+                                                </button>
+                                            </li>
+                                        );
+                                    } else if (i === 5 && currentPageLotes > 7) {
+                                        return <li key="ellipsis1" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    } else if (i === totalPagesLotes - 6 && currentPageLotes < totalPagesLotes - 6) {
+                                        return <li key="ellipsis2" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    }
+                                    return null;
+                                })}
+                                <li className={`page-item ${currentPageLotes === totalPagesLotes ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes + 1)}>
+                                        Siguiente
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div className="d-flex justify-content-end">
+                            <BotonAceptar onClick={() => setModalHistoricoLotes(false)} />
                         </div>
                     </Modal>
                 )}
@@ -514,7 +671,6 @@ const TablaMaterias = forwardRef(
                                 />
                             </div>
 
-                            {/* Para nuevo lote permitimos seleccionar proveedor; para editar lote no mostramos este input */}
                             {!loteSeleccionado ? (
                                 <div className="mb-3">
                                     <label className="form-label">Proveedor</label>

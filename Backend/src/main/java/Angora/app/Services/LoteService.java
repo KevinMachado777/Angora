@@ -113,18 +113,20 @@ public class LoteService {
     }
 
     @Transactional
-    public Lote update(Lote lote) {
-        if (!loteRepository.existsById(lote.getIdLote())) {
-            throw new RuntimeException("Lote no encontrado");
-        }
-        MateriaPrima materia = materiaPrimaRepository.findById(lote.getIdMateria())
+    public LoteDTO update(LoteDTO loteDto) {
+        Lote existing = loteRepository.findById(loteDto.getIdLote())
+                .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
+        MateriaPrima materia = materiaPrimaRepository.findById(loteDto.getIdMateria())
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
 
         Float anterior = materia.getCantidad() != null ? materia.getCantidad() : 0f;
 
-        Lote saved = loteRepository.save(lote);
+        existing.setCostoUnitario(loteDto.getCostoUnitario());
+        existing.setCantidadDisponible(loteDto.getCantidadDisponible());
+        // No permitir modificar cantidad inicial ni fechaIngreso para consistencia
+        Lote saved = loteRepository.save(existing);
 
-        Float totalDisponible = loteRepository.sumCantidadDisponibleByIdMateria(lote.getIdMateria());
+        Float totalDisponible = loteRepository.sumCantidadDisponibleByIdMateria(loteDto.getIdMateria());
         materia.setCantidad(totalDisponible != null ? totalDisponible : 0f);
         materiaPrimaRepository.save(materia);
 
@@ -139,7 +141,16 @@ public class LoteService {
             mov.setFechaMovimiento(LocalDateTime.now());
             movimientoRepository.save(mov);
         }
-        return saved;
+
+        LoteDTO dto = new LoteDTO();
+        dto.setIdLote(saved.getIdLote());
+        dto.setIdMateria(saved.getIdMateria());
+        dto.setCostoUnitario(saved.getCostoUnitario());
+        dto.setCantidad(saved.getCantidad());
+        dto.setCantidadDisponible(saved.getCantidadDisponible());
+        dto.setFechaIngreso(saved.getFechaIngreso());
+        dto.setIdProveedor(saved.getIdProveedor());
+        return dto;
     }
 
     // recalcula cantidad total y costo promedio basado en cantidadDisponible de lotes
@@ -161,8 +172,9 @@ public class LoteService {
         }
 
         materia.setCantidad(totalDisponible);
-        // MateriaPrima.costo es Integer en tu entidad: redondeamos
+        // MateriaPrima.costo es Integer en tu entidad: redondeamos al múltiplo de 50 más cercano
         int costoPromedio = totalDisponible > 0 ? Math.round(numer / totalDisponible) : 0;
+        costoPromedio = ((costoPromedio + 25) / 50) * 50; // Redondeo al múltiplo de 50
         materia.setCosto(costoPromedio);
 
         materiaPrimaRepository.save(materia);
