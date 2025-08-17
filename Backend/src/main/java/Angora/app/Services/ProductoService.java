@@ -432,29 +432,22 @@ public class ProductoService {
         updateStock(producto.getIdProducto(), producto.getStock() - cantidadComprada);
     }
 
-     // Metodo que Recalcula costo y precio de todos los productos que usan la materia con id = idMateria.
+    // Metodo que Recalcula costo y precio de todos los productos que usan la materia
     @Transactional
-    public void recalculateProductsCostByMateria(Long idMateria) {
-        // Obtener el costo actual de la materia
-        MateriaPrima materia = materiaRepository.findById(idMateria)
-                .orElseThrow(() -> new RuntimeException("Materia no encontrada: " + idMateria));
-        // Costo unitario
+    public void recalculateProductsCostByMateria(MateriaPrima materia) {
+        // Costo unitario de la materia actualizada
         double costoUnitarioMateria = materia.getCosto() != null ? materia.getCosto().doubleValue() : 0.0;
 
         // Obtener todas las relaciones materia-producto que usan esta materia
-        List<MateriaProducto> relaciones = materiaProductoRepository.findByIdMateria(idMateria);
+        List<MateriaProducto> relaciones = materiaProductoRepository.findByIdMateria(materia.getIdMateria());
 
-        // Un producto sólo tiene una entrada por materia, así que iteramos relaciones.
+        // Un producto sólo tiene una entrada por materia, así que iteramos relaciones
         for (MateriaProducto rel : relaciones) {
             // Asegurar tener el producto cargado
-            Producto producto = null;
-            if (rel.getProducto() != null && rel.getProducto().getIdProducto() != null) {
-                // preferir el objeto asociado si viene cargado
-                producto = productoRepository.findById(rel.getProducto().getIdProducto())
-                        .orElse(null);
-            }
+            Producto producto = rel.getProducto() != null && rel.getProducto().getIdProducto() != null
+                    ? productoRepository.findById(rel.getProducto().getIdProducto()).orElse(null)
+                    : null;
             if (producto == null) {
-                // si no se puede obtener: continuar
                 continue;
             }
 
@@ -464,7 +457,6 @@ public class ProductoService {
             for (MateriaProducto mp : materiasDelProducto) {
                 Long idM = mp.getIdMateria();
                 double costoM = 0.0;
-                // Obtener costo de la materia desde la entidad MateriaPrima
                 MateriaPrima mpEntidad = materiaRepository.findById(idM).orElse(null);
                 if (mpEntidad != null && mpEntidad.getCosto() != null) {
                     costoM = mpEntidad.getCosto().doubleValue();
@@ -475,7 +467,7 @@ public class ProductoService {
 
             int nuevoCostoRedondeado = roundTo50(nuevoCostoRaw);
 
-            // calcular nuevo precio preservando markup histórico
+            // Calcular nuevo precio preservando markup histórico
             double oldCosto = producto.getCosto() != null ? producto.getCosto() : 0.0;
             double oldPrecio = producto.getPrecio() != null ? producto.getPrecio() : 0.0;
             double nuevoPrecioCalc;
@@ -507,5 +499,5 @@ public class ProductoService {
     private int roundTo50(double value) {
         return (int) (Math.round(value / 50.0) * 50);
     }
-
 }
+

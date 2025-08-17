@@ -7,7 +7,6 @@ import BotonAceptar from "./BotonAceptar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../api/axiosInstance";
 
-// Componente de tabla de materias primas
 const TablaMaterias = forwardRef(
     ({ registrosMateria, setRegistrosMateria, lotesMateriaPrima, setLotesMateriaPrima, proveedores }, ref) => {
         const [materiaSeleccionada, setMateriaSeleccionada] = useState(null);
@@ -15,6 +14,7 @@ const TablaMaterias = forwardRef(
         const [modalAdvertenciaIdDuplicado, setModalAdvertenciaIdDuplicado] = useState(false);
         const [modalAdvertenciaCosto, setModalAdvertenciaCosto] = useState(false);
         const [modalLotesMateria, setModalLotesMateria] = useState(false);
+        const [modalHistoricoLotes, setModalHistoricoLotes] = useState(false);
         const [lotesMateriaSeleccionada, setLotesMateriaSeleccionada] = useState([]);
         const [modalLoteAbierto, setModalLoteAbierto] = useState(false);
         const [loteSeleccionado, setLoteSeleccionado] = useState(null);
@@ -29,14 +29,20 @@ const TablaMaterias = forwardRef(
         const [isLoading, setIsLoading] = useState(true);
         const [currentPage, setCurrentPage] = useState(1);
         const [itemsPerPage] = useState(5);
+        const [currentPageLotes, setCurrentPageLotes] = useState(1);
+        const [itemsPerPageLotes] = useState(5);
+        const [fechaInicio, setFechaInicio] = useState("");
+        const [fechaFin, setFechaFin] = useState("");
+        const [isMounted, setIsMounted] = useState(false);
+        const [cantidadActualLote, setCantidadActualLote] = useState(null);
 
-        // Función para obtener el token desde localStorage
+        // Función para obtener el token de autenticación del localStorage
         const getAuthToken = () => {
             const localToken = localStorage.getItem("accessToken");
             return localToken;
         };
 
-        // Función auxiliar para manejar errores
+        // Manejo de errores de la API
         const handleApiError = (err, context) => {
             console.error(`Error en ${context}:`, {
                 status: err.response?.status,
@@ -56,11 +62,27 @@ const TablaMaterias = forwardRef(
             }
         };
 
+        // Carga inicial de materias
         useEffect(() => {
-            if (registrosMateria.length > 0) {
-                setIsLoading(false);
+            if (!isMounted) {
+                const fetchUpdatedMaterias = async () => {
+                    try {
+                        const authToken = getAuthToken();
+                        if (authToken) {
+                            const headers = { Authorization: `Bearer ${authToken}` };
+                            const response = await api.get("/inventarioMateria", { headers });
+                            setRegistrosMateria(response.data);
+                            setIsMounted(true);
+                        }
+                    } catch (err) {
+                        handleApiError(err, "sincronización de materias");
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+                fetchUpdatedMaterias();
             }
-        }, [registrosMateria]);
+        }, [isMounted, setRegistrosMateria]);
 
         useImperativeHandle(ref, () => ({
             abrirModalAgregar: () => {
@@ -69,12 +91,29 @@ const TablaMaterias = forwardRef(
             },
         }));
 
-        // Paginación: Calcular índices
+        // Paginación de materias
         const indexOfLastItem = currentPage * itemsPerPage;
         const indexOfFirstItem = indexOfLastItem - itemsPerPage;
         const currentItems = registrosMateria.slice(indexOfFirstItem, indexOfLastItem);
         const totalPages = Math.ceil(registrosMateria.length / itemsPerPage);
 
+        // Filtrado y paginación de lotes
+        const filtrarLotes = (lotes) => {
+            return lotes.filter((lote) => {
+                const loteDate = new Date(lote.fechaIngreso);
+                const start = fechaInicio ? new Date(fechaInicio) : null;
+                const end = fechaFin ? new Date(fechaFin) : null;
+                return (!start || loteDate >= start) && (!end || loteDate <= end);
+            });
+        };
+
+        // Paginación de lotes filtrados
+        const indexOfLastItemLotes = currentPageLotes * itemsPerPageLotes;
+        const indexOfFirstItemLotes = indexOfLastItemLotes - itemsPerPageLotes;
+        const currentLotes = filtrarLotes(lotesMateriaSeleccionada).slice(indexOfFirstItemLotes, indexOfLastItemLotes);
+        const totalPagesLotes = Math.ceil(filtrarLotes(lotesMateriaSeleccionada).length / itemsPerPageLotes);
+
+        // Función para guardar o editar una materia
         const guardarMateria = async (e) => {
             e.preventDefault();
             const authToken = getAuthToken();
@@ -105,7 +144,6 @@ const TablaMaterias = forwardRef(
                 const headers = { Authorization: `Bearer ${authToken}` };
                 let updatedMaterias;
                 if (materiaSeleccionada) {
-                    // PUT: actualizar solo nombre/venta (costo y cantidad son gestionados por lotes)
                     const payload = { ...materiaSeleccionada, nombre: nueva.nombre, venta: nueva.venta };
                     await api.put(`/inventarioMateria`, payload, { headers });
                     updatedMaterias = registrosMateria.map((p) =>
@@ -134,10 +172,20 @@ const TablaMaterias = forwardRef(
             }
         };
 
+        // Funciones para abrir los modales de lotes
         const abrirModalLotesMateria = (materia) => {
-            const lotes = lotesMateriaPrima.filter((lote) => lote.idMateria === materia.idMateria);
-            setLotesMateriaSeleccionada(lotes);
+            const lotesDisponibles = lotesMateriaPrima.filter(
+                (lote) => lote.idMateria === materia.idMateria && lote.cantidadDisponible > 0
+            );
+            setLotesMateriaSeleccionada(lotesDisponibles);
             setModalLotesMateria(true);
+        };
+
+
+        const abrirModalHistoricoLotes = (materia) => {
+            const lotesHistoricos = lotesMateriaPrima.filter((lote) => lote.idMateria === materia.idMateria);
+            setLotesMateriaSeleccionada(lotesHistoricos);
+            setModalHistoricoLotes(true);
         };
 
         const abrirModalAgregarLote = (materia) => {
@@ -154,16 +202,18 @@ const TablaMaterias = forwardRef(
 
         const abrirModalEditarLote = (lote) => {
             setLoteSeleccionado(lote);
+            setCantidadActualLote(lote.cantidadDisponible); // Guardar la cantidad actual del lote
             setLoteNuevo({
                 idLote: lote.idLote,
                 idMateria: lote.idMateria,
                 costoUnitario: lote.costoUnitario,
-                cantidad: lote.cantidad,
-                cantidadDisponible: lote.cantidadDisponible,
+                cantidad: lote.cantidad, // Cantidad inicial fija
+                cantidadDisponible: lote.cantidadDisponible, // Cantidad actual disponible
             });
             setModalLoteAbierto(true);
         };
 
+        // Función para guardar o editar un lote
         const guardarLote = async (e) => {
             e.preventDefault();
             const authToken = getAuthToken();
@@ -184,13 +234,26 @@ const TablaMaterias = forwardRef(
                 idProveedor: datos.get("idProveedor") ? Number(datos.get("idProveedor")) : null,
             };
 
+            // VALIDACIÓN 1: No puede ser mayor que la cantidad original del lote
+            if (loteSeleccionado && cantidadIngresada > Number(loteSeleccionado.cantidad)) {
+                setError(`La cantidad disponible no puede ser mayor que la cantidad inicial del lote (${loteSeleccionado.cantidad})`);
+                return;
+            }
+
+            // VALIDACIÓN 2: ¡LA NUEVA! No puede ser mayor que la cantidad actual
+            if (loteSeleccionado && cantidadIngresada > Number(cantidadActualLote)) {
+                setError(`Este lote cuenta con ${cantidadActualLote} unidades. No puedes poner una cantidad mayor a esa.`);
+                return;
+            }
+
+            // Validación: La cantidad disponible no puede ser negativa
+            if (cantidadIngresada < 0) {
+                setError("La cantidad disponible no puede ser negativa");
+                return;
+            }
+
             if (loteSeleccionado) {
                 nuevoLote.idLote = loteSeleccionado.idLote;
-                // NOTA: no modificamos fechaIngreso ni proveedor para lote existente
-                if (nuevoLote.cantidadDisponible > nuevoLote.cantidad) {
-                    setError("La cantidad disponible no puede ser mayor que la cantidad inicial del lote");
-                    return;
-                }
             }
 
             if (isNaN(costoUnitario) || isNaN(cantidadIngresada) || costoUnitario < 0 || cantidadIngresada < 0) {
@@ -204,8 +267,7 @@ const TablaMaterias = forwardRef(
                 let responseData;
 
                 if (loteSeleccionado) {
-                    responseData = await api.put(`/lotes`, { ...loteSeleccionado, ...nuevoLote }, { headers });
-                    // mapear con la información enviada
+                    responseData = await api.put(`/lotes/${loteSeleccionado.idLote}`, { ...loteSeleccionado, ...nuevoLote }, { headers });
                     updatedLotes = lotesMateriaPrima.map((l) =>
                         l.idLote === nuevoLote.idLote ? { ...l, ...nuevoLote } : l
                     );
@@ -224,35 +286,33 @@ const TablaMaterias = forwardRef(
 
                 setLotesMateriaPrima(updatedLotes);
 
-                // Actualizar también el estado `lotesMateriaSeleccionada`
-                const nuevosLotesParaModal = updatedLotes.filter(lote => lote.idMateria === nuevoLote.idMateria);
+                // Obtener la materia actualizada desde el backend para tener el costo correcto
+                const materiaResponse = await api.get(`/inventarioMateria/${nuevoLote.idMateria}`, { headers });
+                const materiaActualizada = materiaResponse.data;
+
+                // Llamar al endpoint PUT para que se ejecute el recálculo de productos
+                await api.put(`/inventarioMateria`, materiaActualizada, { headers });
+
+                // Obtener la materia actualizada NUEVAMENTE después del PUT
+                const materiaFinalResponse = await api.get(`/inventarioMateria/${nuevoLote.idMateria}`, { headers });
+                const materiaFinal = materiaFinalResponse.data;
+
+                // Actualizar el estado local con los datos finales del backend
+                setRegistrosMateria((prev) =>
+                    prev.map((m) => (m.idMateria === nuevoLote.idMateria ? materiaFinal : m))
+                );
+
+                const nuevosLotesParaModal = updatedLotes.filter(
+                    (lote) => lote.idMateria === nuevoLote.idMateria && lote.cantidadDisponible > 0
+                );
                 setLotesMateriaSeleccionada(nuevosLotesParaModal);
-
-                // Actualizar costo promedio y cantidad total en registrosMateria (si existe)
-                const lotesMateria = updatedLotes.filter((l) => l.idMateria === nuevoLote.idMateria);
-                const totalDisponible = lotesMateria.reduce((sum, l) => sum + (l.cantidadDisponible || 0), 0);
-                const costoPromedio =
-                    totalDisponible > 0
-                        ? lotesMateria.reduce(
-                            (sum, l) => sum + (l.costoUnitario || 0) * (l.cantidadDisponible || 0),
-                            0
-                        ) / totalDisponible
-                        : 0;
-
-                const materiaActualizada = registrosMateria.find((m) => m.idMateria === nuevoLote.idMateria);
-                if (materiaActualizada) {
-                    const updatedMateria = { ...materiaActualizada, costo: costoPromedio, cantidad: totalDisponible };
-                    await api.put(`/inventarioMateria`, updatedMateria, { headers });
-                    setRegistrosMateria((prev) =>
-                        prev.map((m) => (m.idMateria === nuevoLote.idMateria ? updatedMateria : m))
-                    );
-                }
 
                 localStorage.setItem("lotesMateriaPrima", JSON.stringify(updatedLotes));
                 localStorage.setItem("registrosMateria", JSON.stringify(registrosMateria));
 
                 setModalLoteAbierto(false);
                 setLoteSeleccionado(null);
+                setCantidadActualLote(null); // Limpiar la cantidad actual
                 setLoteNuevo({ idMateria: 0, costoUnitario: "", cantidad: "", cantidadDisponible: "", idProveedor: null });
             } catch (err) {
                 if (err.response?.status === 409) {
@@ -263,12 +323,12 @@ const TablaMaterias = forwardRef(
             }
         };
 
+        // Función para formatear números como moneda
         const formatCurrency = (value) => {
-            return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(
-                value
-            );
+            return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
         };
 
+        // Función para formatear fechas
         const formatDate = (dateString) => {
             if (!dateString || dateString === "N/A") return "N/A";
             const date = new Date(dateString);
@@ -279,23 +339,19 @@ const TablaMaterias = forwardRef(
             }).format(date);
         };
 
+        // Agregar esta función en tu componente TablaMaterias
+        const limpiarFechas = () => {
+            setFechaInicio("");
+            setFechaFin("");
+            setCurrentPageLotes(1);
+        };
+
         if (isLoading) {
             return <div className="text-center mt-5">Cargando materias primas...</div>;
         }
 
         return (
             <div className="container inventario">
-                {error && (
-                    <Modal isOpen={!!error} onClose={() => setError(null)}>
-                        <div className="encabezado-modal">
-                            <h2>Error</h2>
-                        </div>
-                        <p className="text-center">{error}</p>
-                        <div className="modal-footer">
-                            <BotonAceptar onClick={() => setError(null)} />
-                        </div>
-                    </Modal>
-                )}
                 <table className="table table-bordered tabla-materias">
                     <thead>
                         <tr>
@@ -336,6 +392,12 @@ const TablaMaterias = forwardRef(
                                     >
                                         Agregar Lote
                                     </button>
+                                    <button
+                                        className="btn btn-sm btn-outline-secondary ms-1"
+                                        onClick={() => abrirModalHistoricoLotes(materia)}
+                                    >
+                                        Ver Histórico
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -363,7 +425,6 @@ const TablaMaterias = forwardRef(
                     </ul>
                 </nav>
 
-                {/* MODAL: Agregar / Editar Materia */}
                 {modalAbiertaMateria && (
                     <Modal isOpen={modalAbiertaMateria} onClose={() => setModalAbiertaMateria(false)}>
                         <form onSubmit={guardarMateria}>
@@ -380,7 +441,6 @@ const TablaMaterias = forwardRef(
                                 />
                             </div>
 
-                            {/* Mostrar mensaje de costo si la materia ya existe */}
                             {materiaSeleccionada && (
                                 <div className="mb-3">
                                     <label className="form-label">Costo Unitario (COP)</label>
@@ -418,10 +478,32 @@ const TablaMaterias = forwardRef(
                     </Modal>
                 )}
 
-                {/* MODAL: Lotes de materia */}
                 {modalLotesMateria && (
                     <Modal isOpen={modalLotesMateria} onClose={() => setModalLotesMateria(false)}>
                         <h2 className="mb-4">Lotes de Materia Prima</h2>
+                        <div className="mb-3">
+                            <label>Fecha Inicio:</label>
+                            <input
+                                type="date"
+                                value={fechaInicio}
+                                onChange={(e) => setFechaInicio(e.target.value)}
+                                className="form-control mb-2"
+                            />
+                            <label>Fecha Fin:</label>
+                            <input
+                                type="date"
+                                value={fechaFin}
+                                onChange={(e) => setFechaFin(e.target.value)}
+                                className="form-control mb-2"
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={limpiarFechas}
+                            >
+                                Limpiar Fechas
+                            </button>
+                        </div>
                         <table className="table table-bordered tabla-materias">
                             <thead>
                                 <tr>
@@ -435,7 +517,7 @@ const TablaMaterias = forwardRef(
                                 </tr>
                             </thead>
                             <tbody>
-                                {lotesMateriaSeleccionada.map((lote) => (
+                                {currentLotes.map((lote) => (
                                     <tr key={lote.idLote}>
                                         <td>{lote.idLote}</td>
                                         <td>{formatCurrency(lote.costoUnitario)}</td>
@@ -444,8 +526,7 @@ const TablaMaterias = forwardRef(
                                         <td>{formatDate(lote.fechaIngreso)}</td>
                                         <td>
                                             {lote.idProveedor
-                                                ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre ||
-                                                "N/A"
+                                                ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
                                                 : "Sin proveedor"}
                                         </td>
                                         <td>
@@ -455,13 +536,132 @@ const TablaMaterias = forwardRef(
                                 ))}
                             </tbody>
                         </table>
+                        <nav>
+                            <ul className="pagination justify-content-center">
+                                <li className={`page-item ${currentPageLotes === 1 ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes - 1)}>
+                                        Anterior
+                                    </button>
+                                </li>
+                                {Array.from({ length: totalPagesLotes }, (_, i) => {
+                                    if (i < 5 || i >= totalPagesLotes - 5 || Math.abs(i - currentPageLotes + 1) < 2) {
+                                        return (
+                                            <li key={i + 1} className={`page-item ${currentPageLotes === i + 1 ? "active" : ""}`}>
+                                                <button className="page-link" onClick={() => setCurrentPageLotes(i + 1)}>
+                                                    {i + 1}
+                                                </button>
+                                            </li>
+                                        );
+                                    } else if (i === 5 && currentPageLotes > 7) {
+                                        return <li key="ellipsis1" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    } else if (i === totalPagesLotes - 6 && currentPageLotes < totalPagesLotes - 6) {
+                                        return <li key="ellipsis2" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    }
+                                    return null;
+                                })}
+                                <li className={`page-item ${currentPageLotes === totalPagesLotes ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes + 1)}>
+                                        Siguiente
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
                         <div className="d-flex justify-content-end">
                             <BotonAceptar onClick={() => setModalLotesMateria(false)} />
                         </div>
                     </Modal>
                 )}
 
-                {/* MODAL: Agregar / Editar Lote */}
+                {modalHistoricoLotes && (
+                    <Modal isOpen={modalHistoricoLotes} onClose={() => setModalHistoricoLotes(false)}>
+                        <h2 className="mb-4">Histórico de Lotes</h2>
+                        <div className="mb-3">
+                            <label>Fecha Inicio:</label>
+                            <input
+                                type="date"
+                                value={fechaInicio}
+                                onChange={(e) => setFechaInicio(e.target.value)}
+                                className="form-control mb-2"
+                            />
+                            <label>Fecha Fin:</label>
+                            <input
+                                type="date"
+                                value={fechaFin}
+                                onChange={(e) => setFechaFin(e.target.value)}
+                                className="form-control mb-2"
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={limpiarFechas}
+                            >
+                                Limpiar Fechas
+                            </button>
+                        </div>
+                        <table className="table table-bordered tabla-materias">
+                            <thead>
+                                <tr>
+                                    <th>ID Lote</th>
+                                    <th>Costo Unitario</th>
+                                    <th>Cantidad Inicial</th>
+                                    <th>Cantidad Disponible</th>
+                                    <th>Fecha Ingreso</th>
+                                    <th>Proveedor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentLotes.map((lote) => (
+                                    <tr key={lote.idLote}>
+                                        <td>{lote.idLote}</td>
+                                        <td>{formatCurrency(lote.costoUnitario)}</td>
+                                        <td>{lote.cantidad}</td>
+                                        <td>{lote.cantidadDisponible}</td>
+                                        <td>{formatDate(lote.fechaIngreso)}</td>
+                                        <td>
+                                            {lote.idProveedor
+                                                ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
+                                                : "Sin proveedor"}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <nav>
+                            <ul className="pagination justify-content-center">
+                                <li className={`page-item ${currentPageLotes === 1 ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes - 1)}>
+                                        Anterior
+                                    </button>
+                                </li>
+                                {Array.from({ length: totalPagesLotes }, (_, i) => {
+                                    if (i < 5 || i >= totalPagesLotes - 5 || Math.abs(i - currentPageLotes + 1) < 2) {
+                                        return (
+                                            <li key={i + 1} className={`page-item ${currentPageLotes === i + 1 ? "active" : ""}`}>
+                                                <button className="page-link" onClick={() => setCurrentPageLotes(i + 1)}>
+                                                    {i + 1}
+                                                </button>
+                                            </li>
+                                        );
+                                    } else if (i === 5 && currentPageLotes > 7) {
+                                        return <li key="ellipsis1" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    } else if (i === totalPagesLotes - 6 && currentPageLotes < totalPagesLotes - 6) {
+                                        return <li key="ellipsis2" className="page-item disabled"><span className="page-link">…</span></li>;
+                                    }
+                                    return null;
+                                })}
+                                <li className={`page-item ${currentPageLotes === totalPagesLotes ? "disabled" : ""}`}>
+                                    <button className="page-link" onClick={() => setCurrentPageLotes(currentPageLotes + 1)}>
+                                        Siguiente
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                        <div className="d-flex justify-content-end">
+                            <BotonAceptar onClick={() => setModalHistoricoLotes(false)} />
+                        </div>
+                    </Modal>
+                )}
+
                 {modalLoteAbierto && (
                     <Modal isOpen={modalLoteAbierto} onClose={() => setModalLoteAbierto(false)}>
                         <form onSubmit={guardarLote}>
@@ -514,7 +714,6 @@ const TablaMaterias = forwardRef(
                                 />
                             </div>
 
-                            {/* Para nuevo lote permitimos seleccionar proveedor; para editar lote no mostramos este input */}
                             {!loteSeleccionado ? (
                                 <div className="mb-3">
                                     <label className="form-label">Proveedor</label>
@@ -565,6 +764,17 @@ const TablaMaterias = forwardRef(
                         </p>
                         <div className="d-flex justify-content-end">
                             <BotonAceptar onClick={() => setModalAdvertenciaCosto(false)} />
+                        </div>
+                    </Modal>
+                )}
+                {error && (
+                    <Modal isOpen={!!error} onClose={() => setError(null)}>
+                        <div className="encabezado-modal">
+                            <h2>Error</h2>
+                        </div>
+                        <p className="text-center">{error}</p>
+                        <div className="modal-footer">
+                            <BotonAceptar onClick={() => setError(null)} />
                         </div>
                     </Modal>
                 )}

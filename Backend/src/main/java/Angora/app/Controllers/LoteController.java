@@ -44,12 +44,11 @@ public class LoteController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Lote lote) {
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody LoteDTO loteDto) {
         if (!loteRepository.existsById(id)) {
             throw new RuntimeException("Lote no encontrado");
         }
-        lote.setIdLote(id);
-        return new ResponseEntity<>(loteRepository.save(lote), HttpStatus.OK);
+        return new ResponseEntity<>(loteService.update(loteDto), HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")
