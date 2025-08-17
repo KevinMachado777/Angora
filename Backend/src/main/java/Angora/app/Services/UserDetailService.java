@@ -69,14 +69,9 @@ public class UserDetailService implements UserDetailsService{
     // Inyeccion de la configuracion de cloudinary
     @Autowired
     private Cloudinary cloudinary;
-
-    /**
-     * Sube una imagen a Cloudinary. Si el archivo es nulo o vacío,
-     * retorna la URL de una imagen por defecto.
-     * @param file El archivo MultipartFile a subir.
-     * @return La URL pública de la imagen en Cloudinary.
-     * @throws IOException Si ocurre un error durante la subida.
-     */
+    
+     // Sube una imagen a Cloudinary. Si el archivo es nulo o vacío,
+     // retorna la URL de una imagen por defecto.
     public String uploadImage(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             // URL de la imagen por defecto subida a Cloudinary
@@ -87,12 +82,7 @@ public class UserDetailService implements UserDetailsService{
         return uploadResult.get("url").toString();
     }
 
-    /**
-     * Carga un usuario por su correo electrónico para el proceso de autenticación de Spring Security.
-     * @param correo El correo electrónico del usuario.
-     * @return Un objeto UserDetails que representa al usuario.
-     * @throws UsernameNotFoundException Si el usuario no es encontrado.
-     */
+    // Carga un usuario por su correo electrónico para el proceso de autenticación de Spring Security.
     @Override
     public UserDetails loadUserByUsername(String correo) throws UsernameNotFoundException {
         // Buscar el usuario en la base de datos por correo
@@ -118,12 +108,8 @@ public class UserDetailService implements UserDetailsService{
                 authorities);
     }
 
-    /**
-     * Procesa la solicitud de login del usuario, autenticando las credenciales
-     * y generando tokens de acceso y refresco.
-     * @param authLogin Objeto DTO con las credenciales de login.
-     * @return Un objeto AuthResponse con los detalles de la autenticación.
-     */
+     // Procesa la solicitud de login del usuario, autenticando las credenciales
+     // y generando tokens de acceso y refresco.
     public AuthResponse loginUser(AuthLoginRequest authLogin){
         // Recuperamos el correo y la contraseña
         String correo = authLogin.correo();
@@ -150,13 +136,7 @@ public class UserDetailService implements UserDetailsService{
         return authResponse;
     }
 
-    /**
-     * Autentica un usuario verificando sus credenciales.
-     * @param correo El correo electrónico del usuario.
-     * @param password La contraseña del usuario.
-     * @return Un objeto Authentication si las credenciales son válidas.
-     * @throws BadCredentialsException Si las credenciales son inválidas.
-     */
+     // Autentica un usuario verificando sus credenciales.
     public Authentication authenticate(String correo, String password) {
         // Buscamos el usuario en la base de datos
         UserDetails userDetails = this.loadUserByUsername(correo);
@@ -179,15 +159,8 @@ public class UserDetailService implements UserDetailsService{
         );
     }
 
-    /**
-     * Crea un nuevo usuario en la base de datos y genera una contraseña temporal,
-     * sube la foto de perfil a Cloudinary y envía un correo con la contraseña.
-     * @param authCreateUser Objeto DTO con los datos del nuevo usuario.
-     * @param foto El archivo MultipartFile de la foto de perfil.
-     * @return Un objeto AuthResponse con los detalles del usuario creado y su token.
-     * @throws IOException Si ocurre un error durante la subida de la foto.
-     * @throws IllegalArgumentException Si el ID o correo ya están en uso, o si no se encuentran permisos.
-     */
+     // Crea un nuevo usuario en la base de datos y genera una contraseña temporal,
+     // sube la foto de perfil a Cloudinary y envía un correo con la contraseña.
     public AuthResponse createUser(AuthCreateUserRequest authCreateUser, MultipartFile foto) throws IOException {
         // Creación del usuario
         Long id = authCreateUser.id();
@@ -303,15 +276,7 @@ public class UserDetailService implements UserDetailsService{
         return authResponse;
     }
 
-    /**
-     * Actualiza los datos del perfil de un usuario, incluyendo la foto de perfil.
-     * Este método está diseñado para el endpoint /user/perfil.
-     * @param usuarioActualizado Objeto Usuario con los datos a actualizar.
-     * @param foto El archivo MultipartFile de la nueva foto, o un archivo vacío si se desea eliminar la actual.
-     * @return El objeto Usuario actualizado.
-     * @throws RuntimeException Si el usuario no es encontrado.
-     * @throws IOException Si ocurre un error durante la subida o eliminación de la foto.
-     */
+    // Actualiza los datos del perfil de un usuario, incluyendo la foto de perfil.
     public Usuario actualizarPerfil(Usuario usuarioActualizado, MultipartFile foto) throws IOException {
         Usuario usuarioExistente = usuarioRepository.findById(usuarioActualizado.getId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + usuarioActualizado.getId()));
@@ -322,9 +287,7 @@ public class UserDetailService implements UserDetailsService{
         usuarioExistente.setTelefono(usuarioActualizado.getTelefono());
         usuarioExistente.setDireccion(usuarioActualizado.getDireccion());
 
-        // Si el correo cambia, podrías tener una lógica de reautenticación o confirmación aquí
-        // Nota: La verificación de correo existente ya se hace en el frontend.
-        // Si el correo es diferente, se le pedirá al usuario que vuelva a iniciar sesión.
+        // Si el correo cambia se le pedirá al usuario que vuelva a iniciar sesión.
         if (!usuarioExistente.getCorreo().equals(usuarioActualizado.getCorreo())) {
             // Se asume que el frontend ya validó si el nuevo correo existe
             usuarioExistente.setCorreo(usuarioActualizado.getCorreo());
@@ -353,15 +316,7 @@ public class UserDetailService implements UserDetailsService{
         return usuarioRepository.save(usuarioExistente);
     }
 
-    /**
-     * Actualiza todos los campos de un usuario en el módulo de Personal.
-     * @param usuario Objeto Usuario con los datos a actualizar.
-     * @param foto El archivo MultipartFile de la nueva foto, si se desea actualizar.
-     * @return El objeto Usuario actualizado.
-     * @throws RuntimeException Si el usuario no es encontrado.
-     * @throws IllegalArgumentException Si el correo ya está en uso por otro usuario.
-     * @throws IOException Si ocurre un error durante la subida o eliminación de la foto.
-     */
+    // Actualiza todos los campos de un usuario en el módulo de Personal.
     public Usuario actualizarPersonal(Usuario usuario, MultipartFile foto) throws IOException {
         Usuario usuarioExistente = usuarioRepository.findById(usuario.getId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + usuario.getId()));
@@ -414,12 +369,8 @@ public class UserDetailService implements UserDetailsService{
         return usuarioRepository.save(usuarioExistente);
     }
 
-    /**
-     * Elimina un usuario de la base de datos, incluyendo la eliminación de su foto de Cloudinary.
-     * @param id El ID del usuario a eliminar.
-     * @throws RuntimeException Si el usuario no es encontrado.
-     * @throws IOException Si ocurre un error durante la eliminación de la foto de Cloudinary.
-     */
+    // Elimina un usuario de la base de datos, incluyendo la eliminación de su foto de Cloudinary.
+
     public void eliminarUsuario(Long id) throws IOException {
         Usuario usuario = usuarioRepository.findById(id).orElse(null);
         if (usuario == null) {
@@ -436,12 +387,7 @@ public class UserDetailService implements UserDetailsService{
         usuarioRepository.delete(usuario);
     }
 
-    /**
-     * Método auxiliar para extraer el publicId de la URL de Cloudinary.
-     * Este publicId es necesario para eliminar la imagen de Cloudinary.
-     * @param imageUrl La URL completa de la imagen en Cloudinary.
-     * @return El publicId de la imagen.
-     */
+    // Metodo auxiliar para extraer el publicId de la URL de Cloudinary.
     private String extractPublicIdFromUrl(String imageUrl) {
         String[] parts = imageUrl.split("/");
         String publicIdWithExtension = parts[parts.length - 1]; // Último segmento (ej. Perfil_sa1uug.jpg)
