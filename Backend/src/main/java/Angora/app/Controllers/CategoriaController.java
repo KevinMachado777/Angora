@@ -50,10 +50,14 @@ public class CategoriaController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         Optional<Categoria> categoria = categoriaRepository.findById(id);
         if (categoria.isPresent()) {
-            // Actualizar productos asociados a idCategoria = null
+            // Obtener productos asociados con su estado actual
             List<Producto> productosAsociados = productoRepository.findByIdCategoriaIdCategoria(id);
             for (Producto p : productosAsociados) {
+                // Conservar el porcentajeGanancia original
+                Integer porcentajeOriginal = p.getPorcentajeGanancia();
                 p.setIdCategoria(null);
+                // Asegurar que el porcentajeGanancia no se pierda
+                p.setPorcentajeGanancia(porcentajeOriginal != null ? porcentajeOriginal : 15);
                 productoRepository.save(p);
             }
             categoriaRepository.deleteById(id);

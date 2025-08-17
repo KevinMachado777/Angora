@@ -60,6 +60,8 @@ public class ProductoService {
             product.setCosto(producto.getCosto());
             product.setStock(producto.getStock());
             product.setIva(producto.getIva());
+            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
+
 
             // Manejar categoria nullable
             if (producto.getIdCategoria() != null) {
@@ -86,7 +88,7 @@ public class ProductoService {
         return productosDtos;
     }
 
-    // Buscar un producto por su ID (sin cambios)
+    // Buscar un producto por su ID
     public ProductoDTO findById(Long id) {
         Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
@@ -98,6 +100,8 @@ public class ProductoService {
         productoDto.setCosto(producto.getCosto());
         productoDto.setStock(producto.getStock());
         productoDto.setIva(producto.getIva());
+        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
+
 
         if (producto.getIdCategoria() != null) {
             CategoriaIdDTO categoriaIdDto = new CategoriaIdDTO();
@@ -134,12 +138,19 @@ public class ProductoService {
             categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
                     .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
         }
+
+        // Asegurar que porcentajeGanancia tenga un valor mínimo de 15
+        Integer porcentaje = productoDTO.getPorcentajeGanancia() != null ? productoDTO.getPorcentajeGanancia() : 15;
+        if (porcentaje < 15) porcentaje = 15;
+
+
         Producto producto = Producto.builder()
                 .nombre(productoDTO.getNombre())
                 .precio(productoDTO.getPrecio())
                 .costo(productoDTO.getCosto())
                 .stock(productoDTO.getStock() != null ? productoDTO.getStock() : 0)
                 .iva(productoDTO.getIva())
+                .porcentajeGanancia(porcentaje)
                 .idCategoria(categoria) // puede ser null
                 .build();
         producto = productoRepository.save(producto);
@@ -175,6 +186,11 @@ public class ProductoService {
         producto.setStock(productoDTO.getStock());
         producto.setIva(productoDTO.getIva());
 
+        // Actualizar porcentajeGanancia
+        Integer porcentaje = productoDTO.getPorcentajeGanancia() != null ? productoDTO.getPorcentajeGanancia() : 15;
+        if (porcentaje < 15) porcentaje = 15;
+        producto.setPorcentajeGanancia(porcentaje);
+
         // Manejar categoría (puede ser null)
         if (productoDTO.getIdCategoria() != null && productoDTO.getIdCategoria().getIdCategoria() != null) {
             Categoria categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
@@ -190,7 +206,6 @@ public class ProductoService {
         }
 
         // Limpiar la colección gestionada y volver a poblarla
-        // Esto deja que Hibernate gestione orphans correctamente.
         producto.getMaterias().clear();
 
         List<MateriaProducto> nuevasMaterias = new ArrayList<>();
@@ -212,8 +227,6 @@ public class ProductoService {
         return productoDTO;
     }
 
-
-
     // Metodo para guardar un producto (sin cambios)
     @Transactional
     public Producto save(Producto producto) {
@@ -230,7 +243,43 @@ public class ProductoService {
         return productoRepository.save(producto);
     }
 
-    // Actualizar stock (implementación optimizada)
+    // Metodo específico para disminuir stock por pérdida
+    @Transactional
+    public Producto disminuirStockPorPerdida(Long idProducto, int cantidadADisminuir) {
+        Producto producto = productoRepository.findById(idProducto)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + idProducto));
+
+        int stockActual = producto.getStock() != null ? producto.getStock() : 0;
+
+        if (cantidadADisminuir <= 0) {
+            throw new RuntimeException("La cantidad a disminuir debe ser mayor que 0");
+        }
+
+        if (cantidadADisminuir > stockActual) {
+            throw new RuntimeException("No se puede disminuir más stock del disponible");
+        }
+
+        int nuevoStock = stockActual - cantidadADisminuir;
+        LocalDateTime fechaActual = LocalDateTime.now();
+
+        // Registrar movimiento de pérdida/salida
+        Movimiento movimiento = new Movimiento();
+        movimiento.setProducto(producto);
+        movimiento.setCantidadAnterior((float) stockActual);
+        movimiento.setCantidadCambio((float) cantidadADisminuir);
+        movimiento.setCantidadActual((float) nuevoStock);
+        movimiento.setTipoMovimiento("salida"); // salida por pérdida
+        movimiento.setFechaMovimiento(fechaActual);
+        movimientoRepository.save(movimiento);
+
+        // Actualizar stock del producto
+        producto.setStock(nuevoStock);
+        productoRepository.save(producto);
+
+        return producto;
+    }
+
+    // Actualizar stock
     @Transactional
     public Producto updateStock(Long idProducto, int nuevaCantidad) {
         Producto producto = productoRepository.findById(idProducto)
@@ -376,15 +425,12 @@ public class ProductoService {
     public void delete(Long id) {
         materiaProductoRepository.deleteByProducto_IdProducto(id);
         productoRepository.deleteById(id);
-        // Nota: Este metodo elimina relaciones y el producto, lo que puede afectar trazabilidad si se usa sin control.
     }
 
     // Ajustado para usar updateStock
     public void disminuirStock(Producto producto, int cantidadComprada) {
         updateStock(producto.getIdProducto(), producto.getStock() - cantidadComprada);
-        // Comentario: Reemplazado por updateStock para incluir lógica de lotes y trazabilidad.
     }
-
 
      // Metodo que Recalcula costo y precio de todos los productos que usan la materia con id = idMateria.
     @Transactional

@@ -92,6 +92,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/inventarioProducto").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/{id}").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/{id}/stock").hasAuthority("INVENTARIOS");
+                    http.requestMatchers(HttpMethod.PUT, "/inventarioProducto/{id}/disminuir-stock").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.DELETE, "/inventarioProducto/**").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.GET, "/inventarioMateria/**").hasAuthority("INVENTARIOS");
 
