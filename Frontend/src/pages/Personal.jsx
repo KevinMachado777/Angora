@@ -131,6 +131,14 @@ const Personal = () => {
 
   // Función para abrir el modal de confirmación de eliminación
   const abrirModalEliminacion = (persona) => {
+    if (user && user.id && persona.id === user.id) {
+      setModalMensaje({
+        abierto: true,
+        tipo: "advertencia",
+        mensaje: "No puedes borrarte a ti mismo",
+      });
+      return; // No abrir el modal de confirmación
+    }
     setPersonaEliminar(persona);
     setConfirmarEliminacion(true);
   };
