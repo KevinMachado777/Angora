@@ -26,11 +26,15 @@ public class LoteService {
 
     @Autowired
     private MovimientoRepository movimientoRepository;
+
+    @Autowired
+    private MateriaPrimaService materiaPrimaService; // Inyectamos MateriaPrimaService
+
     public List<Lote> findAll() {
         return loteRepository.findAll();
     }
 
-    // Busca un lote por sy ID
+    // Busca un lote por su ID
     public LoteDTO findById(Long id) {
         Lote loteEntity = loteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
@@ -45,7 +49,7 @@ public class LoteService {
         return loteDto;
     }
 
-    // Metodo para guardar un lote (entrada)
+    // Método para guardar un lote (entrada)
     public LoteDTO findUltimoLotePorMateria(Long idMateria) {
         Optional<Lote> loteOptional = loteRepository.findTopByIdMateriaOrderByFechaIngresoDescIdLoteDesc(idMateria);
         if (loteOptional.isEmpty()) {
@@ -77,29 +81,27 @@ public class LoteService {
         loteEntity.setCantidadDisponible(loteDto.getCantidad());
         loteEntity.setFechaIngreso(LocalDateTime.now());
         loteEntity.setIdProveedor(loteDto.getIdProveedor());
-        // Guardar referencia a la orden en caso de que venga
         loteEntity.setIdOrden(loteDto.getIdOrden());
         Lote savedLote = loteRepository.save(loteEntity);
 
-        // recalcular total disponible y actualizar materia
-        Float totalDisponible = loteRepository.sumCantidadDisponibleByIdMateria(loteDto.getIdMateria());
-        materia.setCantidad(totalDisponible != null ? totalDisponible : 0f);
-        materiaPrimaRepository.save(materia);
+        // Delegar la actualización de la materia a MateriaPrimaService
+        materiaPrimaService.recomputeMateriaTotalsAndCosto(loteDto.getIdMateria());
 
-        // registrar movimiento (entrada si delta > 0)
-        Float delta = (materia.getCantidad() != null ? materia.getCantidad() : 0f) - anterior;
+        // Registrar movimiento
+        MateriaPrima updatedMateria = materiaPrimaRepository.findById(loteDto.getIdMateria())
+                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
+        Float delta = (updatedMateria.getCantidad() != null ? updatedMateria.getCantidad() : 0f) - anterior;
         if (delta != null && delta != 0f) {
             Movimiento mov = new Movimiento();
-            mov.setMateriaPrima(materia);
+            mov.setMateriaPrima(updatedMateria);
             mov.setCantidadAnterior(anterior);
-            mov.setCantidadActual(materia.getCantidad());
-            mov.setCantidadCambio(delta);
+            mov.setCantidadCambio(Math.abs(delta));
             mov.setTipoMovimiento(delta > 0 ? "entrada" : "salida");
             mov.setFechaMovimiento(LocalDateTime.now());
             movimientoRepository.save(mov);
         }
 
-        // preparar DTO de salida
+        // Preparar DTO de salida
         LoteDTO dto = new LoteDTO();
         dto.setIdLote(savedLote.getIdLote());
         dto.setIdMateria(savedLote.getIdMateria());
@@ -126,16 +128,18 @@ public class LoteService {
         // No permitir modificar cantidad inicial ni fechaIngreso para consistencia
         Lote saved = loteRepository.save(existing);
 
-        Float totalDisponible = loteRepository.sumCantidadDisponibleByIdMateria(loteDto.getIdMateria());
-        materia.setCantidad(totalDisponible != null ? totalDisponible : 0f);
-        materiaPrimaRepository.save(materia);
+        // Recalcular total disponible y actualizar materia
+        materiaPrimaService.recomputeMateriaTotalsAndCosto(loteDto.getIdMateria());
 
-        Float delta = (materia.getCantidad() != null ? materia.getCantidad() : 0f) - anterior;
+        // Registrar movimiento
+        MateriaPrima updatedMateria = materiaPrimaRepository.findById(loteDto.getIdMateria())
+                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
+        Float delta = (updatedMateria.getCantidad() != null ? updatedMateria.getCantidad() : 0f) - anterior;
         if (delta != null && delta != 0f) {
             Movimiento mov = new Movimiento();
-            mov.setMateriaPrima(materia);
+            mov.setMateriaPrima(updatedMateria);
             mov.setCantidadAnterior(anterior);
-            mov.setCantidadActual(materia.getCantidad());
+            mov.setCantidadActual(updatedMateria.getCantidad());
             mov.setCantidadCambio(delta);
             mov.setTipoMovimiento(delta > 0 ? "entrada" : "salida");
             mov.setFechaMovimiento(LocalDateTime.now());
@@ -151,32 +155,5 @@ public class LoteService {
         dto.setFechaIngreso(saved.getFechaIngreso());
         dto.setIdProveedor(saved.getIdProveedor());
         return dto;
-    }
-
-    // recalcula cantidad total y costo promedio basado en cantidadDisponible de lotes
-    @Transactional
-    private void recomputeMateriaTotalsAndCosto(Long idMateria) {
-        MateriaPrima materia = materiaPrimaRepository.findById(idMateria)
-                .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
-
-        // obtener lotes con cantidadDisponible > 0 (usa el query que ya tienes)
-        List<Lote> lotes = loteRepository.findByIdMateriaAndCantidadDisponibleGreaterThan(idMateria, 0f);
-
-        float totalDisponible = 0f;
-        float numer = 0f;
-        for (Lote l : lotes) {
-            float q = l.getCantidadDisponible() != null ? l.getCantidadDisponible() : 0f;
-            float c = l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f;
-            totalDisponible += q;
-            numer += c * q;
-        }
-
-        materia.setCantidad(totalDisponible);
-        // MateriaPrima.costo es Integer en tu entidad: redondeamos al múltiplo de 50 más cercano
-        int costoPromedio = totalDisponible > 0 ? Math.round(numer / totalDisponible) : 0;
-        costoPromedio = ((costoPromedio + 25) / 50) * 50; // Redondeo al múltiplo de 50
-        materia.setCosto(costoPromedio);
-
-        materiaPrimaRepository.save(materia);
     }
 }

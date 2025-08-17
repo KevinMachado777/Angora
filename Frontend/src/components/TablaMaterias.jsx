@@ -7,7 +7,6 @@ import BotonAceptar from "./BotonAceptar";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../api/axiosInstance";
 
-// Componente de tabla de materias primas
 const TablaMaterias = forwardRef(
     ({ registrosMateria, setRegistrosMateria, lotesMateriaPrima, setLotesMateriaPrima, proveedores }, ref) => {
         const [materiaSeleccionada, setMateriaSeleccionada] = useState(null);
@@ -15,7 +14,7 @@ const TablaMaterias = forwardRef(
         const [modalAdvertenciaIdDuplicado, setModalAdvertenciaIdDuplicado] = useState(false);
         const [modalAdvertenciaCosto, setModalAdvertenciaCosto] = useState(false);
         const [modalLotesMateria, setModalLotesMateria] = useState(false);
-        const [modalHistoricoLotes, setModalHistoricoLotes] = useState(false); // Nueva modal para histórico
+        const [modalHistoricoLotes, setModalHistoricoLotes] = useState(false);
         const [lotesMateriaSeleccionada, setLotesMateriaSeleccionada] = useState([]);
         const [modalLoteAbierto, setModalLoteAbierto] = useState(false);
         const [loteSeleccionado, setLoteSeleccionado] = useState(null);
@@ -30,18 +29,17 @@ const TablaMaterias = forwardRef(
         const [isLoading, setIsLoading] = useState(true);
         const [currentPage, setCurrentPage] = useState(1);
         const [itemsPerPage] = useState(5);
-        const [currentPageLotes, setCurrentPageLotes] = useState(1); // Paginación para lotes
-        const [itemsPerPageLotes] = useState(5); // 5 registros por página
-        const [fechaInicio, setFechaInicio] = useState(""); // Filtro por fechas
-        const [fechaFin, setFechaFin] = useState(""); // Filtro por fechas
+        const [currentPageLotes, setCurrentPageLotes] = useState(1);
+        const [itemsPerPageLotes] = useState(5);
+        const [fechaInicio, setFechaInicio] = useState("");
+        const [fechaFin, setFechaFin] = useState("");
+        const [isMounted, setIsMounted] = useState(false);
 
-        // Función para obtener el token desde localStorage
         const getAuthToken = () => {
             const localToken = localStorage.getItem("accessToken");
             return localToken;
         };
 
-        // Función auxiliar para manejar errores
         const handleApiError = (err, context) => {
             console.error(`Error en ${context}:`, {
                 status: err.response?.status,
@@ -62,10 +60,25 @@ const TablaMaterias = forwardRef(
         };
 
         useEffect(() => {
-            if (registrosMateria.length > 0) {
-                setIsLoading(false);
+            if (!isMounted) {
+                const fetchUpdatedMaterias = async () => {
+                    try {
+                        const authToken = getAuthToken();
+                        if (authToken) {
+                            const headers = { Authorization: `Bearer ${authToken}` };
+                            const response = await api.get("/inventarioMateria", { headers });
+                            setRegistrosMateria(response.data);
+                            setIsMounted(true);
+                        }
+                    } catch (err) {
+                        handleApiError(err, "sincronización de materias");
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+                fetchUpdatedMaterias();
             }
-        }, [registrosMateria]);
+        }, [isMounted, setRegistrosMateria]);
 
         useImperativeHandle(ref, () => ({
             abrirModalAgregar: () => {
@@ -74,13 +87,11 @@ const TablaMaterias = forwardRef(
             },
         }));
 
-        // Paginación: Calcular índices para la tabla principal
         const indexOfLastItem = currentPage * itemsPerPage;
         const indexOfFirstItem = indexOfLastItem - itemsPerPage;
         const currentItems = registrosMateria.slice(indexOfFirstItem, indexOfLastItem);
         const totalPages = Math.ceil(registrosMateria.length / itemsPerPage);
 
-        // Paginación: Calcular índices para lotes
         const filtrarLotes = (lotes) => {
             return lotes.filter((lote) => {
                 const loteDate = new Date(lote.fechaIngreso);
@@ -184,7 +195,7 @@ const TablaMaterias = forwardRef(
                 idLote: lote.idLote,
                 idMateria: lote.idMateria,
                 costoUnitario: lote.costoUnitario,
-                cantidad: lote.cantidad,
+                cantidad: lote.cantidad, // Cantidad inicial fija
                 cantidadDisponible: lote.cantidadDisponible,
             });
             setModalLoteAbierto(true);
@@ -210,12 +221,14 @@ const TablaMaterias = forwardRef(
                 idProveedor: datos.get("idProveedor") ? Number(datos.get("idProveedor")) : null,
             };
 
+            // Validación estricta: cantidadDisponible no puede exceder cantidad inicial
+            if (loteSeleccionado && cantidadIngresada > loteSeleccionado.cantidad) {
+                setError("La cantidad disponible no puede ser mayor que la cantidad inicial del lote (" + loteSeleccionado.cantidad + ")");
+                return;
+            }
+
             if (loteSeleccionado) {
                 nuevoLote.idLote = loteSeleccionado.idLote;
-                if (nuevoLote.cantidadDisponible > nuevoLote.cantidad) {
-                    setError("La cantidad disponible no puede ser mayor que la cantidad inicial del lote");
-                    return;
-                }
             }
 
             if (isNaN(costoUnitario) || isNaN(cantidadIngresada) || costoUnitario < 0 || cantidadIngresada < 0) {
@@ -248,27 +261,28 @@ const TablaMaterias = forwardRef(
 
                 setLotesMateriaPrima(updatedLotes);
 
-                const nuevosLotesParaModal = updatedLotes.filter(lote => lote.idMateria === nuevoLote.idMateria);
-                setLotesMateriaSeleccionada(nuevosLotesParaModal);
-
+                // Recalcular costo promedio y cantidad total con límites
                 const lotesMateria = updatedLotes.filter((l) => l.idMateria === nuevoLote.idMateria);
                 const totalDisponible = lotesMateria.reduce((sum, l) => sum + (l.cantidadDisponible || 0), 0);
-                const costoPromedio =
-                    totalDisponible > 0
-                        ? lotesMateria.reduce(
-                            (sum, l) => sum + (l.costoUnitario || 0) * (l.cantidadDisponible || 0),
-                            0
-                        ) / totalDisponible
-                        : 0;
+                let costoPromedio = 0;
+                if (totalDisponible > 0) {
+                    const weightedSum = lotesMateria.reduce((sum, l) => sum + (l.costoUnitario || 0) * (l.cantidadDisponible || 0), 0);
+                    costoPromedio = Math.min(Math.max(weightedSum / totalDisponible, 0), 100000); // Límite máximo
+                }
 
                 const materiaActualizada = registrosMateria.find((m) => m.idMateria === nuevoLote.idMateria);
                 if (materiaActualizada) {
-                    const updatedMateria = { ...materiaActualizada, costo: Math.round(costoPromedio / 50) * 50, quantity: totalDisponible };
+                    const updatedMateria = { ...materiaActualizada, costo: costoPromedio, cantidad: totalDisponible };
                     await api.put(`/inventarioMateria`, updatedMateria, { headers });
                     setRegistrosMateria((prev) =>
                         prev.map((m) => (m.idMateria === nuevoLote.idMateria ? updatedMateria : m))
                     );
                 }
+
+                const nuevosLotesParaModal = updatedLotes.filter(
+                    (lote) => lote.idMateria === nuevoLote.idMateria && lote.cantidadDisponible > 0
+                );
+                setLotesMateriaSeleccionada(nuevosLotesParaModal);
 
                 localStorage.setItem("lotesMateriaPrima", JSON.stringify(updatedLotes));
                 localStorage.setItem("registrosMateria", JSON.stringify(registrosMateria));
@@ -286,9 +300,7 @@ const TablaMaterias = forwardRef(
         };
 
         const formatCurrency = (value) => {
-            return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(
-                value
-            );
+            return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
         };
 
         const formatDate = (dateString) => {
@@ -391,7 +403,6 @@ const TablaMaterias = forwardRef(
                     </ul>
                 </nav>
 
-                {/* MODAL: Agregar / Editar Materia */}
                 {modalAbiertaMateria && (
                     <Modal isOpen={modalAbiertaMateria} onClose={() => setModalAbiertaMateria(false)}>
                         <form onSubmit={guardarMateria}>
@@ -445,7 +456,6 @@ const TablaMaterias = forwardRef(
                     </Modal>
                 )}
 
-                {/* MODAL: Lotes de materia */}
                 {modalLotesMateria && (
                     <Modal isOpen={modalLotesMateria} onClose={() => setModalLotesMateria(false)}>
                         <h2 className="mb-4">Lotes de Materia Prima</h2>
@@ -487,8 +497,7 @@ const TablaMaterias = forwardRef(
                                         <td>{formatDate(lote.fechaIngreso)}</td>
                                         <td>
                                             {lote.idProveedor
-                                                ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre ||
-                                                "N/A"
+                                                ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
                                                 : "Sin proveedor"}
                                         </td>
                                         <td>
@@ -534,7 +543,6 @@ const TablaMaterias = forwardRef(
                     </Modal>
                 )}
 
-                {/* MODAL: Histórico de Lotes */}
                 {modalHistoricoLotes && (
                     <Modal isOpen={modalHistoricoLotes} onClose={() => setModalHistoricoLotes(false)}>
                         <h2 className="mb-4">Histórico de Lotes</h2>
@@ -618,7 +626,6 @@ const TablaMaterias = forwardRef(
                     </Modal>
                 )}
 
-                {/* MODAL: Agregar / Editar Lote */}
                 {modalLoteAbierto && (
                     <Modal isOpen={modalLoteAbierto} onClose={() => setModalLoteAbierto(false)}>
                         <form onSubmit={guardarLote}>

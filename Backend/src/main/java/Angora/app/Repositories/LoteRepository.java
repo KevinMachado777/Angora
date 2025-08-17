@@ -29,4 +29,7 @@ public interface LoteRepository extends JpaRepository<Lote, Long> {
             "AND   (:fechaFin    IS NULL OR l.fechaIngreso <= :fechaFin)")
     List<Lote> findByFechaIngresoBetween(@Param("fechaInicio") LocalDateTime fechaInicio,
                                          @Param("fechaFin") LocalDateTime fechaFin);
+
+    @Query("SELECT l FROM Lote l WHERE l.idMateria = :idMateria")
+    List<Lote> findByIdMateria(@Param("idMateria") Long idMateria);
 }
