@@ -30,6 +30,7 @@ public interface LoteRepository extends JpaRepository<Lote, Long> {
     List<Lote> findByFechaIngresoBetween(@Param("fechaInicio") LocalDateTime fechaInicio,
                                          @Param("fechaFin") LocalDateTime fechaFin);
 
+    // Metodo para buscar los lotes asociados a una materia
     @Query("SELECT l FROM Lote l WHERE l.idMateria = :idMateria")
     List<Lote> findByIdMateria(@Param("idMateria") Long idMateria);
 }

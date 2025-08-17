@@ -34,12 +34,15 @@ const TablaMaterias = forwardRef(
         const [fechaInicio, setFechaInicio] = useState("");
         const [fechaFin, setFechaFin] = useState("");
         const [isMounted, setIsMounted] = useState(false);
+        const [cantidadActualLote, setCantidadActualLote] = useState(null);
 
+        // Función para obtener el token de autenticación del localStorage
         const getAuthToken = () => {
             const localToken = localStorage.getItem("accessToken");
             return localToken;
         };
 
+        // Manejo de errores de la API
         const handleApiError = (err, context) => {
             console.error(`Error en ${context}:`, {
                 status: err.response?.status,
@@ -59,6 +62,7 @@ const TablaMaterias = forwardRef(
             }
         };
 
+        // Carga inicial de materias
         useEffect(() => {
             if (!isMounted) {
                 const fetchUpdatedMaterias = async () => {
@@ -87,11 +91,13 @@ const TablaMaterias = forwardRef(
             },
         }));
 
+        // Paginación de materias
         const indexOfLastItem = currentPage * itemsPerPage;
         const indexOfFirstItem = indexOfLastItem - itemsPerPage;
         const currentItems = registrosMateria.slice(indexOfFirstItem, indexOfLastItem);
         const totalPages = Math.ceil(registrosMateria.length / itemsPerPage);
 
+        // Filtrado y paginación de lotes
         const filtrarLotes = (lotes) => {
             return lotes.filter((lote) => {
                 const loteDate = new Date(lote.fechaIngreso);
@@ -100,11 +106,14 @@ const TablaMaterias = forwardRef(
                 return (!start || loteDate >= start) && (!end || loteDate <= end);
             });
         };
+
+        // Paginación de lotes filtrados
         const indexOfLastItemLotes = currentPageLotes * itemsPerPageLotes;
         const indexOfFirstItemLotes = indexOfLastItemLotes - itemsPerPageLotes;
         const currentLotes = filtrarLotes(lotesMateriaSeleccionada).slice(indexOfFirstItemLotes, indexOfLastItemLotes);
         const totalPagesLotes = Math.ceil(filtrarLotes(lotesMateriaSeleccionada).length / itemsPerPageLotes);
 
+        // Función para guardar o editar una materia
         const guardarMateria = async (e) => {
             e.preventDefault();
             const authToken = getAuthToken();
@@ -163,6 +172,7 @@ const TablaMaterias = forwardRef(
             }
         };
 
+        // Funciones para abrir los modales de lotes
         const abrirModalLotesMateria = (materia) => {
             const lotesDisponibles = lotesMateriaPrima.filter(
                 (lote) => lote.idMateria === materia.idMateria && lote.cantidadDisponible > 0
@@ -170,6 +180,7 @@ const TablaMaterias = forwardRef(
             setLotesMateriaSeleccionada(lotesDisponibles);
             setModalLotesMateria(true);
         };
+
 
         const abrirModalHistoricoLotes = (materia) => {
             const lotesHistoricos = lotesMateriaPrima.filter((lote) => lote.idMateria === materia.idMateria);
@@ -191,16 +202,18 @@ const TablaMaterias = forwardRef(
 
         const abrirModalEditarLote = (lote) => {
             setLoteSeleccionado(lote);
+            setCantidadActualLote(lote.cantidadDisponible); // Guardar la cantidad actual del lote
             setLoteNuevo({
                 idLote: lote.idLote,
                 idMateria: lote.idMateria,
                 costoUnitario: lote.costoUnitario,
                 cantidad: lote.cantidad, // Cantidad inicial fija
-                cantidadDisponible: lote.cantidadDisponible,
+                cantidadDisponible: lote.cantidadDisponible, // Cantidad actual disponible
             });
             setModalLoteAbierto(true);
         };
 
+        // Función para guardar o editar un lote
         const guardarLote = async (e) => {
             e.preventDefault();
             const authToken = getAuthToken();
@@ -221,9 +234,21 @@ const TablaMaterias = forwardRef(
                 idProveedor: datos.get("idProveedor") ? Number(datos.get("idProveedor")) : null,
             };
 
-            // Validación estricta: cantidadDisponible no puede exceder cantidad inicial
-            if (loteSeleccionado && cantidadIngresada > loteSeleccionado.cantidad) {
-                setError("La cantidad disponible no puede ser mayor que la cantidad inicial del lote (" + loteSeleccionado.cantidad + ")");
+            // VALIDACIÓN 1: No puede ser mayor que la cantidad original del lote
+            if (loteSeleccionado && cantidadIngresada > Number(loteSeleccionado.cantidad)) {
+                setError(`La cantidad disponible no puede ser mayor que la cantidad inicial del lote (${loteSeleccionado.cantidad})`);
+                return;
+            }
+
+            // VALIDACIÓN 2: ¡LA NUEVA! No puede ser mayor que la cantidad actual
+            if (loteSeleccionado && cantidadIngresada > Number(cantidadActualLote)) {
+                setError(`Este lote cuenta con ${cantidadActualLote} unidades. No puedes poner una cantidad mayor a esa.`);
+                return;
+            }
+
+            // Validación: La cantidad disponible no puede ser negativa
+            if (cantidadIngresada < 0) {
+                setError("La cantidad disponible no puede ser negativa");
                 return;
             }
 
@@ -261,23 +286,21 @@ const TablaMaterias = forwardRef(
 
                 setLotesMateriaPrima(updatedLotes);
 
-                // Recalcular costo promedio y cantidad total con límites
-                const lotesMateria = updatedLotes.filter((l) => l.idMateria === nuevoLote.idMateria);
-                const totalDisponible = lotesMateria.reduce((sum, l) => sum + (l.cantidadDisponible || 0), 0);
-                let costoPromedio = 0;
-                if (totalDisponible > 0) {
-                    const weightedSum = lotesMateria.reduce((sum, l) => sum + (l.costoUnitario || 0) * (l.cantidadDisponible || 0), 0);
-                    costoPromedio = Math.min(Math.max(weightedSum / totalDisponible, 0), 100000); // Límite máximo
-                }
+                // Obtener la materia actualizada desde el backend para tener el costo correcto
+                const materiaResponse = await api.get(`/inventarioMateria/${nuevoLote.idMateria}`, { headers });
+                const materiaActualizada = materiaResponse.data;
 
-                const materiaActualizada = registrosMateria.find((m) => m.idMateria === nuevoLote.idMateria);
-                if (materiaActualizada) {
-                    const updatedMateria = { ...materiaActualizada, costo: costoPromedio, cantidad: totalDisponible };
-                    await api.put(`/inventarioMateria`, updatedMateria, { headers });
-                    setRegistrosMateria((prev) =>
-                        prev.map((m) => (m.idMateria === nuevoLote.idMateria ? updatedMateria : m))
-                    );
-                }
+                // Llamar al endpoint PUT para que se ejecute el recálculo de productos
+                await api.put(`/inventarioMateria`, materiaActualizada, { headers });
+
+                // Obtener la materia actualizada NUEVAMENTE después del PUT
+                const materiaFinalResponse = await api.get(`/inventarioMateria/${nuevoLote.idMateria}`, { headers });
+                const materiaFinal = materiaFinalResponse.data;
+
+                // Actualizar el estado local con los datos finales del backend
+                setRegistrosMateria((prev) =>
+                    prev.map((m) => (m.idMateria === nuevoLote.idMateria ? materiaFinal : m))
+                );
 
                 const nuevosLotesParaModal = updatedLotes.filter(
                     (lote) => lote.idMateria === nuevoLote.idMateria && lote.cantidadDisponible > 0
@@ -289,6 +312,7 @@ const TablaMaterias = forwardRef(
 
                 setModalLoteAbierto(false);
                 setLoteSeleccionado(null);
+                setCantidadActualLote(null); // Limpiar la cantidad actual
                 setLoteNuevo({ idMateria: 0, costoUnitario: "", cantidad: "", cantidadDisponible: "", idProveedor: null });
             } catch (err) {
                 if (err.response?.status === 409) {
@@ -299,10 +323,12 @@ const TablaMaterias = forwardRef(
             }
         };
 
+        // Función para formatear números como moneda
         const formatCurrency = (value) => {
             return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
         };
 
+        // Función para formatear fechas
         const formatDate = (dateString) => {
             if (!dateString || dateString === "N/A") return "N/A";
             const date = new Date(dateString);
@@ -313,23 +339,19 @@ const TablaMaterias = forwardRef(
             }).format(date);
         };
 
+        // Agregar esta función en tu componente TablaMaterias
+        const limpiarFechas = () => {
+            setFechaInicio("");
+            setFechaFin("");
+            setCurrentPageLotes(1);
+        };
+
         if (isLoading) {
             return <div className="text-center mt-5">Cargando materias primas...</div>;
         }
 
         return (
             <div className="container inventario">
-                {error && (
-                    <Modal isOpen={!!error} onClose={() => setError(null)}>
-                        <div className="encabezado-modal">
-                            <h2>Error</h2>
-                        </div>
-                        <p className="text-center">{error}</p>
-                        <div className="modal-footer">
-                            <BotonAceptar onClick={() => setError(null)} />
-                        </div>
-                    </Modal>
-                )}
                 <table className="table table-bordered tabla-materias">
                     <thead>
                         <tr>
@@ -472,8 +494,15 @@ const TablaMaterias = forwardRef(
                                 type="date"
                                 value={fechaFin}
                                 onChange={(e) => setFechaFin(e.target.value)}
-                                className="form-control"
+                                className="form-control mb-2"
                             />
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={limpiarFechas}
+                            >
+                                Limpiar Fechas
+                            </button>
                         </div>
                         <table className="table table-bordered tabla-materias">
                             <thead>
@@ -559,8 +588,15 @@ const TablaMaterias = forwardRef(
                                 type="date"
                                 value={fechaFin}
                                 onChange={(e) => setFechaFin(e.target.value)}
-                                className="form-control"
+                                className="form-control mb-2"
                             />
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                onClick={limpiarFechas}
+                            >
+                                Limpiar Fechas
+                            </button>
                         </div>
                         <table className="table table-bordered tabla-materias">
                             <thead>
@@ -728,6 +764,17 @@ const TablaMaterias = forwardRef(
                         </p>
                         <div className="d-flex justify-content-end">
                             <BotonAceptar onClick={() => setModalAdvertenciaCosto(false)} />
+                        </div>
+                    </Modal>
+                )}
+                {error && (
+                    <Modal isOpen={!!error} onClose={() => setError(null)}>
+                        <div className="encabezado-modal">
+                            <h2>Error</h2>
+                        </div>
+                        <p className="text-center">{error}</p>
+                        <div className="modal-footer">
+                            <BotonAceptar onClick={() => setError(null)} />
                         </div>
                     </Modal>
                 )}

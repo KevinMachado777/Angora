@@ -49,7 +49,7 @@ public class LoteService {
         return loteDto;
     }
 
-    // Método para guardar un lote (entrada)
+    // Metodo para guardar un lote
     public LoteDTO findUltimoLotePorMateria(Long idMateria) {
         Optional<Lote> loteOptional = loteRepository.findTopByIdMateriaOrderByFechaIngresoDescIdLoteDesc(idMateria);
         if (loteOptional.isEmpty()) {
@@ -67,6 +67,7 @@ public class LoteService {
         return loteDto;
     }
 
+    // Metodo para guardar un lote
     @Transactional
     public LoteDTO save(LoteDTO loteDto) {
         MateriaPrima materia = materiaPrimaRepository.findById(loteDto.getIdMateria())
@@ -114,6 +115,7 @@ public class LoteService {
         return dto;
     }
 
+    // Metodo para actualizar un lote
     @Transactional
     public LoteDTO update(LoteDTO loteDto) {
         Lote existing = loteRepository.findById(loteDto.getIdLote())
@@ -122,6 +124,17 @@ public class LoteService {
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
 
         Float anterior = materia.getCantidad() != null ? materia.getCantidad() : 0f;
+
+        // La cantidad disponible no puede ser mayor que la cantidad original
+        if (loteDto.getCantidadDisponible() > existing.getCantidad()) {
+            throw new RuntimeException("La cantidad disponible (" + loteDto.getCantidadDisponible() +
+                    ") no puede ser mayor que la cantidad original del lote (" + existing.getCantidad() + ")");
+        }
+
+        // La cantidad disponible no puede ser negativa
+        if (loteDto.getCantidadDisponible() < 0) {
+            throw new RuntimeException("La cantidad disponible no puede ser negativa");
+        }
 
         existing.setCostoUnitario(loteDto.getCostoUnitario());
         existing.setCantidadDisponible(loteDto.getCantidadDisponible());
@@ -140,7 +153,7 @@ public class LoteService {
             mov.setMateriaPrima(updatedMateria);
             mov.setCantidadAnterior(anterior);
             mov.setCantidadActual(updatedMateria.getCantidad());
-            mov.setCantidadCambio(delta);
+            mov.setCantidadCambio(Math.abs(delta));
             mov.setTipoMovimiento(delta > 0 ? "entrada" : "salida");
             mov.setFechaMovimiento(LocalDateTime.now());
             movimientoRepository.save(mov);
