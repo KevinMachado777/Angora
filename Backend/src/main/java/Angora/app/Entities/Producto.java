@@ -38,6 +38,11 @@ public class Producto implements Inventariable {
     private String nombre;
     private Integer stock;
 
+    // Porcentaje de ganancia
+    @Column(name = "Porcentaje_ganancia")
+    @Builder.Default
+    private Integer porcentajeGanancia = 15;
+
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference("materias-productos")
     private List<MateriaProducto> materias;

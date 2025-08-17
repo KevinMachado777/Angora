@@ -15,6 +15,7 @@ public class ProductoDTO {
     private Integer costo;
     private Integer precio;
     private Integer stock;
+    private Integer porcentajeGanancia = 15;
     private Boolean iva;
     private CategoriaIdDTO idCategoria;
     private List<MateriaProductoDTO> materias;

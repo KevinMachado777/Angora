@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 // Controlador del inventario de productos
 @RestController
@@ -58,13 +59,6 @@ public class InventarioProductoController {
         return new ResponseEntity<>(productoService.actualizarProductoDesdeDTO(producto), HttpStatus.OK);
     }
 
-    // Eliminar un producto
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
-        productoService.delete(id);
-        return new ResponseEntity<>("Producto Eliminado", HttpStatus.NO_CONTENT);
-    }
-
     // Actualizar el stock de un producto (aumentar o reducir)
     @PutMapping("/{id}/stock")
     public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody NuevaCantidadDTO nuevaCantidadDTO) {
@@ -76,6 +70,31 @@ public class InventarioProductoController {
         }
     }
 
-    // Eliminado: @PutMapping("/{cantidadComprada}") public void actualizarStock(@RequestBody Producto producto, @RequestBody int cantidadComprada) { ... }
-    // Comentario: Metodo eliminado y reemplazado por updateStock con id y nuevaCantidad para consistencia con la lógica del servicio.
+    // Disminuir el stock de un producto por perdidas
+    @PutMapping("/{id}/disminuir-stock")
+    public ResponseEntity<ProductoDTO> disminuirStockPorPerdida(
+            @PathVariable Long id,
+            @RequestBody Map<String, Integer> request) {
+        try {
+            Integer cantidadADisminuir = request.get("cantidadADisminuir");
+
+            if (cantidadADisminuir == null || cantidadADisminuir <= 0) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Producto producto = productoService.disminuirStockPorPerdida(id, cantidadADisminuir);
+            ProductoDTO productoDTO = productoService.findById(id);
+
+            return ResponseEntity.ok(productoDTO);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Eliminar un producto
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        productoService.delete(id);
+        return new ResponseEntity<>("Producto Eliminado", HttpStatus.NO_CONTENT);
+    }
 }

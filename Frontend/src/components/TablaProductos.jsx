@@ -39,7 +39,7 @@ const TablaProductos = forwardRef(
 
         // Costos / formulario temporal
         const [costoTotal, setCostoTotal] = useState(0);
-        
+
         // Porcentaje de ganancia y precio
         const [formularioTemp, setFormularioTemp] = useState({ porcentajeGanancia: 15, nombre: "", idCategoria: "", iva: null });
         const [costoInput, setCostoInput] = useState(0);
@@ -83,21 +83,6 @@ const TablaProductos = forwardRef(
         const [modalAdvertenciaIdDuplicado, setModalAdvertenciaIdDuplicado] = useState(false);
         const [modalErrorStockInsuficiente, setModalErrorStockInsuficiente] = useState(false);
 
-        // LocalStorage helpers SOLO para porcentaje de ganancia 
-        const PRODUCT_PERCENT_KEY = "angora_producto_porcentaje_map"; // stores mapping id->porcentaje (number)
-
-        const loadProductPercentMap = () => {
-            try {
-                const raw = localStorage.getItem(PRODUCT_PERCENT_KEY);
-                return raw ? JSON.parse(raw) : {};
-            } catch {
-                return {};
-            }
-        };
-        const saveProductPercentMap = (map) => {
-            try { localStorage.setItem(PRODUCT_PERCENT_KEY, JSON.stringify(map)); } catch { /* ignore */ }
-        };
-
         // Headers de autenticación
         const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("accessToken") || token}` });
 
@@ -122,7 +107,7 @@ const TablaProductos = forwardRef(
             if (!token) return;
             try {
                 const headers = authHeaders();
-                
+
                 // Cargar productos directamente del backend (sin fusionar con localStorage)
                 const productosRes = await api.get("/inventarioProducto", { headers });
                 setRegistros(productosRes.data || []);
@@ -168,7 +153,7 @@ const TablaProductos = forwardRef(
                     setIsLoading(false);
                     return;
                 }
-                
+
                 setIsLoading(true);
                 await cargarDatosFromBackend();
                 setIsLoading(false);
@@ -187,12 +172,10 @@ const TablaProductos = forwardRef(
             const nuevoCostoRaw = (materiasProducto || []).reduce((acc, mp) => {
                 const idM = mp.idMateria;
                 let costoUnit = 0;
-                // Preferir registrosMateria (inventarioMateria)
                 const rm = (registrosMateria || []).find((r) => r.idMateria === idM);
                 if (rm && typeof rm.costo === "number") {
                     costoUnit = Number(rm.costo);
                 } else {
-                    // fallback: usar primer lote disponible
                     const lotes = (lotesMateriaPrima || []).filter(l => l.idMateria === idM && (l.cantidadDisponible ?? l.cantidad) > 0);
                     if (lotes && lotes.length > 0) {
                         costoUnit = Number(getLoteCosto(lotes[0]) || 0);
@@ -201,26 +184,20 @@ const TablaProductos = forwardRef(
                 return acc + (costoUnit * (mp.cantidad || 0));
             }, 0);
 
-            // Redondear a múltiplos de 50
             const nuevoCostoRedondeado = Math.round((nuevoCostoRaw || 0) / 50) * 50;
 
-            // Si el nuevo costo es mayor a 0 y no coincide con el input actual, actualizar
             if (nuevoCostoRaw > 0 && nuevoCostoRedondeado !== costoInput) {
                 setCostoTotal(nuevoCostoRedondeado);
                 setCostoInput(nuevoCostoRedondeado);
-                // si no modificó precio manualmente, recalculamos
                 if (!precioModificadoManually) {
-                    // porcentaje: si el producto tiene porcentaje guardado lo usamos, si no usamos formularioTemp.porcentajeGanancia con min 15
-                    const productPercentMap = loadProductPercentMap();
-                    const pId = productoSeleccionado?.idProducto;
-                    const porcentajeGuardado = pId ? Number(productPercentMap[String(pId)] ?? formularioTemp.porcentajeGanancia ?? 15) : (formularioTemp.porcentajeGanancia ?? 15);
-                    const porcentajeUsado = Math.max(15, porcentajeGuardado);
+                    // Usar porcentajeGanancia del formulario
+                    const porcentajeUsado = Math.max(15, formularioTemp.porcentajeGanancia || 15);
                     const precioCalc = Math.round(nuevoCostoRedondeado * (1 + porcentajeUsado / 100) / 50) * 50;
                     setPrecioInput(precioCalc);
                     setFormularioTemp((prev) => ({ ...prev, precio: precioCalc }));
                 }
             }
-        }, [materiasProducto, registrosMateria, lotesMateriaPrima, precioModificadoManually]);
+        }, [materiasProducto, registrosMateria, lotesMateriaPrima, precioModificadoManually, formularioTemp.porcentajeGanancia]);
 
         // Recalcular precio cuando cambia porcentaje en modal (si no se modificó precio manualmente)
         useEffect(() => {
@@ -276,20 +253,17 @@ const TablaProductos = forwardRef(
             setMateriasProducto(producto.materias || []);
             setCostoTotal(producto.costo || 0);
 
-            // Convertir costo y precio a números
             const costoVal = Number(producto.costo || 0);
             const precioVal = Number(producto.precio || 0);
 
-            // Obtener porcentaje guardado en localStorage; si no existe usar 15 por defecto
-            const productPercentMap = loadProductPercentMap();
-            const porcentajeGuardado = productPercentMap[String(producto.idProducto)];
-            const porcentajeFinal = porcentajeGuardado ? Number(porcentajeGuardado) : 15;
+            // MODIFICAR: Usar porcentajeGanancia del backend en lugar de localStorage
+            const porcentajeFinal = producto.porcentajeGanancia || 15;
 
             setFormularioTemp({
                 idProducto: producto.idProducto,
                 nombre: producto.nombre,
                 precio: precioVal,
-                porcentajeGanancia: porcentajeFinal,
+                porcentajeGanancia: porcentajeFinal, // Ahora viene del backend
                 idCategoria: producto.idCategoria?.idCategoria || "",
                 iva: producto.iva === undefined || producto.iva === null ? false : Boolean(producto.iva),
             });
@@ -509,6 +483,7 @@ const TablaProductos = forwardRef(
                                 precio: p.precio ?? 0,
                                 stock: p.stock ?? 0,
                                 iva: p.iva ?? 0,
+                                porcentajeGanancia: p.porcentajeGanancia ?? 15,
                                 idCategoria: null,
                                 materias: p.materias ?? [],
                             };
@@ -552,7 +527,6 @@ const TablaProductos = forwardRef(
 
             // Forzar mínimo 15 en el porcentaje de ganancia
             const porcentajeUsado = Math.max(15, Number(formularioTemp.porcentajeGanancia || 15));
-
             const costoRedondeado = Math.round(Number(costoInput || 0) / 50) * 50;
             const precioRedondeado = !precioModificadoManually
                 ? Math.round(costoRedondeado * (1 + porcentajeUsado / 100) / 50) * 50
@@ -564,7 +538,6 @@ const TablaProductos = forwardRef(
             }
             try {
                 const headers = authHeaders();
-                const percentMap = loadProductPercentMap();
 
                 if (productoSeleccionado) {
                     const payload = {
@@ -574,16 +547,11 @@ const TablaProductos = forwardRef(
                         precio: precioRedondeado,
                         stock: productoSeleccionado.stock ?? 0,
                         iva: productoSeleccionado.iva ? true : Boolean(formularioTemp.iva),
+                        porcentajeGanancia: porcentajeUsado, // NUEVO: Enviar al backend
                         materias: materiasProducto,
                     };
                     payload.idCategoria = formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null;
-
-                    // PUT update
                     await api.put(`/inventarioProducto/${productoSeleccionado.idProducto}`, payload, { headers });
-
-                    // Persistir porcentaje elegido para este producto
-                    percentMap[String(productoSeleccionado.idProducto)] = porcentajeUsado;
-                    saveProductPercentMap(percentMap);
 
                 } else {
                     const payload = {
@@ -592,22 +560,14 @@ const TablaProductos = forwardRef(
                         precio: precioRedondeado,
                         stock: 0,
                         iva: Boolean(formularioTemp.iva),
+                        porcentajeGanancia: porcentajeUsado, // NUEVO: Enviar al backend
                         materias: materiasProducto,
                     };
                     payload.idCategoria = formularioTemp.idCategoria ? { idCategoria: Number(formularioTemp.idCategoria) } : null;
-
-                    const response = await api.post("/inventarioProducto", payload, { headers });
-                    const created = response?.data ?? payload;
-
-                    // Para producto nuevo: persistir porcentaje elegido
-                    const createdId = created.idProducto;
-                    if (createdId) {
-                        const pctMap = loadProductPercentMap();
-                        pctMap[String(createdId)] = porcentajeUsado;
-                        saveProductPercentMap(pctMap);
-                    }
+                    await api.post("/inventarioProducto", payload, { headers });
                 }
 
+                // ELIMINAR: Ya no necesitamos guardar en localStorage
                 // Recargar datos frescos del backend después de guardar
                 await cargarDatosFromBackend();
 
@@ -615,7 +575,7 @@ const TablaProductos = forwardRef(
                 setProductoSeleccionado(null);
                 setMateriasProducto([]);
                 setCostoTotal(costoRedondeado);
-                setFormularioTemp({ porcentajeGanancia: formularioTemp.porcentajeGanancia ?? 15, nombre: "", idCategoria: "", iva: null });
+                setFormularioTemp({ porcentajeGanancia: 15, nombre: "", idCategoria: "", iva: null }); // Reset a 15
                 setCostoInput(costoRedondeado);
                 setPrecioInput(precioRedondeado);
                 setPrecioModificadoManually(false);
@@ -661,6 +621,48 @@ const TablaProductos = forwardRef(
             setIndiceEdicionMateria(null);
             setMateriaNueva({ idMateria: 0, cantidad: 0 });
             setModalMateriaAbierta(false);
+        };
+
+        const confirmarDisminuirStock = async () => {
+            if (!token) {
+                setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
+                setModalConfirmDecrease(false);
+                return;
+            }
+            const disminuir = parseInt(cantidadDisminuir, 10);
+            if (isNaN(disminuir) || disminuir <= 0) {
+                setError("Cantidad inválida a disminuir.");
+                setModalConfirmDecrease(false);
+                return;
+            }
+
+            const currentStock = productoStock?.stock || 0;
+            if (disminuir > currentStock) {
+                setError("No puedes disminuir más que el stock actual.");
+                setModalConfirmDecrease(false);
+                return;
+            }
+
+            try {
+                const headers = authHeaders();
+                // NUEVO: Usar el endpoint específico para disminuir stock por pérdida
+                await api.put(
+                    `/inventarioProducto/${productoStock.idProducto}/disminuir-stock`,
+                    { cantidadADisminuir: disminuir },
+                    { headers }
+                );
+
+                // Recargar datos frescos del backend después de disminuir stock
+                await cargarDatosFromBackend();
+
+                setModalConfirmDecrease(false);
+                setModalStock(false);
+                setCantidadDisminuir(0);
+                setDisminuirChecked(false);
+            } catch (err) {
+                handleApiError(err, "disminuir stock");
+                setModalConfirmDecrease(false);
+            }
         };
 
         // ACTUALIZAR STOCK (AUMENTAR / DISMINUIR)
@@ -720,49 +722,6 @@ const TablaProductos = forwardRef(
                 setNuevaCantidad(0);
             } catch (err) {
                 handleApiError(err, "actualización de stock");
-            }
-        };
-
-        // Confirmar disminución de stock (disminuir por pérdida)
-        const confirmarDisminuirStock = async () => {
-            if (!token) {
-                setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
-                setModalConfirmDecrease(false);
-                return;
-            }
-            const disminuir = parseInt(cantidadDisminuir, 10);
-            if (isNaN(disminuir) || disminuir <= 0) {
-                setError("Cantidad inválida a disminuir.");
-                setModalConfirmDecrease(false);
-                return;
-            }
-
-            const currentStock = productoStock?.stock || 0;
-            const newStockToSend = currentStock - disminuir;
-            if (newStockToSend < 0) {
-                setError("No puedes disminuir más que el stock actual.");
-                setModalConfirmDecrease(false);
-                return;
-            }
-
-            try {
-                const headers = authHeaders();
-                await api.put(
-                    `/inventarioProducto/${productoStock.idProducto}/stock`,
-                    { nuevaCantidad: newStockToSend },
-                    { headers }
-                );
-
-                // Recargar datos frescos del backend después de disminuir stock
-                await cargarDatosFromBackend();
-
-                setModalConfirmDecrease(false);
-                setModalStock(false);
-                setCantidadDisminuir(0);
-                setDisminuirChecked(false);
-            } catch (err) {
-                handleApiError(err, "disminuir stock");
-                setModalConfirmDecrease(false);
             }
         };
 
