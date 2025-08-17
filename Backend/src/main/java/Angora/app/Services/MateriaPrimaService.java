@@ -93,7 +93,10 @@ public class MateriaPrimaService {
         existing.setCosto(materia.getCosto());
         existing.setVenta(materia.getVenta());
 
-        materiaPrimaRepository.save(existing);
+        MateriaPrima guardar = materiaPrimaRepository.save(existing);
+
+        // Recalcular el precio de los productos que tiene asociada es materia
+        productoService.recalculateProductsCostByMateria(guardar.getIdMateria());
 
         // registrar movimiento si la cantidad cambió
         if (previo == null) previo = 0f;
