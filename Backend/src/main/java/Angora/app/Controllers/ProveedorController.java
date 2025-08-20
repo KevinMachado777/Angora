@@ -18,10 +18,24 @@ public class ProveedorController {
     @Autowired
     ProveedorService proveedorService;
 
+    // Obtener solo proveedores activos
     @GetMapping
-    public List<Proveedor> obtenerProveedores(){
-        var proveedores = proveedorServicio.listarProveedores();
+    public List<Proveedor> obtenerProveedoresActivos(){
+        var proveedores = proveedorServicio.listarProveedoresActivos();
+        return proveedores;
+    }
 
+    // Obtener todos los proveedores (activos e inactivos)
+    @GetMapping("/todos")
+    public List<Proveedor> obtenerTodosProveedores(){
+        var proveedores = proveedorServicio.listarProveedores();
+        return proveedores;
+    }
+
+    // Obtener solo proveedores inactivos
+    @GetMapping("/inactivos")
+    public List<Proveedor> obtenerProveedoresInactivos(){
+        var proveedores = proveedorServicio.listarProveedoresInactivos();
         return proveedores;
     }
 
@@ -30,19 +44,49 @@ public class ProveedorController {
         var proveedor = proveedorServicio.buscarProveedorPorId(idProveedor);
         return proveedor;
     }
+
     @PostMapping
-    public void guardarProveedores(@RequestBody Proveedor proveedor){
-        proveedorServicio.guardarProveedor(proveedor);
+    public ResponseEntity<String> guardarProveedores(@RequestBody Proveedor proveedor){
+        try {
+            // Asegurar que el proveedor nuevo esté activo
+            proveedor.setEstado(true);
+            proveedorServicio.guardarProveedor(proveedor);
+            return ResponseEntity.ok("Proveedor guardado correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al guardar proveedor: " + e.getMessage());
+        }
     }
 
     @PutMapping
-    public void editarProveedor(@RequestBody Proveedor proveedor){
-        proveedorServicio.guardarProveedor(proveedor);
+    public ResponseEntity<String> editarProveedor(@RequestBody Proveedor proveedor){
+        try {
+            proveedorServicio.guardarProveedor(proveedor);
+            return ResponseEntity.ok("Proveedor actualizado correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al actualizar proveedor: " + e.getMessage());
+        }
     }
 
-    @DeleteMapping("/{idProveedor}")
-    public void eliminarProveedor(@PathVariable Long idProveedor){
-        proveedorServicio.eliminarProveedor(idProveedor);
+    // Cambiar de eliminar a desactivar
+    @PutMapping("/desactivar/{idProveedor}")
+    public ResponseEntity<String> desactivarProveedor(@PathVariable Long idProveedor){
+        try {
+            proveedorServicio.desactivarProveedor(idProveedor);
+            return ResponseEntity.ok("Proveedor desactivado correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al desactivar proveedor: " + e.getMessage());
+        }
+    }
+
+    // Nuevo endpoint para reactivar proveedor
+    @PutMapping("/reactivar/{idProveedor}")
+    public ResponseEntity<String> reactivarProveedor(@PathVariable Long idProveedor){
+        try {
+            proveedorServicio.reactivarProveedor(idProveedor);
+            return ResponseEntity.ok("Proveedor reactivado correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error al reactivar proveedor: " + e.getMessage());
+        }
     }
 
     @GetMapping("/exists/{correo}/{idProveedor}")

@@ -23,4 +23,5 @@ public class Proveedor {
     @Email
     private String correo;
     private String telefono;
+    private Boolean estado = true;
 }

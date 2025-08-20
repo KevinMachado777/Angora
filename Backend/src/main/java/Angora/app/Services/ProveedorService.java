@@ -30,11 +30,24 @@ public class ProveedorService implements IProveedorService {
         proveedorRepository.save(proveedor);
     }
 
-    @Override
-    public void eliminarProveedor(Long idProveedor) {
+    public List<Proveedor> listarProveedoresActivos() {
+        return proveedorRepository.findByEstadoTrue();
+    }
 
-        proveedorRepository.deleteById(idProveedor);
+    public List<Proveedor> listarProveedoresInactivos() {
+        return proveedorRepository.findByEstadoFalse();
+    }
 
+    public void desactivarProveedor(Long idProveedor) {
+        Proveedor proveedor = buscarProveedorPorId(idProveedor);
+        proveedor.setEstado(false);
+        proveedorRepository.save(proveedor);
+    }
+
+    public void reactivarProveedor(Long idProveedor) {
+        Proveedor proveedor = buscarProveedorPorId(idProveedor);
+        proveedor.setEstado(true);
+        proveedorRepository.save(proveedor);
     }
 
     public boolean existeCorreoEnProveedor(String correo, Long idProveedor) {

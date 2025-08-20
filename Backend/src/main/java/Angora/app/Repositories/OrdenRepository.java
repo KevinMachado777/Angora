@@ -20,4 +20,8 @@ public interface OrdenRepository extends JpaRepository<Orden, Long> {
 
     @Query("SELECT DISTINCT o FROM Orden o LEFT JOIN FETCH o.ordenMateriaPrimas omp LEFT JOIN FETCH omp.materiaPrima LEFT JOIN FETCH o.proveedor")
     List<Orden> findAllWithDetails();
+
+    @Query("SELECT COUNT(o) FROM Orden o WHERE o.proveedor.idProveedor = :idProveedor AND o.estado = false")
+    Long countOrdenesPendientesByProveedor(@Param("idProveedor") Long idProveedor);
+
 }

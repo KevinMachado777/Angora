@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 import api from "../api/axiosInstance";
-import { CreadorTabla } from "../components/CreadorTabla";
 import ModalProveedor from "../components/ModalProveedor";
 import ModalConfirmarOrden from "../components/ModalConfirmarOrden";
 import BotonAgregar from "../components/botonAgregar";
@@ -11,18 +10,21 @@ import Modal from "../components/Modal";
 import BotonCancelar from "../components/BotonCancelar";
 import BotonAceptar from "../components/BotonAceptar";
 import { CreadorTablaOrdenes } from "../components/CreadorTablaOrdenes";
+import { CreadorTablaProveedores } from "../components/CreadorTablaProveedores";
 
 const Proveedores = () => {
   const { user } = useContext(AuthContext);
   const token = localStorage.getItem("accessToken");
   const [modoProveedor, setModoProveedor] = useState(true);
+  const [verInactivos, setVerInactivos] = useState(false); // Nuevo estado
   const [proveedores, setProveedores] = useState([]);
   const [ordenes, setOrdenes] = useState([]);
   const [modalAbierta, setModalAbierta] = useState(false);
   const [editando, setEditando] = useState(null);
   const [tipoModal, setTipoModal] = useState("proveedor");
-  const [confirmarEliminacion, setConfirmarEliminacion] = useState(false);
-  const [registroEliminar, setRegistroEliminar] = useState(null);
+  const [confirmarAccion, setConfirmarAccion] = useState(false);
+  const [registroAccion, setRegistroAccion] = useState(null);
+  const [tipoAccion, setTipoAccion] = useState(""); // "desactivar" o "reactivar"
   const [modalConfirmarOrden, setModalConfirmarOrden] = useState(false);
   const [ordenConfirmar, setOrdenConfirmar] = useState(null);
   const [modalMensaje, setModalMensaje] = useState({
@@ -46,7 +48,9 @@ const Proveedores = () => {
     try {
       const response = await api.get(urlOrdenes);
       console.log("Órdenes recibidas:", response.data);
-      const ordenesPendientes = response.data.filter((orden) => orden.estado === false);
+      const ordenesPendientes = response.data.filter(
+        (orden) => orden.estado === false
+      );
       setOrdenes(ordenesPendientes);
     } catch (error) {
       console.error(
@@ -64,6 +68,29 @@ const Proveedores = () => {
     }
   };
 
+  // Nueva función para cargar proveedores según el estado
+  const cargarProveedores = async () => {
+    try {
+      const endpoint = verInactivos
+        ? `${urlProveedores}/inactivos`
+        : urlProveedores;
+      const respuesta = await api.get(endpoint);
+      setProveedores(respuesta.data);
+    } catch (error) {
+      console.error(
+        "Error al cargar proveedores:",
+        error.response?.status,
+        error.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al cargar proveedores: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
+  };
+
   const abrirModalAgregar = () => {
     setEditando(null);
     setTipoModal(modoProveedor ? "proveedor" : "orden");
@@ -75,37 +102,24 @@ const Proveedores = () => {
     setModalConfirmarOrden(true);
   };
 
+  // Nueva función para alternar entre activos e inactivos
+  const alternarVistaProveedores = () => {
+    setVerInactivos(!verInactivos);
+  };
+
   useEffect(() => {
     if (!token) {
       abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
       return;
     }
 
-    const cargarProveedores = async () => {
-      try {
-        const respuesta = await api.get(urlProveedores);
-        setProveedores(respuesta.data);
-      } catch (error) {
-        console.error(
-          "Error al cargar proveedores:",
-          error.response?.status,
-          error.response?.data
-        );
-        abrirModal(
-          "error",
-          `Error al cargar proveedores: ${
-            error.response?.data?.message || error.message
-          }`
-        );
-      }
-    };
-
     if (modoProveedor) {
       cargarProveedores();
     } else {
       cargarOrdenesPendientes();
+      setVerInactivos(false); // Resetear vista de inactivos al cambiar a órdenes
     }
-  }, [modoProveedor, token]);
+  }, [modoProveedor, verInactivos, token]);
 
   const abrirModalEditar = (registro) => {
     const registroOriginal = modoProveedor
@@ -121,52 +135,64 @@ const Proveedores = () => {
     }
   };
 
-  const abrirModalEliminar = (registro) => {
-    setRegistroEliminar(registro);
-    setConfirmarEliminacion(true);
+  // Función modificada para manejar desactivar/reactivar
+  const abrirModalAccion = (registro, accion) => {
+    setRegistroAccion(registro);
+    setTipoAccion(accion);
+    setConfirmarAccion(true);
   };
 
-  const eliminarRegistro = async () => {
-  try {
-    if (modoProveedor) {
-      // 1️⃣ Verificar si el proveedor tiene órdenes abiertas
-      const ordenesRes = await api.get(
-        `${urlOrdenes}?idProveedor=${registroEliminar.idProveedor}&estado=false`
-      );
+  // Función modificada para ejecutar la acción
+  const ejecutarAccion = async () => {
+    try {
+      if (modoProveedor) {
+        if (tipoAccion === "desactivar") {
+          const conteoRes = await api.get(
+            `${urlOrdenes}/pendientes/${registroAccion.idProveedor}`
+          );
 
-      if (ordenesRes.data.length > 0) {
-        abrirModal(
-          "error",
-          "No se puede eliminar este proveedor porque tiene órdenes de compra abiertas."
-        );
-        return; // Cancelar eliminación
+          if (conteoRes.data > 0) {
+            abrirModal(
+              "error",
+              `No se puede eliminar este proveedor porque tiene ${conteoRes.data} orden(es) de compra pendiente(s).`
+            );
+            return;
+          }
+
+          await api.put(
+            `${urlProveedores}/desactivar/${registroAccion.idProveedor}`
+          );
+          abrirModal("exito", "Proveedor desactivado correctamente.");
+        } else if (tipoAccion === "reactivar") {
+          await api.put(
+            `${urlProveedores}/reactivar/${registroAccion.idProveedor}`
+          );
+          abrirModal("exito", "Proveedor reactivado correctamente.");
+        }
+        await cargarProveedores();
+      } else {
+        await api.delete(`${urlOrdenes}/${registroAccion.idOrden}`);
+        await cargarOrdenesPendientes();
+        abrirModal("exito", "Orden eliminada correctamente.");
       }
 
-      // 2️⃣ Eliminar proveedor si no tiene órdenes abiertas
-      await api.delete(`${urlProveedores}/${registroEliminar.idProveedor}`);
-      const response = await api.get(urlProveedores);
-      setProveedores(response.data);
-    } else {
-      await api.delete(`${urlOrdenes}/${registroEliminar.idOrden}`);
-      await cargarOrdenesPendientes();
+      setConfirmarAccion(false);
+      setRegistroAccion(null);
+      setTipoAccion("");
+    } catch (error) {
+      console.error(
+        `Error al ${tipoAccion}:`,
+        error.response?.status,
+        error.response?.data
+      );
+      abrirModal(
+        "error",
+        `Error al ${tipoAccion}: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
-
-    setConfirmarEliminacion(false);
-    setRegistroEliminar(null);
-    abrirModal("exito", "Registro eliminado correctamente.");
-  } catch (error) {
-    console.error(
-      "Error al eliminar:",
-      error.response?.status,
-      error.response?.data
-    );
-    abrirModal(
-      "error",
-      `Error al eliminar: ${error.response?.data?.message || error.message}`
-    );
-  }
-};
-
+  };
 
   const guardarProveedor = async (nuevo) => {
     try {
@@ -177,6 +203,7 @@ const Proveedores = () => {
           telefono: nuevo.telefono,
           correo: nuevo.correo,
           direccion: nuevo.direccion,
+          activo: editando.activo, // Mantener el estado actual
         });
       } else {
         await api.post(urlProveedores, {
@@ -186,8 +213,7 @@ const Proveedores = () => {
           direccion: nuevo.direccion,
         });
       }
-      const respuesta = await api.get(urlProveedores);
-      setProveedores(respuesta.data);
+      await cargarProveedores();
       setModalAbierta(false);
       abrirModal("exito", "Proveedor guardado correctamente.");
     } catch (error) {
@@ -221,7 +247,9 @@ const Proveedores = () => {
             parsedIdMateria <= 0
           ) {
             throw new Error(
-              `ID de Materia Prima inválido para el ítem: ${JSON.stringify(item)}`
+              `ID de Materia Prima inválido para el ítem: ${JSON.stringify(
+                item
+              )}`
             );
           }
 
@@ -252,7 +280,7 @@ const Proveedores = () => {
         await api.post(urlOrdenes, ordenData);
       }
 
-      await cargarOrdenesPendientes(); // Usar la función reutilizable
+      await cargarOrdenesPendientes();
       setModalAbierta(false);
       abrirModal("exito", "Orden guardada correctamente.");
     } catch (error) {
@@ -295,46 +323,73 @@ const Proveedores = () => {
       })) ?? []
     : [];
 
+  // Función para obtener el texto del botón de acción
+  const obtenerTextoAccion = () => {
+    if (!modoProveedor) return "Eliminar";
+    return verInactivos ? "Reactivar" : "Desactivar";
+  };
+
+  // Función para obtener la clase CSS del botón de acción
+  const obtenerClaseAccion = () => {
+    if (!modoProveedor) return "btn-danger";
+    return verInactivos ? "btn-success" : "btn-warning";
+  };
+
   return (
     <main className="proveedores inventario">
       <h1 className="titulo">
-        {modoProveedor ? "Proveedores" : "Órdenes de Compra"}
+        {modoProveedor
+          ? `Proveedores ${verInactivos ? "Inactivos" : "Activos"}`
+          : "Órdenes de Compra"}
       </h1>
       <div className="proveedores opciones">
         <BotonAgregar onClick={abrirModalAgregar} />
         {modoProveedor ? (
-          <BotonOrdenes onClick={() => setModoProveedor(false)} />
+          <>
+            <BotonOrdenes onClick={() => setModoProveedor(false)} />
+            <button
+              onClick={alternarVistaProveedores}
+              className={`btn ${
+                verInactivos ? "btn-primary" : "btn-secondary"
+              }`}
+            >
+              {verInactivos ? "Ver Activos" : "Ver Inactivos"}
+            </button>
+          </>
         ) : (
           <BotonProveedores onClick={() => setModoProveedor(true)} />
         )}
       </div>
       {modoProveedor ? (
-        <CreadorTabla
-          cabeceros={cabecerosProveedor}
+        <CreadorTablaProveedores
+          cabeceros={["ID", "Nombre", "Dirección", "Correo", "Telefono"]}
+          campos={["idProveedor", "nombre", "direccion", "correo", "telefono"]}
           registros={registrosTabla}
-          onEditar={(registro) =>
-            abrirModalEditar(registro.original || registro)
-          }
+          onEditar={(registro) => abrirModalEditar(registro)}
           onEliminar={(registro) =>
-            abrirModalEliminar(registro.original || registro)
+            abrirModalAccion(
+              registro,
+              verInactivos ? "reactivar" : "desactivar"
+            )
           }
+          modo={verInactivos ? "reactivar" : "desactivar"}
         />
       ) : (
         <CreadorTablaOrdenes
           cabeceros={cabecerosOrden}
           registros={ordenes}
           onEditar={abrirModalEditar}
-          onEliminar={abrirModalEliminar}
+          onEliminar={(registro) => abrirModalAccion(registro, "eliminar")}
           onConfirmar={abrirModalConfirmarOrden}
         />
       )}
       <ModalProveedor
-        isOpen={modalAbierta}
-        onClose={() => setModalAbierta(false)}
-        tipo={tipoModal}
-        onGuardar={modoProveedor ? guardarProveedor : guardarOrden}
-        datosIniciales={editando}
-      />
+  isOpen={modalAbierta}
+  onClose={() => setModalAbierta(false)}
+  tipo={tipoModal}
+  onGuardar={modoProveedor ? guardarProveedor : guardarOrden} // Simplificado
+  datosIniciales={editando}
+/>
       <ModalConfirmarOrden
         isOpen={modalConfirmarOrden}
         onClose={() => setModalConfirmarOrden(false)}
@@ -344,28 +399,41 @@ const Proveedores = () => {
           setOrdenConfirmar(null);
           abrirModal("exito", "Orden confirmada correctamente.");
           try {
-            await cargarOrdenesPendientes(); // Usar la función reutilizable
+            await cargarOrdenesPendientes();
           } catch (error) {
             console.error("Error al recargar órdenes:", error);
             abrirModal("error", "Error al recargar la lista de órdenes.");
           }
         }}
       />
-      {confirmarEliminacion && (
+      {confirmarAccion && (
         <Modal
-          isOpen={confirmarEliminacion}
-          onClose={() => setConfirmarEliminacion(false)}
+          isOpen={confirmarAccion}
+          onClose={() => setConfirmarAccion(false)}
         >
           <div className="encabezado-modal">
-            <h2>Confirmar Eliminación</h2>
+            <h2>
+              Confirmar{" "}
+              {tipoAccion === "desactivar"
+                ? "Desactivación"
+                : tipoAccion === "reactivar"
+                ? "Reactivación"
+                : "Eliminación"}
+            </h2>
           </div>
           <p>
-            ¿Desea eliminar {modoProveedor ? "el proveedor" : "la orden"}{" "}
-            <strong>{registroEliminar?.nombre}</strong>?
+            ¿Desea{" "}
+            {tipoAccion === "desactivar"
+              ? "desactivar"
+              : tipoAccion === "reactivar"
+              ? "reactivar"
+              : "eliminar"}{" "}
+            {modoProveedor ? "el proveedor" : "la orden"}{" "}
+            <strong>{registroAccion?.nombre}</strong>?
           </p>
           <div className="pie-modal">
-            <BotonCancelar onClick={() => setConfirmarEliminacion(false)} />
-            <BotonAceptar onClick={eliminarRegistro} />
+            <BotonCancelar onClick={() => setConfirmarAccion(false)} />
+            <BotonAceptar onClick={ejecutarAccion} />
           </div>
         </Modal>
       )}

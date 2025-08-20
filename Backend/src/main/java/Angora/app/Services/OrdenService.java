@@ -14,6 +14,7 @@ import Angora.app.Services.Email.EnviarCorreo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList; // Necesario para crear la lista
@@ -155,5 +156,13 @@ public class OrdenService implements IOrdenService {
         orden.setTotal(ordenConfirmacion.getTotalOrden());
 
         ordenRepository.save(orden);
+    }
+
+    public Long contarOrdenesPendientesPorProveedor(Long idProveedor) {
+        if (idProveedor == null) {
+            return 0L;
+        }
+
+        return ordenRepository.countOrdenesPendientesByProveedor(idProveedor);
     }
 }

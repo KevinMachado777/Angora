@@ -11,7 +11,10 @@ public interface IProveedorService {
     public List<Proveedor> listarProveedores();
     public Proveedor buscarProveedorPorId(Long idProveedor);
     public void guardarProveedor(Proveedor proveedor);
-    public void eliminarProveedor(Long idProveedor);
+    List<Proveedor> listarProveedoresActivos();
+    List<Proveedor> listarProveedoresInactivos();
+    void desactivarProveedor(Long idProveedor);
+    void reactivarProveedor(Long idProveedor);
 
 
 }

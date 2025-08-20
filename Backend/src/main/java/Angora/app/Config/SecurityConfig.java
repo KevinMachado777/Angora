@@ -142,7 +142,8 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.DELETE,"/proveedores/**").hasAuthority("PROVEEDORES");
 
                     // Ordenes
-                    http.requestMatchers(HttpMethod.GET,"/ordenes").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.GET,"/ordenes/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.GET,"/ordenes/pendientes/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.POST,"/ordenes/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.POST,"/ordenes/enviar-orden").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.DELETE,"/ordenes/**").hasAuthority("PROVEEDORES");

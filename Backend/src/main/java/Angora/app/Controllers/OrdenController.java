@@ -4,6 +4,8 @@ import Angora.app.Controllers.dto.LoteDTO;
 import Angora.app.Controllers.dto.OrdenConfirmacionDTO;
 import Angora.app.Controllers.dto.OrdenDTO;
 import Angora.app.Controllers.dto.OrdenMateriaPrimaDTO;
+import Angora.app.Entities.Proveedor;
+import Angora.app.Repositories.OrdenRepository;
 import Angora.app.Services.Email.EnviarCorreo;
 import Angora.app.Entities.Orden; // Asumiendo que existe una entidad Orden
 import Angora.app.Services.OrdenService; // Asumiendo que existe un servicio OrdenService
@@ -16,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -25,8 +28,11 @@ public class OrdenController {
     @Autowired
     private EnviarCorreo enviarCorreo;
 
+
     @Autowired
     private OrdenService ordenService; // Servicio para manejar la lógica de órdenes
+    @Autowired
+    private OrdenRepository ordenRepository;
 
     @GetMapping
     public ResponseEntity<List<Orden>> listarOrdenes() {
@@ -35,6 +41,16 @@ public class OrdenController {
             return ResponseEntity.ok(ordenes);
         } catch (Exception e) {
             return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @GetMapping("/pendientes/{idProveedor}")
+    public ResponseEntity<Long> contarOrdenesPendientesPorProveedor(@PathVariable Long idProveedor) {
+        try {
+            Long conteo = ordenService.contarOrdenesPendientesPorProveedor(idProveedor);
+            return ResponseEntity.ok(conteo);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0L);
         }
     }
 
