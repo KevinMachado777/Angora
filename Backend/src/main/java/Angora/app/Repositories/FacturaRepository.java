@@ -14,7 +14,7 @@ import java.util.List;
 public interface FacturaRepository extends JpaRepository<Factura, Long> {
 
     // Busca todas las facturas de una cartera por su ID (para portafolio)
-    @Query("SELECT f FROM Factura f WHERE f.idCartera.idCartera = :idCartera")
+    @Query("SELECT f FROM Factura f WHERE f.idCartera.idCartera = :idCartera AND f.estado != 'PENDIENTE'")
     List<Factura> findByIdCarteraIdCartera(@Param("idCartera") Long idCartera);
 
     // Verifica si existe una factura con ese ID en la BD (para portafolio)
