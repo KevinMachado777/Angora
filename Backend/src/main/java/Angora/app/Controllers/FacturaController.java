@@ -51,13 +51,18 @@ public class FacturaController {
     @PostMapping
     public ResponseEntity<?> crearFactura(@RequestBody Factura factura) {
         try {
-            // Validar y mapear productos
+            // Validar y mapear productos con precios dinámicos
             List<FacturaProducto> facturaProductos = new ArrayList<>();
             for (FacturaProducto fp : factura.getProductos()) {
                 Producto producto = productoRepository.findById(fp.getProducto().getId())
                         .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + fp.getProducto().getId()));
                 fp.setProducto(producto);
                 fp.setFactura(factura);
+
+                // NO establecer precioUnitario ni subtotal aquí - mantener dinámico mientras está PENDIENTE
+                fp.setPrecioUnitario(null);
+                fp.setSubtotal(null);
+
                 facturaProductos.add(fp);
             }
             factura.setProductos(facturaProductos);

@@ -1183,8 +1183,11 @@ const Portafolio = () => {
                                         parseFloat(cantidadAbonar) <= 0 || !factura
                                     );             
                                 }}
-                                
-                            >
+                                size={
+                                    (creditosPorCliente[personaCartera.id]?.facturas?.length || 0) < 5
+                                    ? creditosPorCliente[personaCartera.id]?.facturas?.length
+                                    : 5
+                                }>
                                 <option value="">Seleccione una factura</option>
                                 {creditosPorCliente[personaCartera.id]?.facturas?.filter(f => f.saldoPendiente > 0).map(factura => (
                                     <option key={factura.idFactura} value={factura.idFactura}>

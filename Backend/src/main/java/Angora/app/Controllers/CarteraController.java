@@ -159,7 +159,15 @@ public class CarteraController {
                 productoDTO.setId(fp.getProducto().getId());
                 productoDTO.setNombre(fp.getProducto().getNombre());
                 productoDTO.setCantidad(fp.getCantidad());
-                productoDTO.setPrecio(fp.getProducto().getPrecio());
+
+                // Si la factura está confirmada Y tiene precio estático, usarlo
+                if (factura.getEstado().equals("CONFIRMADO") && fp.getPrecioUnitario() != null) {
+                    productoDTO.setPrecio(fp.getPrecioUnitario());
+                } else {
+                    // Si está pendiente o no tiene precio estático, usar dinámico
+                    productoDTO.setPrecio(fp.getProducto().getPrecio());
+                }
+
                 productoDTO.setIva(fp.getProducto().getIva());
                 return productoDTO;
             }).collect(Collectors.toList()));
