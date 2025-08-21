@@ -55,6 +55,7 @@ const Perfil = () => {
 
   const imagenPorDefecto = "https://res.cloudinary.com/dtmtmn3cu/image/upload/v1754451121/Perfil_xtqub7.jpg";
 
+  // UseEffect para manejar el cierre automático del modal
   useEffect(() => {
     if (modalAbierto) {
       const duracion = modalTipo === "error" ? 3000 : 2000;
@@ -65,7 +66,7 @@ const Perfil = () => {
     }
   }, [modalAbierto, modalTipo]);
 
-  // ***** AJUSTE AQUÍ: useEffect para inicializar formData desde el contexto user *****
+  // UseEffect para inicializar formData desde el contexto
   useEffect(() => {
     // Solo actualizamos formData si 'user' no es null y tiene al menos un ID (indicando que es un objeto de usuario cargado)
     if (user && user.id !== undefined) {
@@ -77,25 +78,41 @@ const Perfil = () => {
         correo: user.correo || "",
         telefono: user.telefono || "",
         direccion: user.direccion || "",
-        foto: user.foto || imagenPorDefecto, // Usa user.foto directamente
+        foto: user.foto || imagenPorDefecto,
       });
       setSelectedFile(null); // Reinicia selectedFile al cargar nuevos datos de usuario
     } else if (user === null) {
-        // Opcional: Si el user del contexto es null (ej. logout), reiniciamos el formulario
-        setFormData({
-            id: "", nombre: "", apellido: "", correo: "",
-            telefono: "", direccion: "", foto: imagenPorDefecto,
-        });
-        setSelectedFile(null);
+      // Si el user del contexto es null (ej. logout), reiniciamos el formulario
+      setFormData({
+        id: "", nombre: "", apellido: "", correo: "",
+        telefono: "", direccion: "", foto: imagenPorDefecto,
+      });
+      setSelectedFile(null);
     }
-  }, [user]); // Dependencia en el objeto 'user' completo
+  }, [user]);
 
+  // UseEffect para manejar el caso cuando el usuario no está autenticado
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    let nuevoValor = value;
+
+    // Validaciones en tiempo real según el campo
+    if (name === "telefono") {
+      // Solo permitir números y limitar a 10 dígitos
+      nuevoValor = value.replace(/[^0-9]/g, "");
+      if (nuevoValor.length > 10) {
+        nuevoValor = nuevoValor.slice(0, 10);
+      }
+    } else if (name === "nombre" || name === "apellido") {
+      // Solo permitir letras, tildes, ñ y espacios
+      nuevoValor = value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "");
+    }
+
+    setFormData({ ...formData, [name]: nuevoValor });
     setEditado(true);
   };
 
+  // Manejo del cambio de archivo para la foto de perfil
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -120,6 +137,7 @@ const Perfil = () => {
     }
   };
 
+  // Función para alternar el modo de edición
   const toggleEdicion = () => {
     if (modoEdicion) {
       // Restauramos los datos del usuario del contexto
@@ -138,6 +156,7 @@ const Perfil = () => {
     setModoEdicion(!modoEdicion);
   };
 
+  // Función para verificar si el correo electrónico ya existe
   const verificarCorreoExistente = async (correo) => {
     try {
       const response = await api.get(`/user/exists/${correo}`);
@@ -148,24 +167,27 @@ const Perfil = () => {
     }
   };
 
+  // Función para abrir el modal con el mensaje correspondiente
   const abrirModal = (tipo, mensaje) => {
     setModalTipo(tipo);
     setModalMensaje(mensaje);
     setModalAbierto(true);
   };
 
+  // Función para manejar el envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validación del correo electrónico
     const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo);
     if (!correoValido) {
       abrirModal("advertencia", "Por favor ingresa un correo electrónico válido.");
       return;
     }
 
-    const telefonoValido = /^\d{10}$/.test(formData.telefono);
-    if (!telefonoValido) {
-      abrirModal("advertencia", "El número de teléfono debe tener exactamente 10 dígitos.");
+    // Validación del teléfono - exactamente 10 dígitos
+    if (!/^\d{10}$/.test(formData.telefono)) {
+      abrirModal("advertencia", "El teléfono debe tener exactamente 10 dígitos y solo números.");
       return;
     }
 
@@ -182,6 +204,7 @@ const Perfil = () => {
     }
 
     try {
+      // Verificar si el correo ya existe (solo si cambió)
       if (formData.correo !== user.correo) {
         const existe = await verificarCorreoExistente(formData.correo);
         if (existe) {
@@ -193,6 +216,7 @@ const Perfil = () => {
       const response = await api.put("/user/perfil", dataToSend);
       const data = response.data;
 
+      // Si cambió el correo, requiere re-login
       if (formData.correo !== user.correo) {
         abrirModal(
           "exito",
