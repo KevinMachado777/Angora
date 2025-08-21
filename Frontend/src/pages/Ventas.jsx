@@ -433,6 +433,11 @@ const Ventas = () => {
             menuPortalTarget={document.body}
             styles={{
               menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+              menuList: (base) => ({
+                ...base,
+                maxHeight: 200, // altura máxima del menú
+                overflowY: "auto", // fuerza scroll si es necesario
+              }),
             }}
           />
         </div>
@@ -538,6 +543,11 @@ const Ventas = () => {
             menuPortalTarget={document.body}
             styles={{
               menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+              menuList: (base) => ({
+                ...base,
+                maxHeight: 200, // altura máxima del menú
+                overflowY: "auto", // fuerza scroll si es necesario
+              }),
             }}
           />
         </div>

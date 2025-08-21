@@ -1181,8 +1181,9 @@ const Portafolio = () => {
                                     setFacturaSeleccionadaParaAbono(factura || null);
                                     setBotonDesactivado(
                                         parseFloat(cantidadAbonar) <= 0 || !factura
-                                    );
+                                    );             
                                 }}
+                                
                             >
                                 <option value="">Seleccione una factura</option>
                                 {creditosPorCliente[personaCartera.id]?.facturas?.filter(f => f.saldoPendiente > 0).map(factura => (
