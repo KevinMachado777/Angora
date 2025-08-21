@@ -96,7 +96,6 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.DELETE, "/inventarioProducto/**").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.GET, "/inventarioMateria/**").hasAuthority("INVENTARIOS");
 
-
                     // Rutas de las categorias
                     http.requestMatchers(HttpMethod.GET, "/categorias/**").hasAuthority("INVENTARIOS");
                     http.requestMatchers(HttpMethod.POST, "/categorias").hasAuthority("INVENTARIOS");
@@ -153,14 +152,17 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.GET,"/dashboard/**").hasAuthority("DASHBOARD");
                     http.requestMatchers(HttpMethod.POST,"/dashboard/**").hasAuthority("DASHBOARD");
 
-                    // Al principio de las requestMatchers (antes de anyRequest)
+                    // Lotes
                     http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.POST, "/ordenes/confirmar/**").hasAuthority("PROVEEDORES"); // o permitAll según tu política
-// Si quieres permitir POST /lotes (creación directa)
                     http.requestMatchers(HttpMethod.POST, "/lotes/**").hasAuthority("INVENTARIOS");
 
-
-
+                    // Rutas de Swagger/OpenAPI para documentación
+                    http.requestMatchers("/swagger-ui/**").permitAll();
+                    http.requestMatchers("/swagger-ui.html").permitAll();
+                    http.requestMatchers("/v3/api-docs/**").permitAll();
+                    http.requestMatchers("/swagger-resources/**").permitAll();
+                    http.requestMatchers("/webjars/**").permitAll();
 
                     // El resto necesita autenticacion
                     http.anyRequest().denyAll();
