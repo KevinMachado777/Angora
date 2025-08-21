@@ -36,7 +36,7 @@ const Pedidos = () => {
     setModalMensaje({ tipo, mensaje, visible: true });
     setTimeout(() => {
       setModalMensaje({ tipo: "", mensaje: "", visible: false });
-    }, 3000);
+    }, 1500);
   };
 
   const abrirModalEliminarPedido = (pedido) => {
