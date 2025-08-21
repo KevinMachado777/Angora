@@ -151,7 +151,7 @@ public class SecurityConfig {
 
                     // Dashboard
                     http.requestMatchers(HttpMethod.GET,"/dashboard/**").hasAuthority("DASHBOARD");
-
+                    http.requestMatchers(HttpMethod.POST,"/dashboard/**").hasAuthority("DASHBOARD");
 
                     // Al principio de las requestMatchers (antes de anyRequest)
                     http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").hasAuthority("PROVEEDORES");

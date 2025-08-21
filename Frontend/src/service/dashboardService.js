@@ -3,7 +3,38 @@ import api from '../api/axiosInstance';
 
 class DashboardService {
   
-  // Obtener resumen diario (día actual por defecto)
+// Obtener configuración de envío automático
+async getConfiguracionEnvio() {
+  try {
+    const response = await api.get('/dashboard/configuracion-envio');
+    return response.data;
+  } catch (error) {
+    console.error('Error obteniendo configuración de envío:', error);
+    throw error;
+  }
+}
+
+// Guardar configuración de envío automático
+async guardarConfiguracionEnvio(configuracion) {
+  try {
+    const response = await api.post('/dashboard/configuracion-envio', configuracion);
+    return response.data;
+  } catch (error) {
+    console.error('Error guardando configuración de envío:', error);
+    throw error;
+  }
+}
+
+// Enviar dashboard manual (para pruebas)
+async enviarDashboardManual() {
+  try {
+    const response = await api.post('/dashboard/enviar-manual');
+    return response.data;
+  } catch (error) {
+    console.error('Error enviando dashboard manual:', error);
+    throw error;
+  }
+}
   async getResumenDiario(fecha = null) {
     try {
       const params = fecha ? { fecha } : {};
@@ -116,5 +147,6 @@ class DashboardService {
     }
   }
 }
+
 
 export default new DashboardService();

@@ -24,6 +24,15 @@ ChartJS.register(
 );
 
 const Dashboard = () => {
+  // Función para obtener fecha de hoy en formato local correcto
+  const obtenerFechaHoyLocal = () => {
+    const hoy = new Date();
+    const year = hoy.getFullYear();
+    const month = String(hoy.getMonth() + 1).padStart(2, '0');
+    const day = String(hoy.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Estados para los datos del dashboard
   const [resumenDiario, setResumenDiario] = useState(null);
   const [tendencias, setTendencias] = useState([]);
@@ -33,10 +42,38 @@ const Dashboard = () => {
   const [metricas, setMetricas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-  const [vistaActual, setVistaActual] = useState('diario'); // 'diario', 'semanal', 'mensual'
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(obtenerFechaHoyLocal());
+  const [vistaActual, setVistaActual] = useState('diario');
+
+  // Estados para configuración de envío automático
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configuracionEnvio, setConfiguracionEnvio] = useState({
+    correoDestinatario: '',
+    horaEnvio: '08:00',
+    activo: false
+  });
+  const [guardandoConfig, setGuardandoConfig] = useState(false);
+  const [enviandoManual, setEnviandoManual] = useState(false);
+
+  // Función para validar fecha
+  const validarFecha = (fecha) => {
+    const fechaObj = new Date(fecha);
+    const hoy = new Date();
+    
+    fechaObj.setHours(0, 0, 0, 0);
+    hoy.setHours(0, 0, 0, 0);
+    
+    return fechaObj <= hoy;
+  };
+
+  // Efecto para corregir fecha al montar componente
+  useEffect(() => {
+    const fechaHoy = obtenerFechaHoyLocal();
+    if (fechaSeleccionada > fechaHoy) {
+      console.log('Corrigiendo fecha futura a fecha de hoy');
+      setFechaSeleccionada(fechaHoy);
+    }
+  }, []);
 
   // Cargar datos del dashboard
   const cargarDatos = async () => {
@@ -44,7 +81,6 @@ const Dashboard = () => {
     setError(null);
     
     try {
-      // Cargar datos según la vista actual
       let resumen;
       if (vistaActual === 'diario') {
         resumen = await dashboardService.getResumenDiario(fechaSeleccionada);
@@ -58,7 +94,6 @@ const Dashboard = () => {
 
       setResumenDiario(resumen);
 
-      // Cargar datos complementarios
       const [tendenciasData, ordenesData, pedidosData, alertasData] = await Promise.all([
         dashboardService.getTendencias(7),
         dashboardService.getOrdenesPendientes(),
@@ -79,12 +114,50 @@ const Dashboard = () => {
     }
   };
 
-  // Cargar datos al montar el componente y cuando cambien las dependencias
+  const cargarConfiguracion = async () => {
+    try {
+      const config = await dashboardService.getConfiguracionEnvio();
+      setConfiguracionEnvio(config);
+    } catch (error) {
+      console.error('Error cargando configuración:', error);
+    }
+  };
+
+  const guardarConfiguracion = async () => {
+    setGuardandoConfig(true);
+    try {
+      await dashboardService.guardarConfiguracionEnvio(configuracionEnvio);
+      setShowConfigModal(false);
+      alert('Configuración guardada correctamente. El dashboard se enviará automáticamente todos los días a las ' + configuracionEnvio.horaEnvio);
+    } catch (error) {
+      console.error('Error guardando configuración:', error);
+      alert('Error al guardar la configuración');
+    } finally {
+      setGuardandoConfig(false);
+    }
+  };
+
+  const enviarDashboardManual = async () => {
+    setEnviandoManual(true);
+    try {
+      await dashboardService.enviarDashboardManual();
+      alert('Dashboard enviado correctamente');
+    } catch (error) {
+      console.error('Error enviando dashboard:', error);
+      alert('Error al enviar dashboard');
+    } finally {
+      setEnviandoManual(false);
+    }
+  };
+
   useEffect(() => {
     cargarDatos();
   }, [fechaSeleccionada, vistaActual]);
 
-  // Formatear números como moneda
+  useEffect(() => {
+    cargarConfiguracion();
+  }, []);
+
   const formatearMoneda = (valor) => {
     if (!valor) return '$0';
     return new Intl.NumberFormat('es-CO', {
@@ -94,13 +167,11 @@ const Dashboard = () => {
     }).format(valor);
   };
 
-  // Formatear números
   const formatearNumero = (valor) => {
     if (!valor) return '0';
     return new Intl.NumberFormat('es-CO').format(valor);
   };
 
-  // Preparar datos para gráficos
   const prepararDatosTendencias = () => {
     if (!tendencias.length) return { labels: [], datasets: [] };
 
@@ -128,7 +199,6 @@ const Dashboard = () => {
     };
   };
 
-  // Preparar datos de las tarjetas KPI
   const prepararTarjetasKPI = () => {
     if (!resumenDiario) return [];
 
@@ -246,21 +316,58 @@ const Dashboard = () => {
           {vistaActual === 'diario' && (
             <input
               type="date"
-              className="form-control"
+              className="form-control me-3"
               style={{ width: 'auto' }}
               value={fechaSeleccionada}
-              onChange={(e) => setFechaSeleccionada(e.target.value)}
+              max={obtenerFechaHoyLocal()}
+              onChange={(e) => {
+                const fechaNueva = e.target.value;
+                const fechaHoy = obtenerFechaHoyLocal();
+                
+                if (fechaNueva <= fechaHoy) {
+                  setFechaSeleccionada(fechaNueva);
+                } else {
+                  alert('No puedes seleccionar fechas futuras');
+                  setFechaSeleccionada(fechaHoy);
+                }
+              }}
             />
           )}
 
-          {/* Botón de actualizar */}
-          <button 
-            className="btn btn-outline-secondary ms-3" 
-            onClick={cargarDatos}
-            title="Actualizar datos"
-          >
-            <i className="bi bi-arrow-clockwise"></i>
-          </button>
+          {/* Botones de acción */}
+          <div className="btn-group">
+            <button 
+              className="btn btn-outline-secondary" 
+              onClick={cargarDatos}
+              title="Actualizar datos"
+            >
+              <i className="bi bi-arrow-clockwise"></i>
+            </button>
+            
+            <button 
+              className="btn btn-outline-info" 
+              onClick={() => {
+                cargarConfiguracion();
+                setShowConfigModal(true);
+              }}
+              title="Configurar envío automático"
+            >
+              <i className="bi bi-gear"></i>
+            </button>
+            
+            <button 
+              className="btn btn-outline-success" 
+              onClick={enviarDashboardManual}
+              disabled={enviandoManual}
+              title="Enviar dashboard por correo"
+            >
+              {enviandoManual ? (
+                <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+              ) : (
+                <i className="bi bi-envelope"></i>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -339,7 +446,6 @@ const Dashboard = () => {
 
       {/* Sección de alertas y datos adicionales */}
       <div className="info-adicional-grid">
-        {/* Alertas de inventario */}
         <div className="alertas-inventario">
           <h5>
             <i className="bi bi-exclamation-triangle text-warning me-2"></i>
@@ -359,12 +465,11 @@ const Dashboard = () => {
                 </div>
               ))
             ) : (
-              <div className="no-datos">0</div>
+              <div className="no-datos">Sin alertas</div>
             )}
           </div>
         </div>
 
-        {/* Información adicional */}
         <div className="info-adicional">
           <h5>Información Adicional</h5>
           <div className="info-stats">
@@ -383,6 +488,126 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal de Configuración */}
+      {showConfigModal && (
+        <div 
+          className="modal fade show" 
+          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} 
+          onClick={() => setShowConfigModal(false)}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-gear me-2"></i>
+                  Configurar Envío Automático del Dashboard
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setShowConfigModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label htmlFor="correoDestinatario" className="form-label">
+                    <i className="bi bi-envelope me-1"></i>
+                    Correo de destino
+                  </label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    id="correoDestinatario"
+                    placeholder="correo@ejemplo.com"
+                    value={configuracionEnvio.correoDestinatario}
+                    onChange={(e) => setConfiguracionEnvio({
+                      ...configuracionEnvio,
+                      correoDestinatario: e.target.value
+                    })}
+                  />
+                  <div className="form-text">
+                    Correo donde se enviará el resumen diario del dashboard
+                  </div>
+                </div>
+                
+                <div className="mb-3">
+                  <label htmlFor="horaEnvio" className="form-label">
+                    <i className="bi bi-clock me-1"></i>
+                    Hora de envío
+                  </label>
+                  <input
+                    type="time"
+                    className="form-control"
+                    id="horaEnvio"
+                    value={configuracionEnvio.horaEnvio}
+                    onChange={(e) => setConfiguracionEnvio({
+                      ...configuracionEnvio,
+                      horaEnvio: e.target.value
+                    })}
+                  />
+                  <div className="form-text">
+                    Hora diaria para el envío automático del dashboard
+                  </div>
+                </div>
+                
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="activarEnvio"
+                    checked={configuracionEnvio.activo}
+                    onChange={(e) => setConfiguracionEnvio({
+                      ...configuracionEnvio,
+                      activo: e.target.checked
+                    })}
+                  />
+                  <label className="form-check-label" htmlFor="activarEnvio">
+                    <strong>Activar envío automático diario</strong>
+                  </label>
+                </div>
+                
+                {configuracionEnvio.activo && (
+                  <div className="alert alert-info mt-3" role="alert">
+                    <i className="bi bi-info-circle me-2"></i>
+                    <strong>Configuración activa:</strong> El dashboard se enviará automáticamente todos los días a las {configuracionEnvio.horaEnvio} a {configuracionEnvio.correoDestinatario}
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => setShowConfigModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={guardarConfiguracion}
+                  disabled={guardandoConfig || !configuracionEnvio.correoDestinatario.trim()}
+                >
+                  {guardandoConfig ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check me-2"></i>
+                      Guardar Configuración
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
