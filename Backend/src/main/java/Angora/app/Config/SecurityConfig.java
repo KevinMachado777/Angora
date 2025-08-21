@@ -150,8 +150,9 @@ public class SecurityConfig {
 
                     // Dashboard
                     http.requestMatchers(HttpMethod.GET,"/dashboard/**").hasAuthority("DASHBOARD");
+                    http.requestMatchers(HttpMethod.POST,"/dashboard/**").hasAuthority("DASHBOARD");
 
-                    // Ordenes y lotes para datos de el dashboard
+                    // Lotes
                     http.requestMatchers(HttpMethod.GET, "/lotes/ultimo/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.POST, "/ordenes/confirmar/**").hasAuthority("PROVEEDORES"); // o permitAll según tu política
                     http.requestMatchers(HttpMethod.POST, "/lotes/**").hasAuthority("INVENTARIOS");

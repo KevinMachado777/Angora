@@ -1,15 +1,18 @@
 package Angora.app.Services;
 
 import Angora.app.Contract.IDashboardService;
+import Angora.app.Controllers.DashboardController;
 import Angora.app.Controllers.dto.*;
 import Angora.app.Entities.*;
 import Angora.app.Repositories.*;
+import Angora.app.Services.Email.EnviarCorreo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +30,10 @@ public class DashboardService implements IDashboardService {
     @Autowired private MovimientoRepository movimientoRepository;
     @Autowired private ClienteRepository clienteRepository;
     @Autowired private OrdenRepository ordenRepository;
+    @Autowired
+    private ConfiguracionDashboardRepository configuracionRepository;
+    @Autowired
+    private EnviarCorreo enviarCorreo;
 
     @Override
     public DashboardResumenDTO getResumenDiario(LocalDate fecha) {
@@ -410,5 +417,275 @@ public class DashboardService implements IDashboardService {
         }
 
         return dto;
+    }
+    public DashboardController.ConfiguracionDashboardDTO getConfiguracionEnvio() {
+        Optional<ConfiguracionDashboard> config = configuracionRepository.findByActivoTrue();
+
+        if (config.isPresent()) {
+            ConfiguracionDashboard c = config.get();
+            return new DashboardController.ConfiguracionDashboardDTO(
+                    c.getCorreoDestinatario(),
+                    c.getHoraEnvio().format(DateTimeFormatter.ofPattern("HH:mm")),
+                    c.getActivo()
+            );
+        }
+
+        // Retornar configuración por defecto
+        return new DashboardController.ConfiguracionDashboardDTO(
+                "", "08:00", false
+        );
+    }
+
+    /**
+     * Guarda o actualiza la configuración de envío
+     */
+    public void guardarConfiguracionEnvio(DashboardController.ConfiguracionDashboardDTO dto) {
+        System.out.println("=== GUARDANDO CONFIGURACIÓN ===");
+        System.out.println("DTO recibido: " + dto.getCorreoDestinatario() + " - " + dto.getHoraEnvio() + " - " + dto.getActivo());
+
+        // Desactivar configuraciones anteriores
+        configuracionRepository.findAll().forEach(c -> {
+            c.setActivo(false);
+            configuracionRepository.save(c);
+        });
+
+        // Crear nueva configuración
+        ConfiguracionDashboard config = new ConfiguracionDashboard();
+        config.setCorreoDestinatario(dto.getCorreoDestinatario());
+        config.setHoraEnvio(LocalTime.parse(dto.getHoraEnvio()));
+        config.setActivo(dto.getActivo() != null ? dto.getActivo() : true);
+
+        configuracionRepository.save(config);
+        System.out.println("=== CONFIGURACIÓN GUARDADA (NO SE DEBE ENVIAR DASHBOARD) ===");
+
+        // IMPORTANTE: NO debe haber ninguna llamada a enviarDashboardDiario() aquí
+    }
+
+    /**
+     * Envía el dashboard diario por correo
+     */
+    public void enviarDashboardDiario() {
+        enviarDashboardDiario(LocalDate.now().minusDays(1)); // Por defecto envía del día anterior
+    }
+
+    /**
+     * Envía el dashboard diario por correo para una fecha específica
+     */
+    public void enviarDashboardDiario(LocalDate fechaParaDashboard) {
+        System.out.println("=== ENVÍO INICIADO ===");
+        System.out.println("Llamado desde: " + Thread.currentThread().getStackTrace()[2].getMethodName());
+        System.out.println("Clase: " + Thread.currentThread().getStackTrace()[2].getClassName());
+
+        Optional<ConfiguracionDashboard> configOpt = configuracionRepository.findByActivoTrue();
+
+        if (!configOpt.isPresent() || !configOpt.get().getActivo()) {
+            System.out.println("No hay configuración activa para envío de dashboard");
+            return;
+        }
+
+        ConfiguracionDashboard config = configOpt.get();
+        System.out.println("Configuración activa encontrada para: " + config.getCorreoDestinatario());
+
+        try {
+            // Obtener datos del dashboard para la fecha especificada
+            System.out.println("Obteniendo datos del dashboard para: " + fechaParaDashboard);
+
+            DashboardResumenDTO resumen = getResumenDiario(fechaParaDashboard);
+            System.out.println("Resumen obtenido - Ingresos: " + resumen.getTotalIngresos() +
+                    ", Egresos: " + resumen.getTotalEgresos());
+
+            DashboardMetricasDTO metricas = getMetricasFinancieras(fechaParaDashboard);
+            System.out.println("Métricas obtenidas - Variación: " + metricas.getVariacionIngresos() + "%");
+
+            List<DashboardTendenciaDTO> tendencias = getTendencias(7);
+            System.out.println("Tendencias obtenidas para últimos 7 días");
+
+            List<OrdenPendienteDTO> ordenesPendientes = getOrdenesPendientes();
+            System.out.println("Órdenes pendientes: " + ordenesPendientes.size());
+
+            List<FacturaPendienteDTO> pedidosPendientes = getPedidosPendientes();
+            System.out.println("Pedidos pendientes: " + pedidosPendientes.size());
+
+            List<AlertaInventarioDTO> alertasInventario = getAlertasInventario(10f);
+            System.out.println("Alertas de inventario: " + alertasInventario.size());
+
+            // Generar HTML del dashboard
+            System.out.println("Generando HTML del dashboard...");
+            String dashboardHTML = generarHTMLDashboard(fechaParaDashboard, resumen, metricas, tendencias,
+                    ordenesPendientes, pedidosPendientes, alertasInventario);
+
+            // Preparar variables para la plantilla
+            String tipoReporte = determinarTipoReporte(fechaParaDashboard);
+            Map<String, String> variables = Map.of(
+                    "nombre", "Administrador",
+                    "mensajePrincipal", "Te enviamos el resumen diario de tu dashboard con todas las métricas importantes " +
+                            tipoReporte + " (" + fechaParaDashboard.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ").",
+                    "contenidoExtra", dashboardHTML
+            );
+
+            // Enviar correo usando la plantilla de notificación
+            System.out.println("Enviando correo a: " + config.getCorreoDestinatario());
+            enviarCorreo.enviarConPlantilla(
+                    config.getCorreoDestinatario(),
+                    "Dashboard Diario - Fraganceys - " + fechaParaDashboard.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+                    "notificacion-body.html",
+                    variables,
+                    null,
+                    null
+            );
+
+            // Actualizar último envío
+            config.setUltimoEnvio(LocalDateTime.now());
+            configuracionRepository.save(config);
+            System.out.println("Configuración actualizada con último envío: " + LocalDateTime.now());
+
+            System.out.println("=== DASHBOARD ENVIADO CORRECTAMENTE ===");
+
+        } catch (Exception e) {
+            System.err.println("ERROR enviando dashboard diario: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Error enviando dashboard: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Determina el tipo de reporte según si es del día actual o anterior
+     */
+    private String determinarTipoReporte(LocalDate fechaParaDashboard) {
+        LocalDate hoy = LocalDate.now();
+
+        if (fechaParaDashboard.equals(hoy)) {
+            return "del día de hoy";
+        } else if (fechaParaDashboard.equals(hoy.minusDays(1))) {
+            return "del día de ayer";
+        } else {
+            return "del día " + fechaParaDashboard.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        }
+    }
+
+    /**
+     * Genera el HTML del resumen del dashboard para el correo
+     */
+    /**
+     * Genera el HTML del resumen del dashboard para el correo
+     */
+    private String generarHTMLDashboard(LocalDate fecha, DashboardResumenDTO resumen,
+                                        DashboardMetricasDTO metricas, List<DashboardTendenciaDTO> tendencias,
+                                        List<OrdenPendienteDTO> ordenesPendientes,
+                                        List<FacturaPendienteDTO> pedidosPendientes,
+                                        List<AlertaInventarioDTO> alertasInventario) {
+
+        StringBuilder html = new StringBuilder();
+
+        // Determinar el tipo de fecha para el título
+        String tipoFecha = determinarTipoFechaParaTitulo(fecha);
+
+        // Título de la fecha
+        html.append("<div style=\"text-align: center; margin-bottom: 25px;\">")
+                .append("<h3 style=\"color: #034078; margin: 0;\">Dashboard ")
+                .append(tipoFecha)
+                .append(" (").append(fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))).append(")")
+                .append("</h3></div>");
+
+        // Métricas principales en tabla
+        html.append("<table style=\"width: 100%; border-collapse: collapse; margin-bottom: 25px; background: #f8f9ff; border-radius: 8px; overflow: hidden;\">")
+                .append("<tr style=\"background: #034078; color: white;\">")
+                .append("<td style=\"padding: 12px; font-weight: bold;\">Métrica</td>")
+                .append("<td style=\"padding: 12px; text-align: right; font-weight: bold;\">Valor</td>")
+                .append("</tr>")
+
+                .append("<tr style=\"border-bottom: 1px solid #e4ecf4;\">")
+                .append("<td style=\"padding: 12px;\">💰 Ingresos del Día</td>")
+                .append("<td style=\"padding: 12px; text-align: right; color: #198754; font-weight: bold;\">")
+                .append(formatearMoneda(resumen.getTotalIngresos())).append("</td></tr>")
+
+                .append("<tr style=\"border-bottom: 1px solid #e4ecf4;\">")
+                .append("<td style=\"padding: 12px;\">📉 Egresos del Día</td>")
+                .append("<td style=\"padding: 12px; text-align: right; color: #dc3545; font-weight: bold;\">")
+                .append(formatearMoneda(resumen.getTotalEgresos())).append("</td></tr>")
+
+                .append("<tr style=\"border-bottom: 1px solid #e4ecf4;\">")
+                .append("<td style=\"padding: 12px;\">📈 Utilidad del Día</td>")
+                .append("<td style=\"padding: 12px; text-align: right; font-weight: bold; color: ")
+                .append(resumen.getUtilidad() >= 0 ? "#198754" : "#dc3545").append(";\">")
+                .append(formatearMoneda(resumen.getUtilidad())).append("</td></tr>")
+
+                .append("<tr style=\"border-bottom: 1px solid #e4ecf4;\">")
+                .append("<td style=\"padding: 12px;\">🛒 Ventas Realizadas</td>")
+                .append("<td style=\"padding: 12px; text-align: right; font-weight: bold; color: #0d6efd;\">")
+                .append(resumen.getVentasDelDia() != null ? resumen.getVentasDelDia() : 0).append("</td></tr>")
+
+                .append("<tr>")
+                .append("<td style=\"padding: 12px;\">👥 Clientes Atendidos</td>")
+                .append("<td style=\"padding: 12px; text-align: right; font-weight: bold; color: #6f42c1;\">")
+                .append(resumen.getClientesAtendidos() != null ? resumen.getClientesAtendidos() : 0).append("</td></tr>")
+
+                .append("</table>");
+
+        // Sección de alertas si hay
+        if (!alertasInventario.isEmpty()) {
+            html.append("<h4 style=\"color: #dc3545; margin: 20px 0 10px;\">⚠️ Alertas de Inventario</h4>")
+                    .append("<ul style=\"margin: 0; padding-left: 20px;\">");
+
+            for (AlertaInventarioDTO alerta : alertasInventario.stream().limit(5).collect(Collectors.toList())) {
+                html.append("<li style=\"margin-bottom: 8px; color: #dc3545;\">")
+                        .append("<strong>").append(alerta.getNombre()).append("</strong> (")
+                        .append(alerta.getTipo()).append(") - Stock: ")
+                        .append(alerta.getCantidadActual()).append(" - Nivel: ")
+                        .append(alerta.getNivelAlerta()).append("</li>");
+            }
+            html.append("</ul>");
+        }
+
+        // Información adicional
+        html.append("<div style=\"margin-top: 25px; padding: 15px; background: #f1f3f4; border-radius: 8px;\">")
+                .append("<h4 style=\"color: #034078; margin-top: 0;\">📊 Información Adicional</h4>")
+                .append("<p style=\"margin: 5px 0;\"><strong>Órdenes Pendientes:</strong> ")
+                .append(ordenesPendientes.size()).append("</p>")
+                .append("<p style=\"margin: 5px 0;\"><strong>Pedidos Pendientes:</strong> ")
+                .append(pedidosPendientes.size()).append("</p>");
+
+        // Variación vs día anterior
+        if (metricas.getVariacionIngresos() != null) {
+            String variacionTexto = metricas.getVariacionIngresos() >= 0 ? "📈 Aumentó" : "📉 Disminuyó";
+            String colorVariacion = metricas.getVariacionIngresos() >= 0 ? "#198754" : "#dc3545";
+            html.append("<p style=\"margin: 5px 0; color: ").append(colorVariacion).append(";\">")
+                    .append("<strong>").append(variacionTexto).append(" ")
+                    .append(String.format("%.1f", Math.abs(metricas.getVariacionIngresos())))
+                    .append("%</strong> vs día anterior</p>");
+        }
+
+        // Información sobre el momento del envío
+        LocalDateTime ahora = LocalDateTime.now();
+        String horaEnvio = ahora.format(DateTimeFormatter.ofPattern("HH:mm"));
+        html.append("<p style=\"margin: 5px 0; color: #666; font-size: 12px;\">")
+                .append("Reporte generado automáticamente el ")
+                .append(ahora.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                .append(" a las ").append(horaEnvio).append("</p>");
+
+        html.append("</div>");
+
+        return html.toString();
+    }
+
+    /**
+     * Determina el tipo de fecha para mostrar en el título
+     */
+    private String determinarTipoFechaParaTitulo(LocalDate fecha) {
+        LocalDate hoy = LocalDate.now();
+
+        if (fecha.equals(hoy)) {
+            return "de Hoy";
+        } else if (fecha.equals(hoy.minusDays(1))) {
+            return "de Ayer";
+        } else {
+            return "del " + fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        }
+    }
+
+    // Método auxiliar para formatear moneda
+    private String formatearMoneda(Float valor) {
+        if (valor == null || valor == 0) return "$0";
+        return String.format("$%,.0f", valor);
     }
 }

@@ -1,8 +1,10 @@
 package Angora.app.Controllers;
 
 import Angora.app.Controllers.dto.*;
+import Angora.app.Services.DashboardScheduledService;
 import Angora.app.Services.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +17,9 @@ public class DashboardController {
 
     @Autowired
     private DashboardService dashboardService;
+
+    @Autowired
+    private DashboardScheduledService dashboardScheduledService;
 
     // Endpoint principal del dashboard - resumen diario actual
     @GetMapping("/resumen")
@@ -124,6 +129,68 @@ public class DashboardController {
             return ResponseEntity.ok(comparacion);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    public static class ConfiguracionDashboardDTO {
+        private String correoDestinatario;
+        private String horaEnvio; // formato "HH:mm"
+        private Boolean activo;
+
+        // Constructores, getters y setters
+        public ConfiguracionDashboardDTO() {}
+
+        public ConfiguracionDashboardDTO(String correoDestinatario, String horaEnvio, Boolean activo) {
+            this.correoDestinatario = correoDestinatario;
+            this.horaEnvio = horaEnvio;
+            this.activo = activo;
+        }
+
+        // Getters y Setters
+        public String getCorreoDestinatario() { return correoDestinatario; }
+        public void setCorreoDestinatario(String correoDestinatario) { this.correoDestinatario = correoDestinatario; }
+
+        public String getHoraEnvio() { return horaEnvio; }
+        public void setHoraEnvio(String horaEnvio) { this.horaEnvio = horaEnvio; }
+
+        public Boolean getActivo() { return activo; }
+        public void setActivo(Boolean activo) { this.activo = activo; }
+    }
+
+    // Endpoint para obtener la configuración actual
+    @GetMapping("/configuracion-envio")
+    public ResponseEntity<ConfiguracionDashboardDTO> getConfiguracionEnvio() {
+        try {
+            ConfiguracionDashboardDTO config = dashboardService.getConfiguracionEnvio();
+            dashboardScheduledService.actualizarConfiguracion();
+            return ResponseEntity.ok(config);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // Endpoint para guardar/actualizar la configuración
+    @PostMapping("/configuracion-envio")
+    public ResponseEntity<String> guardarConfiguracionEnvio(@RequestBody ConfiguracionDashboardDTO config) {
+        try {
+            dashboardService.guardarConfiguracionEnvio(config);
+            dashboardScheduledService.actualizarConfiguracion();
+            return ResponseEntity.ok("Configuración guardada correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Error al guardar la configuración: " + e.getMessage());
+        }
+    }
+
+    // Endpoint para envío manual del dashboard (para pruebas)
+    @PostMapping("/enviar-manual")
+    public ResponseEntity<String> enviarDashboardManual() {
+        try {
+            dashboardService.enviarDashboardDiario();
+            return ResponseEntity.ok("Dashboard enviado correctamente");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al enviar dashboard: " + e.getMessage());
         }
     }
 }
