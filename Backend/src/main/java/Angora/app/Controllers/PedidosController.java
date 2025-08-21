@@ -4,6 +4,7 @@ import Angora.app.Controllers.dto.ConfirmarFacturaDTO;
 import Angora.app.Controllers.dto.FacturaPendienteDTO;
 import Angora.app.Entities.Cartera;
 import Angora.app.Entities.Factura;
+import Angora.app.Entities.FacturaProducto;
 import Angora.app.Entities.Producto;
 import Angora.app.Repositories.*;
 import Angora.app.Services.Email.EnviarCorreo;
@@ -70,13 +71,20 @@ public class PedidosController {
                 }
                 dto.setCliente(clienteDTO);
 
-                // Mapear productos
+                // Mapear productos con precios dinámicos o estáticos según el estado
                 dto.setProductos(factura.getProductos().stream().map(fp -> {
                     FacturaPendienteDTO.ProductoDTO productoDTO = new FacturaPendienteDTO.ProductoDTO();
                     productoDTO.setId(fp.getProducto().getId());
                     productoDTO.setNombre(fp.getProducto().getNombre());
                     productoDTO.setCantidad(fp.getCantidad());
-                    productoDTO.setPrecio(fp.getProducto().getPrecio());
+
+                    // Si está CONFIRMADO, usar precios estáticos; si está PENDIENTE, usar dinámicos
+                    if (factura.getEstado().equals("CONFIRMADO") && fp.getPrecioUnitario() != null) {
+                        productoDTO.setPrecio(fp.getPrecioUnitario());
+                    } else {
+                        productoDTO.setPrecio(fp.getProducto().getPrecio());
+                    }
+
                     productoDTO.setIva(fp.getProducto().getIva());
                     return productoDTO;
                 }).collect(Collectors.toList()));
@@ -138,10 +146,23 @@ public class PedidosController {
                 }
             }
 
+            // *** NUEVO: HACER SNAPSHOT DE PRECIOS ANTES DE CONFIRMAR ***
+            for (FacturaProducto fp : factura.getProductos()) {
+                Integer precioActual = fp.getProducto().getPrecio();
+                Integer subtotalItem = precioActual * fp.getCantidad();
+
+                // Guardar precios estáticos
+                fp.setPrecioUnitario(precioActual);
+                fp.setSubtotal(subtotalItem);
+            }
+
+            // Recalcular totales con precios estáticos
+            recalcularTotalesFactura(factura);
+
             // Cambiar estado a CONFIRMADO
             factura.setEstado("CONFIRMADO");
 
-            // Actualizar inventario: delegar a MovimientoInventarioService que bloquea y registra movimiento
+            // Actualizar inventario
             for (ConfirmarFacturaDTO.FacturaProductoDTO fp : dto.getProductos()) {
                 movimientoInventarioService.descontarPorVenta(fp.getIdProducto(), fp.getCantidad());
             }
@@ -253,6 +274,42 @@ public class PedidosController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error al eliminar la factura: " + e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
+        }
+    }
+    private void recalcularTotalesFactura(Factura factura) {
+        Integer subtotalCalculado = 0;
+        Integer totalCalculado = 0;
+
+        for (FacturaProducto fp : factura.getProductos()) {
+            Integer precioUnitario;
+            Integer subtotalItem;
+
+            // Si está confirmado, usar precios estáticos
+            if (factura.getEstado().equals("CONFIRMADO") && fp.getPrecioUnitario() != null) {
+                precioUnitario = fp.getPrecioUnitario();
+                subtotalItem = fp.getSubtotal();
+            } else {
+                // Si está pendiente, calcular dinámicamente
+                precioUnitario = fp.getProducto().getPrecio();
+                subtotalItem = precioUnitario * fp.getCantidad();
+            }
+
+            subtotalCalculado += subtotalItem;
+
+            // Aplicar IVA si corresponde
+            if (fp.getProducto().getIva()) {
+                totalCalculado += Math.round(subtotalItem * 1.19f);
+            } else {
+                totalCalculado += subtotalItem;
+            }
+        }
+
+        factura.setSubtotal(subtotalCalculado);
+        factura.setTotal(totalCalculado);
+
+        // Actualizar saldo pendiente si no se ha pagado nada
+        if (factura.getSaldoPendiente() == null || factura.getSaldoPendiente().equals(factura.getTotal())) {
+            factura.setSaldoPendiente(totalCalculado);
         }
     }
 }

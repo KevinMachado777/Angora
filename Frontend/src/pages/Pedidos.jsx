@@ -32,6 +32,41 @@ const Pedidos = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [enviarCorreo, setEnviarCorreo] = useState(false);
 
+  // Función helper para obtener precios correctos según estado de factura
+  const obtenerPreciosProducto = (producto, estadoFactura) => {
+    // Si la factura ya está CONFIRMADA, usar precios estáticos si existen
+    if (
+      estadoFactura === "CONFIRMADO" &&
+      producto.precioUnitario !== null &&
+      producto.precioUnitario !== undefined
+    ) {
+      return {
+        precioBase: producto.precioUnitario,
+        precioConIva: producto.iva
+          ? producto.precioUnitario * 1.19
+          : producto.precioUnitario,
+      };
+    }
+
+    // Si está PENDIENTE, usar precios dinámicos
+    return {
+      precioBase: producto.precio,
+      precioConIva: producto.iva ? producto.precio * 1.19 : producto.precio,
+    };
+  };
+
+  const calcularTotalDinamico = (pedido) => {
+    let totalCalculado = 0;
+
+    pedido.productos.forEach((item) => {
+      const { precioConIva } = obtenerPreciosProducto(item, pedido.estado);
+      const totalItem = item.cantidad * precioConIva;
+      totalCalculado += totalItem;
+    });
+
+    return roundToNearest50(totalCalculado);
+  };
+
   const abrirModal = (tipo, mensaje) => {
     setModalMensaje({ tipo, mensaje, visible: true });
     setTimeout(() => {
@@ -86,7 +121,9 @@ const Pedidos = () => {
         pedidosResponse.data.forEach((pedido) => {
           console.log(
             `Factura ID: ${pedido.idFactura}, Cliente: ${
-              pedido.cliente ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}` : "Consumidor final"
+              pedido.cliente
+                ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
+                : "Consumidor final"
             }, Notas: ${pedido.notas || "Sin notas"}`
           );
         });
@@ -142,7 +179,11 @@ const Pedidos = () => {
       );
 
       // Enviar correo si está habilitado
-      if (enviarCorreo && pedidoAConfirmar.cliente && pedidoAConfirmar.cliente.correo) {
+      if (
+        enviarCorreo &&
+        pedidoAConfirmar.cliente &&
+        pedidoAConfirmar.cliente.correo
+      ) {
         await axios.post(
           "http://localhost:8080/angora/api/v1/pedidos/enviar-factura",
           {
@@ -208,23 +249,35 @@ const Pedidos = () => {
     doc.setFontSize(12);
     doc.text(`Factura - Ticket #${pedido.idFactura}`, 10, 25);
     doc.text(
-      `Cliente: ${pedido.cliente ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}` : "Consumidor final"}`,
+      `Cliente: ${
+        pedido.cliente
+          ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
+          : "Consumidor final"
+      }`,
       10,
       35
     );
     doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 45);
-    doc.text(`Cajero: ${pedido.cajero ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}` : "Sin cajero asignado"}`, 10, 55);
-    
+    doc.text(
+      `Cajero: ${
+        pedido.cajero
+          ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}`
+          : "Sin cajero asignado"
+      }`,
+      10,
+      55
+    );
+
     let y = 65;
     if (pedido.notas) {
       doc.text(`Notas: ${pedido.notas}`, 10, y);
       y += 10;
     }
-    
+
     // Línea separadora
     doc.line(10, y, 200, y);
     y += 10;
-    
+
     // Encabezados de tabla
     doc.setFontSize(10);
     doc.text("Producto", 10, y);
@@ -233,19 +286,17 @@ const Pedidos = () => {
     doc.text("P. Unit. (con IVA)", 140, y);
     doc.text("Total", 180, y);
     y += 10;
-    
+
     // Línea separadora
     doc.line(10, y - 5, 200, y - 5);
-    
-    // Productos con precios corregidos
+
+    // Productos con precios dinámicos (facturas PENDIENTES)
     pedido.productos.forEach((p) => {
-      // Precio unitario SIN IVA (precio base)
+      // Usar precio dinámico ya que aún está PENDIENTE
       const precioSinIva = p.precio;
-      // Precio unitario CON IVA (si aplica)
       const precioConIva = p.iva ? p.precio * 1.19 : p.precio;
-      // Total del producto (cantidad × precio con IVA)
       const totalProducto = p.cantidad * precioConIva;
-      
+
       doc.text(`${p.nombre}`, 10, y);
       doc.text(`${p.cantidad}`, 80, y);
       doc.text(`$${precioSinIva.toLocaleString()}`, 100, y);
@@ -253,24 +304,32 @@ const Pedidos = () => {
       doc.text(`$${totalProducto.toLocaleString()}`, 180, y);
       y += 8;
     });
-    
+
     // Línea separadora
     y += 5;
     doc.line(10, y, 200, y);
     y += 10;
-    
+
     // Totales
     doc.setFontSize(11);
-    doc.text(`Subtotal (sin IVA): $${pedido.subtotal.toLocaleString()}`, 120, y);
+    doc.text(
+      `Subtotal (sin IVA): $${pedido.subtotal.toLocaleString()}`,
+      120,
+      y
+    );
     y += 8;
     doc.setFontSize(12);
-    doc.text(`TOTAL: $${roundToNearest50(pedido.total).toLocaleString()}`, 120, y);
-    
+    doc.text(
+      `TOTAL: $${roundToNearest50(pedido.total).toLocaleString()}`,
+      120,
+      y
+    );
+
     // Pie de página
     y += 20;
     doc.setFontSize(10);
     doc.text("¡Gracias por tu compra!", 105, y, { align: "center" });
-    
+
     doc.save(`Factura_Ticket_${pedido.idFactura}.pdf`);
   };
 
@@ -442,12 +501,14 @@ const Pedidos = () => {
                     <td>{pedido.idFactura}</td>
                     <td>
                       {pedido.cliente
-                        ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
+                        ? `${pedido.cliente.nombre} ${
+                            pedido.cliente.apellido || ""
+                          }`
                         : "Consumidor final"}
                     </td>
                     <td>
                       <NumericFormat
-                        value={roundToNearest50(pedido.total)}
+                        value={calcularTotalDinamico(pedido)} // <- Valor calculado dinámicamente
                         displayType="text"
                         thousandSeparator="."
                         decimalSeparator=","
@@ -548,13 +609,19 @@ const Pedidos = () => {
               new Date(pedidoAConfirmar.fecha).toLocaleString()}
           </p>
           <p>
-            Cajero: {pedidoAConfirmar?.cajero
-              ? `${pedidoAConfirmar.cajero.nombre} ${pedidoAConfirmar.cajero.apellido || ""}`
+            Cajero:{" "}
+            {pedidoAConfirmar?.cajero
+              ? `${pedidoAConfirmar.cajero.nombre} ${
+                  pedidoAConfirmar.cajero.apellido || ""
+                }`
               : "Sin cajero asignado"}
           </p>
           <p>
-            Cliente: {pedidoAConfirmar?.cliente
-              ? `${pedidoAConfirmar.cliente.nombre} ${pedidoAConfirmar.cliente.apellido || ""}`
+            Cliente:{" "}
+            {pedidoAConfirmar?.cliente
+              ? `${pedidoAConfirmar.cliente.nombre} ${
+                  pedidoAConfirmar.cliente.apellido || ""
+                }`
               : "Consumidor final"}
           </p>
           {pedidoAConfirmar?.notas && (
@@ -575,13 +642,14 @@ const Pedidos = () => {
             </thead>
             <tbody>
               {productosAConfirmar.map((item, i) => {
-                // Precio sin IVA (precio base)
+                // Para facturas PENDIENTES siempre usar precios dinámicos
+                // (los precios estáticos se guardarán al confirmar en backend)
                 const precioSinIva = item.precio;
-                // Precio con IVA si aplica
-                const precioConIva = item.iva ? item.precio * 1.19 : item.precio;
-                // Subtotal = cantidad × precio con IVA
+                const precioConIva = item.iva
+                  ? item.precio * 1.19
+                  : item.precio;
                 const subtotalProducto = item.cantidad * precioConIva;
-                
+
                 return (
                   <tr key={i}>
                     <td>{item.nombre}</td>
@@ -611,26 +679,46 @@ const Pedidos = () => {
             </tbody>
           </table>
           <hr />
-          <p>
-            <strong>Subtotal (sin IVA): </strong>
-            <NumericFormat
-              value={pedidoAConfirmar?.subtotal || 0}
-              displayType="text"
-              thousandSeparator="."
-              decimalSeparator=","
-              prefix="$"
-            />
-          </p>
-          <p>
-            <strong>Total a pagar: </strong>
-            <NumericFormat
-              value={roundToNearest50(pedidoAConfirmar?.total || 0)}
-              displayType="text"
-              thousandSeparator="."
-              decimalSeparator=","
-              prefix="$"
-            />
-          </p>
+          {(() => {
+            // Calcular totales dinámicamente basado en precios actuales
+            let subtotalCalculado = 0;
+            let totalCalculado = 0;
+
+            productosAConfirmar.forEach((item) => {
+              const precioBase = item.precio;
+              const precioConIva = item.iva ? precioBase * 1.19 : precioBase;
+              const subtotalItem = item.cantidad * precioBase;
+              const totalItem = item.cantidad * precioConIva;
+
+              subtotalCalculado += subtotalItem;
+              totalCalculado += totalItem;
+            });
+
+            return (
+              <>
+                <p>
+                  <strong>Subtotal (sin IVA): </strong>
+                  <NumericFormat
+                    value={subtotalCalculado}
+                    displayType="text"
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="$"
+                  />
+                </p>
+                <p>
+                  <strong>Total a pagar: </strong>
+                  <NumericFormat
+                    value={roundToNearest50(totalCalculado)}
+                    displayType="text"
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="$"
+                  />
+                </p>
+              </>
+            );
+          })()}
         </div>
         <div className="form-check mb-3">
           <input
@@ -676,8 +764,12 @@ const Pedidos = () => {
           ¿Desea eliminar la factura del cliente{" "}
           <strong>
             {pedidoAEliminar?.cliente
-              ? `${pedidoAEliminar.cliente.nombre} ${pedidoAEliminar.cliente.apellido || ""}`
-              : `Consumidor final${pedidoAEliminar?.notas ? ` (${pedidoAEliminar.notas})` : ""}`}
+              ? `${pedidoAEliminar.cliente.nombre} ${
+                  pedidoAEliminar.cliente.apellido || ""
+                }`
+              : `Consumidor final${
+                  pedidoAEliminar?.notas ? ` (${pedidoAEliminar.notas})` : ""
+                }`}
           </strong>
           ?
         </p>

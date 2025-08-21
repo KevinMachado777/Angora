@@ -23,13 +23,44 @@ ChartJS.register(
   Legend
 );
 
+import Modal from "../components/Modal";
+
 const Dashboard = () => {
   // Función para obtener fecha de hoy en formato local correcto
+  const [modalMensaje, setModalMensaje] = useState({
+    tipo: "",
+    mensaje: "",
+    visible: false,
+  });
+
+  const validarCorreo = (correo) => {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(correo);
+  };
+
+  const abrirModal = (tipo, mensaje) => {
+    setModalMensaje({ tipo, mensaje, visible: true });
+    setTimeout(() => {
+      setModalMensaje({ tipo: "", mensaje: "", visible: false });
+    }, 1500);
+  };
+
+  const iconos = {
+    exito: "bi bi-check-circle-fill text-success display-4 mb-2",
+    error: "bi bi-x-circle-fill text-danger display-4 mb-2",
+    advertencia: "bi bi-exclamation-triangle-fill text-warning display-4 mb-2",
+  };
+
+  const titulos = {
+    exito: "¡Éxito!",
+    error: "Error",
+    advertencia: "Advertencia",
+  };
   const obtenerFechaHoyLocal = () => {
     const hoy = new Date();
     const year = hoy.getFullYear();
-    const month = String(hoy.getMonth() + 1).padStart(2, '0');
-    const day = String(hoy.getDate()).padStart(2, '0');
+    const month = String(hoy.getMonth() + 1).padStart(2, "0");
+    const day = String(hoy.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
 
@@ -42,15 +73,17 @@ const Dashboard = () => {
   const [metricas, setMetricas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(obtenerFechaHoyLocal());
-  const [vistaActual, setVistaActual] = useState('diario');
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(
+    obtenerFechaHoyLocal()
+  );
+  const [vistaActual, setVistaActual] = useState("diario");
 
   // Estados para configuración de envío automático
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configuracionEnvio, setConfiguracionEnvio] = useState({
-    correoDestinatario: '',
-    horaEnvio: '08:00',
-    activo: false
+    correoDestinatario: "",
+    horaEnvio: "08:00",
+    activo: false,
   });
   const [guardandoConfig, setGuardandoConfig] = useState(false);
   const [enviandoManual, setEnviandoManual] = useState(false);
@@ -59,10 +92,10 @@ const Dashboard = () => {
   const validarFecha = (fecha) => {
     const fechaObj = new Date(fecha);
     const hoy = new Date();
-    
+
     fechaObj.setHours(0, 0, 0, 0);
     hoy.setHours(0, 0, 0, 0);
-    
+
     return fechaObj <= hoy;
   };
 
@@ -70,7 +103,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fechaHoy = obtenerFechaHoyLocal();
     if (fechaSeleccionada > fechaHoy) {
-      console.log('Corrigiendo fecha futura a fecha de hoy');
+      console.log("Corrigiendo fecha futura a fecha de hoy");
       setFechaSeleccionada(fechaHoy);
     }
   }, []);
@@ -79,36 +112,38 @@ const Dashboard = () => {
   const cargarDatos = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       let resumen;
-      if (vistaActual === 'diario') {
+      if (vistaActual === "diario") {
         resumen = await dashboardService.getResumenDiario(fechaSeleccionada);
-        const metricas = await dashboardService.getMetricasFinancieras(fechaSeleccionada);
+        const metricas = await dashboardService.getMetricasFinancieras(
+          fechaSeleccionada
+        );
         setMetricas(metricas);
-      } else if (vistaActual === 'semanal') {
+      } else if (vistaActual === "semanal") {
         resumen = await dashboardService.getResumenSemanal();
-      } else if (vistaActual === 'mensual') {
+      } else if (vistaActual === "mensual") {
         resumen = await dashboardService.getResumenMensual();
       }
 
       setResumenDiario(resumen);
 
-      const [tendenciasData, ordenesData, pedidosData, alertasData] = await Promise.all([
-        dashboardService.getTendencias(7),
-        dashboardService.getOrdenesPendientes(),
-        dashboardService.getPedidosPendientes(),
-        dashboardService.getAlertasInventario(10)
-      ]);
+      const [tendenciasData, ordenesData, pedidosData, alertasData] =
+        await Promise.all([
+          dashboardService.getTendencias(7),
+          dashboardService.getOrdenesPendientes(),
+          dashboardService.getPedidosPendientes(),
+          dashboardService.getAlertasInventario(10),
+        ]);
 
       setTendencias(tendenciasData);
       setOrdenesPendientes(ordenesData);
       setPedidosPendientes(pedidosData);
       setAlertasInventario(alertasData);
-
     } catch (err) {
-      console.error('Error cargando datos del dashboard:', err);
-      setError('Error al cargar los datos del dashboard');
+      console.error("Error cargando datos del dashboard:", err);
+      setError("Error al cargar los datos del dashboard");
     } finally {
       setLoading(false);
     }
@@ -119,19 +154,27 @@ const Dashboard = () => {
       const config = await dashboardService.getConfiguracionEnvio();
       setConfiguracionEnvio(config);
     } catch (error) {
-      console.error('Error cargando configuración:', error);
+      console.error("Error cargando configuración:", error);
     }
   };
 
   const guardarConfiguracion = async () => {
+    if (!validarCorreo(configuracionEnvio.correoDestinatario)) {
+      abrirModal("advertencia", "Por favor ingrese un correo válido");
+      return;
+    }
     setGuardandoConfig(true);
     try {
       await dashboardService.guardarConfiguracionEnvio(configuracionEnvio);
       setShowConfigModal(false);
-      alert('Configuración guardada correctamente. El dashboard se enviará automáticamente todos los días a las ' + configuracionEnvio.horaEnvio);
+      abrirModal(
+        "exito",
+        "El dashboard se enviará automáticamente todos los días a las " +
+          configuracionEnvio.horaEnvio
+      );
     } catch (error) {
-      console.error('Error guardando configuración:', error);
-      alert('Error al guardar la configuración');
+      console.error("Error guardando configuración:", error);
+      abrirModal("error", "Error al guardar");
     } finally {
       setGuardandoConfig(false);
     }
@@ -141,10 +184,10 @@ const Dashboard = () => {
     setEnviandoManual(true);
     try {
       await dashboardService.enviarDashboardManual();
-      alert('Dashboard enviado correctamente');
+      abrirModal("exito", "Dashboard envíado ");
     } catch (error) {
-      console.error('Error enviando dashboard:', error);
-      alert('Error al enviar dashboard');
+      console.error("Error enviando dashboard:", error);
+      abrirModal("error", "Error al enviar el Dashboard");
     } finally {
       setEnviandoManual(false);
     }
@@ -159,42 +202,44 @@ const Dashboard = () => {
   }, []);
 
   const formatearMoneda = (valor) => {
-    if (!valor) return '$0';
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
+    if (!valor) return "$0";
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: "COP",
       minimumFractionDigits: 0,
     }).format(valor);
   };
 
   const formatearNumero = (valor) => {
-    if (!valor) return '0';
-    return new Intl.NumberFormat('es-CO').format(valor);
+    if (!valor) return "0";
+    return new Intl.NumberFormat("es-CO").format(valor);
   };
 
   const prepararDatosTendencias = () => {
     if (!tendencias.length) return { labels: [], datasets: [] };
 
     return {
-      labels: tendencias.map(t => new Date(t.fecha).toLocaleDateString('es-CO', { 
-        month: 'short', 
-        day: 'numeric' 
-      })),
+      labels: tendencias.map((t) =>
+        new Date(t.fecha).toLocaleDateString("es-CO", {
+          month: "short",
+          day: "numeric",
+        })
+      ),
       datasets: [
         {
-          label: 'Ingresos',
-          data: tendencias.map(t => t.ingresos || 0),
-          backgroundColor: 'rgba(13, 110, 253, 0.8)',
-          borderColor: '#0d6efd',
+          label: "Ingresos",
+          data: tendencias.map((t) => t.ingresos || 0),
+          backgroundColor: "rgba(13, 110, 253, 0.8)",
+          borderColor: "#0d6efd",
           borderRadius: 8,
         },
         {
-          label: 'Egresos',
-          data: tendencias.map(t => t.egresos || 0),
-          backgroundColor: 'rgba(220, 53, 69, 0.8)',
-          borderColor: '#dc3545',
+          label: "Egresos",
+          data: tendencias.map((t) => t.egresos || 0),
+          backgroundColor: "rgba(220, 53, 69, 0.8)",
+          borderColor: "#dc3545",
           borderRadius: 8,
-        }
+        },
       ],
     };
   };
@@ -203,13 +248,18 @@ const Dashboard = () => {
     if (!resumenDiario) return [];
 
     const variacionIngresos = metricas?.variacionIngresos || 0;
-    const tendenciaIngresos = tendencias.slice(-7).map(t => t.ingresos || 0);
-    const tendenciaVentas = tendencias.slice(-7).map(t => t.ventas || 0);
+    const tendenciaIngresos = tendencias.slice(-7).map((t) => t.ingresos || 0);
+    const tendenciaVentas = tendencias.slice(-7).map((t) => t.ventas || 0);
 
     return [
       {
-        titulo: "Ingresos " + (vistaActual === 'diario' ? 'del Día' : 
-                           vistaActual === 'semanal' ? 'Semanales' : 'Mensuales'),
+        titulo:
+          "Ingresos " +
+          (vistaActual === "diario"
+            ? "del Día"
+            : vistaActual === "semanal"
+            ? "Semanales"
+            : "Mensuales"),
         valor: formatearMoneda(resumenDiario.totalIngresos),
         icono: "bi bi-currency-dollar",
         color: variacionIngresos >= 0 ? "#198754" : "#dc3545",
@@ -217,27 +267,39 @@ const Dashboard = () => {
         variacion: variacionIngresos,
       },
       {
-        titulo: "Egresos " + (vistaActual === 'diario' ? 'del Día' : 
-                           vistaActual === 'semanal' ? 'Semanales' : 'Mensuales'),
+        titulo:
+          "Egresos " +
+          (vistaActual === "diario"
+            ? "del Día"
+            : vistaActual === "semanal"
+            ? "Semanales"
+            : "Mensuales"),
         valor: formatearMoneda(resumenDiario.totalEgresos),
         icono: "bi bi-arrow-down-circle",
         color: "#dc3545",
-        miniData: tendencias.slice(-7).map(t => t.egresos || 0),
+        miniData: tendencias.slice(-7).map((t) => t.egresos || 0),
       },
       {
-        titulo: vistaActual === 'diario' ? "Ventas del Día" : "Ventas",
+        titulo: vistaActual === "diario" ? "Ventas del Día" : "Ventas",
         valor: formatearNumero(resumenDiario.ventasDelDia),
         icono: "bi bi-cart3",
         color: "#0d6efd",
         miniData: tendenciaVentas,
       },
       {
-        titulo: "Utilidad " + (vistaActual === 'diario' ? 'del Día' : 
-                           vistaActual === 'semanal' ? 'Semanal' : 'Mensual'),
+        titulo:
+          "Utilidad " +
+          (vistaActual === "diario"
+            ? "del Día"
+            : vistaActual === "semanal"
+            ? "Semanal"
+            : "Mensual"),
         valor: formatearMoneda(resumenDiario.utilidad),
         icono: "bi bi-graph-up-arrow",
         color: resumenDiario.utilidad >= 0 ? "#198754" : "#dc3545",
-        miniData: tendencias.slice(-7).map(t => (t.ingresos || 0) - (t.egresos || 0)),
+        miniData: tendencias
+          .slice(-7)
+          .map((t) => (t.ingresos || 0) - (t.egresos || 0)),
       },
     ];
   };
@@ -263,10 +325,7 @@ const Dashboard = () => {
             <i className="bi bi-exclamation-triangle me-2"></i>
             {error}
           </div>
-          <button 
-            className="btn btn-primary" 
-            onClick={cargarDatos}
-          >
+          <button className="btn btn-primary" onClick={cargarDatos}>
             <i className="bi bi-arrow-clockwise me-2"></i>
             Reintentar
           </button>
@@ -282,52 +341,66 @@ const Dashboard = () => {
       {/* Header con controles */}
       <div className="dashboard-header">
         <h2 className="titulo-dashboard">
-          Dashboard {vistaActual === 'diario' ? 'Diario' : 
-                   vistaActual === 'semanal' ? 'Semanal' : 'Mensual'}
+          Dashboard{" "}
+          {vistaActual === "diario"
+            ? "Diario"
+            : vistaActual === "semanal"
+            ? "Semanal"
+            : "Mensual"}
         </h2>
-        
+
         <div className="dashboard-controles">
           {/* Selector de vista */}
           <div className="btn-group me-3" role="group">
-            <button 
-              type="button" 
-              className={`btn ${vistaActual === 'diario' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setVistaActual('diario')}
+            <button
+              type="button"
+              className={`btn ${
+                vistaActual === "diario" ? "btn-primary" : "btn-outline-primary"
+              }`}
+              onClick={() => setVistaActual("diario")}
             >
               Diario
             </button>
-            <button 
-              type="button" 
-              className={`btn ${vistaActual === 'semanal' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setVistaActual('semanal')}
+            <button
+              type="button"
+              className={`btn ${
+                vistaActual === "semanal"
+                  ? "btn-primary"
+                  : "btn-outline-primary"
+              }`}
+              onClick={() => setVistaActual("semanal")}
             >
               Semanal
             </button>
-            <button 
-              type="button" 
-              className={`btn ${vistaActual === 'mensual' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setVistaActual('mensual')}
+            <button
+              type="button"
+              className={`btn ${
+                vistaActual === "mensual"
+                  ? "btn-primary"
+                  : "btn-outline-primary"
+              }`}
+              onClick={() => setVistaActual("mensual")}
             >
               Mensual
             </button>
           </div>
 
           {/* Selector de fecha (solo para vista diaria) */}
-          {vistaActual === 'diario' && (
+          {vistaActual === "diario" && (
             <input
               type="date"
               className="form-control me-3"
-              style={{ width: 'auto' }}
+              style={{ width: "auto" }}
               value={fechaSeleccionada}
               max={obtenerFechaHoyLocal()}
               onChange={(e) => {
                 const fechaNueva = e.target.value;
                 const fechaHoy = obtenerFechaHoyLocal();
-                
+
                 if (fechaNueva <= fechaHoy) {
                   setFechaSeleccionada(fechaNueva);
                 } else {
-                  alert('No puedes seleccionar fechas futuras');
+                  abrirModal("error", "No puedes seleccionar fechas futuras");
                   setFechaSeleccionada(fechaHoy);
                 }
               }}
@@ -336,16 +409,16 @@ const Dashboard = () => {
 
           {/* Botones de acción */}
           <div className="btn-group">
-            <button 
-              className="btn btn-outline-secondary" 
+            <button
+              className="btn btn-outline-secondary"
               onClick={cargarDatos}
               title="Actualizar datos"
             >
               <i className="bi bi-arrow-clockwise"></i>
             </button>
-            
-            <button 
-              className="btn btn-outline-info" 
+
+            <button
+              className="btn btn-outline-info"
               onClick={() => {
                 cargarConfiguracion();
                 setShowConfigModal(true);
@@ -354,15 +427,18 @@ const Dashboard = () => {
             >
               <i className="bi bi-gear"></i>
             </button>
-            
-            <button 
-              className="btn btn-outline-success" 
+
+            <button
+              className="btn btn-outline-success"
               onClick={enviarDashboardManual}
               disabled={enviandoManual}
               title="Enviar dashboard por correo"
             >
               {enviandoManual ? (
-                <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                <span
+                  className="spinner-border spinner-border-sm me-1"
+                  role="status"
+                ></span>
               ) : (
                 <i className="bi bi-envelope"></i>
               )}
@@ -374,7 +450,11 @@ const Dashboard = () => {
       {/* Tarjetas KPI */}
       <div className="tarjetas-grid">
         {tarjetasKPI.map((item, i) => (
-          <div className="tarjeta-kpi" key={i} style={{ borderLeft: `5px solid ${item.color}` }}>
+          <div
+            className="tarjeta-kpi"
+            key={i}
+            style={{ borderLeft: `5px solid ${item.color}` }}
+          >
             <div className="kpi-info">
               <div className="icono-kpi">
                 <i className={item.icono} style={{ color: item.color }}></i>
@@ -383,8 +463,16 @@ const Dashboard = () => {
                 <h5>{item.titulo}</h5>
                 <h4>{item.valor}</h4>
                 {item.variacion !== undefined && (
-                  <small className={`variacion ${item.variacion >= 0 ? 'text-success' : 'text-danger'}`}>
-                    <i className={`bi bi-arrow-${item.variacion >= 0 ? 'up' : 'down'}`}></i>
+                  <small
+                    className={`variacion ${
+                      item.variacion >= 0 ? "text-success" : "text-danger"
+                    }`}
+                  >
+                    <i
+                      className={`bi bi-arrow-${
+                        item.variacion >= 0 ? "up" : "down"
+                      }`}
+                    ></i>
                     {Math.abs(item.variacion).toFixed(1)}% vs ayer
                   </small>
                 )}
@@ -423,23 +511,25 @@ const Dashboard = () => {
       {/* Gráficos principales */}
       <div className="graficas-grid">
         <div className="grafica-container">
-          <h6 className="grafica-titulo">Tendencia de Ingresos y Egresos (7 días)</h6>
-          <Bar 
-            data={prepararDatosTendencias()} 
-            options={{ 
-              responsive: true, 
+          <h6 className="grafica-titulo">
+            Tendencia de Ingresos y Egresos (7 días)
+          </h6>
+          <Bar
+            data={prepararDatosTendencias()}
+            options={{
+              responsive: true,
               plugins: { legend: { display: true } },
               scales: {
                 y: {
                   beginAtZero: true,
                   ticks: {
-                    callback: function(value) {
+                    callback: function (value) {
                       return formatearMoneda(value);
-                    }
-                  }
-                }
-              }
-            }} 
+                    },
+                  },
+                },
+              },
+            }}
           />
         </div>
       </div>
@@ -454,12 +544,17 @@ const Dashboard = () => {
           <div className="alertas-lista">
             {alertasInventario.length > 0 ? (
               alertasInventario.slice(0, 5).map((alerta, i) => (
-                <div key={i} className={`alerta-item ${alerta.nivelAlerta.toLowerCase()}`}>
+                <div
+                  key={i}
+                  className={`alerta-item ${alerta.nivelAlerta.toLowerCase()}`}
+                >
                   <div className="alerta-info">
                     <strong>{alerta.nombre}</strong> ({alerta.tipo})
                     <small>Stock actual: {alerta.cantidadActual}</small>
                   </div>
-                  <span className={`badge badge-${alerta.nivelAlerta.toLowerCase()}`}>
+                  <span
+                    className={`badge badge-${alerta.nivelAlerta.toLowerCase()}`}
+                  >
                     {alerta.nivelAlerta}
                   </span>
                 </div>
@@ -475,15 +570,21 @@ const Dashboard = () => {
           <div className="info-stats">
             <div className="stat-item">
               <span className="stat-label">Clientes Atendidos:</span>
-              <span className="stat-value">{formatearNumero(resumenDiario?.clientesAtendidos)}</span>
+              <span className="stat-value">
+                {formatearNumero(resumenDiario?.clientesAtendidos)}
+              </span>
             </div>
             <div className="stat-item">
               <span className="stat-label">Órdenes Pendientes:</span>
-              <span className="stat-value">{formatearNumero(ordenesPendientes.length)}</span>
+              <span className="stat-value">
+                {formatearNumero(ordenesPendientes.length)}
+              </span>
             </div>
             <div className="stat-item">
               <span className="stat-label">Pedidos Pendientes:</span>
-              <span className="stat-value">{formatearNumero(pedidosPendientes.length)}</span>
+              <span className="stat-value">
+                {formatearNumero(pedidosPendientes.length)}
+              </span>
             </div>
           </div>
         </div>
@@ -491,13 +592,13 @@ const Dashboard = () => {
 
       {/* Modal de Configuración */}
       {showConfigModal && (
-        <div 
-          className="modal fade show" 
-          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} 
+        <div
+          className="modal fade show"
+          style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}
           onClick={() => setShowConfigModal(false)}
         >
-          <div 
-            className="modal-dialog modal-dialog-centered" 
+          <div
+            className="modal-dialog modal-dialog-centered"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-content">
@@ -506,9 +607,9 @@ const Dashboard = () => {
                   <i className="bi bi-gear me-2"></i>
                   Configurar Envío Automático del Dashboard
                 </h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
+                <button
+                  type="button"
+                  className="btn-close"
                   onClick={() => setShowConfigModal(false)}
                 ></button>
               </div>
@@ -524,16 +625,18 @@ const Dashboard = () => {
                     id="correoDestinatario"
                     placeholder="correo@ejemplo.com"
                     value={configuracionEnvio.correoDestinatario}
-                    onChange={(e) => setConfiguracionEnvio({
-                      ...configuracionEnvio,
-                      correoDestinatario: e.target.value
-                    })}
+                    onChange={(e) =>
+                      setConfiguracionEnvio({
+                        ...configuracionEnvio,
+                        correoDestinatario: e.target.value,
+                      })
+                    }
                   />
                   <div className="form-text">
                     Correo donde se enviará el resumen diario del dashboard
                   </div>
                 </div>
-                
+
                 <div className="mb-3">
                   <label htmlFor="horaEnvio" className="form-label">
                     <i className="bi bi-clock me-1"></i>
@@ -544,56 +647,69 @@ const Dashboard = () => {
                     className="form-control"
                     id="horaEnvio"
                     value={configuracionEnvio.horaEnvio}
-                    onChange={(e) => setConfiguracionEnvio({
-                      ...configuracionEnvio,
-                      horaEnvio: e.target.value
-                    })}
+                    onChange={(e) =>
+                      setConfiguracionEnvio({
+                        ...configuracionEnvio,
+                        horaEnvio: e.target.value,
+                      })
+                    }
                   />
                   <div className="form-text">
                     Hora diaria para el envío automático del dashboard
                   </div>
                 </div>
-                
+
                 <div className="form-check">
                   <input
                     className="form-check-input"
                     type="checkbox"
                     id="activarEnvio"
                     checked={configuracionEnvio.activo}
-                    onChange={(e) => setConfiguracionEnvio({
-                      ...configuracionEnvio,
-                      activo: e.target.checked
-                    })}
+                    onChange={(e) =>
+                      setConfiguracionEnvio({
+                        ...configuracionEnvio,
+                        activo: e.target.checked,
+                      })
+                    }
                   />
                   <label className="form-check-label" htmlFor="activarEnvio">
                     <strong>Activar envío automático diario</strong>
                   </label>
                 </div>
-                
+
                 {configuracionEnvio.activo && (
                   <div className="alert alert-info mt-3" role="alert">
                     <i className="bi bi-info-circle me-2"></i>
-                    <strong>Configuración activa:</strong> El dashboard se enviará automáticamente todos los días a las {configuracionEnvio.horaEnvio} a {configuracionEnvio.correoDestinatario}
+                    <strong>Configuración activa:</strong> El dashboard se
+                    enviará automáticamente todos los días a las{" "}
+                    {configuracionEnvio.horaEnvio} a{" "}
+                    {configuracionEnvio.correoDestinatario}
                   </div>
                 )}
               </div>
               <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
+                <button
+                  type="button"
+                  className="btn btn-secondary"
                   onClick={() => setShowConfigModal(false)}
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary" 
+                <button
+                  type="button"
+                  className="btn btn-primary"
                   onClick={guardarConfiguracion}
-                  disabled={guardandoConfig || !configuracionEnvio.correoDestinatario.trim()}
+                  disabled={
+                    guardandoConfig ||
+                    !configuracionEnvio.correoDestinatario.trim()
+                  }
                 >
                   {guardandoConfig ? (
                     <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                      ></span>
                       Guardando...
                     </>
                   ) : (
@@ -608,6 +724,16 @@ const Dashboard = () => {
           </div>
         </div>
       )}
+      <Modal
+        isOpen={modalMensaje.visible}
+        onClose={() => setModalMensaje({ ...modalMensaje, visible: false })}
+      >
+        <div className="text-center p-3">
+          <i className={iconos[modalMensaje.tipo]}></i>
+          <h2>{titulos[modalMensaje.tipo]}</h2>
+          <p>{modalMensaje.mensaje}</p>
+        </div>
+      </Modal>
     </div>
   );
 };
