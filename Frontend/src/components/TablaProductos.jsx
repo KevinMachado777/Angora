@@ -428,6 +428,11 @@ const TablaProductos = forwardRef(
             setModalCategoriaAbierta(true);
         };
 
+        const manejarCambioNombre = (evento, setState, stateKey) => {
+            const nuevoValor = evento.target.value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "");
+            setState((prev) => ({ ...prev, [stateKey]: nuevoValor }));
+        };
+
         // Guardar categoria
         const guardarCategoria = async (e) => {
             e.preventDefault();
@@ -439,6 +444,12 @@ const TablaProductos = forwardRef(
                 setError("El nombre de la categoría no puede estar vacío.");
                 return;
             }
+
+            if (nuevaCategoria.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(nuevaCategoria.nombre)) {
+                setError("El nombre de la categoría debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+                return;
+            }
+
             try {
                 const headers = authHeaders();
                 if (modoEdicionCategoria) {
@@ -522,6 +533,11 @@ const TablaProductos = forwardRef(
             }
             if (!materiasProducto || materiasProducto.length === 0) {
                 setError("El producto debe tener al menos 1 materia prima asociada.");
+                return;
+            }
+
+            if (formularioTemp.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formularioTemp.nombre)) {
+                setError("El nombre debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
                 return;
             }
 
@@ -1436,9 +1452,9 @@ const TablaProductos = forwardRef(
                                     className="form-control"
                                     value={nuevaCategoria.nombre}
                                     required
-                                    onChange={(e) => setNuevaCategoria({ ...nuevaCategoria, nombre: e.target.value })}
+                                    onChange={(e) => manejarCambioNombre(e, setNuevaCategoria, "nombre")}
                                 />
-                            </div>
+                            </div> 
                             <div className="d-flex justify-content-end">
                                 <BotonCancelar onClick={() => setModalCategoriaAbierta(false)} />
                                 <BotonGuardar type="submit" />
