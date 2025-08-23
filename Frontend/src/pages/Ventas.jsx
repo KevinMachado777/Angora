@@ -283,6 +283,11 @@ const Ventas = () => {
       return;
     }
 
+    if (!pagoCon || pagoCon % 50 !== 0) {
+      abrirModal("advertencia", "Ingrese un monto de pago válido");
+      return;
+    }
+
     if (!clienteSeleccionado || clienteSeleccionado.idCliente === 0) {
       if (!notas.trim()) {
         setErrorNotas(true);
@@ -722,6 +727,7 @@ const Ventas = () => {
               decimalSeparator=","
               prefix="$"
               allowNegative={false}
+              decimalScale={0}
               placeholder="Ingrese el valor"
             />
 
