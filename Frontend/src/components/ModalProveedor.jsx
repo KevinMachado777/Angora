@@ -45,7 +45,7 @@ const ModalProveedor = ({
     mensaje: "",
     visible: false,
   });
-  
+
   // Estado para el checkbox de envío de correo
   const [enviarCorreo, setEnviarCorreo] = useState(false);
   // Nuevo estado para tracking del ID de orden creada
@@ -60,7 +60,7 @@ const ModalProveedor = ({
 
   const enviarOrdenPorCorreo = async (idOrdenParam = null) => {
     const idOrdenUsar = idOrdenParam || formulario.idOrden || ordenCreadaId;
-    
+
     if (!idOrdenUsar) {
       abrirModal("advertencia", "Debe tener una orden válida para enviar.");
       return false;
@@ -96,8 +96,7 @@ const ModalProveedor = ({
       );
       abrirModal(
         "error",
-        `Error al enviar lista de compras: ${
-          error.response?.data || error.message
+        `Error al enviar lista de compras: ${error.response?.data || error.message
         }`
       );
       return false;
@@ -137,8 +136,7 @@ const ModalProveedor = ({
           );
           abrirModal(
             "error",
-            `Error al cargar proveedores: ${
-              err.response?.data?.message || err.message
+            `Error al cargar proveedores: ${err.response?.data?.message || err.message
             }`
           );
         });
@@ -157,8 +155,7 @@ const ModalProveedor = ({
           );
           abrirModal(
             "error",
-            `Error al cargar materias primas: ${
-              err.response?.data?.message || err.message
+            `Error al cargar materias primas: ${err.response?.data?.message || err.message
             }`
           );
         });
@@ -190,16 +187,16 @@ const ModalProveedor = ({
           total: datosIniciales.total || 0,
           items:
             datosIniciales.ordenMateriaPrimas &&
-            Array.isArray(datosIniciales.ordenMateriaPrimas)
+              Array.isArray(datosIniciales.ordenMateriaPrimas)
               ? datosIniciales.ordenMateriaPrimas.map((omp) => {
-                  console.log("Mapeando omp:", omp);
-                  return {
-                    id: omp.id,
-                    idMateria: omp.materiaPrima?.idMateria,
-                    nombre: omp.materiaPrima?.nombre || "",
-                    cantidad: omp.cantidad || 0,
-                  };
-                })
+                console.log("Mapeando omp:", omp);
+                return {
+                  id: omp.id,
+                  idMateria: omp.materiaPrima?.idMateria,
+                  nombre: omp.materiaPrima?.nombre || "",
+                  cantidad: omp.cantidad || 0,
+                };
+              })
               : [],
         });
       }
@@ -313,106 +310,123 @@ const ModalProveedor = ({
     }));
   };
 
+  // Función para manejar cambios en los campos del formulario
+  const manejarCambio = (e, setState, stateKey, validacion) => {
+    const { value } = e.target;
+    let nuevoValor = value;
+
+    switch (stateKey) {
+      case "nombre":
+        nuevoValor = value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "").trim();
+        break;
+      case "telefono":
+        nuevoValor = value.replace(/\D/g, "").slice(0, 10); // Solo números, máximo 10
+        break;
+      case "direccion":
+        nuevoValor = value.trim(); // No restringimos caracteres, solo longitud
+        break;
+      case "correo":
+        nuevoValor = value.trim(); // Permitimos formato de correo completo
+        break;
+      default:
+        break;
+    }
+
+    setState((prev) => ({ ...prev, [stateKey]: nuevoValor }));
+  };
+
   // Función modificada para manejar correctamente el envío de correos
   const guardar = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!token) {
-    abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
-    return;
-  }
-
-  if (esOrden) {
-    // Validaciones para la orden
-    if (!formulario.id) {
-      abrirModal(
-        "advertencia",
-        "Debe seleccionar un proveedor para la orden."
-      );
+    if (!token) {
+      abrirModal("error", "No estás autenticado. Por favor, inicia sesión.");
       return;
     }
 
-    if (!formulario.items || formulario.items.length === 0) {
-      abrirModal("advertencia", "La orden debe tener al menos un ítem.");
-      return;
-    }
-
-    // Validar que no haya idMateria inválidos
-    const hasInvalidItem = formulario.items.some(
-      (item) =>
-        !item.idMateria ||
-        isNaN(parseInt(item.idMateria)) ||
-        parseInt(item.idMateria) <= 0
-    );
-    if (hasInvalidItem) {
-      abrirModal(
-        "error",
-        "Uno o más ítems tienen un ID de materia prima inválido."
-      );
-      return;
-    }
-
-    // Preparar los datos para guardar
-    const datosOrdenParaGuardar = {
-      id: formulario.id,
-      idOrden: formulario.idOrden,
-      notas: formulario.notas,
-      items: formulario.items,
-      total: formulario.total,
-    };
-
-    // SOLUCIÓN SIMPLIFICADA: Delegar todo al componente padre
-    try {
-      await onGuardar(datosOrdenParaGuardar);
-      
-      // Solo manejar el envío de correo si está marcado el checkbox
-      // El ID de la orden debe ser manejado por el componente padre
-      if (enviarCorreo && formulario.idOrden) {
-        // Solo enviar correo para órdenes existentes (edición)
-        setTimeout(async () => {
-          await enviarOrdenPorCorreo(formulario.idOrden);
-        }, 500);
+    if (esOrden) {
+      // Validaciones para la orden (sin cambios)
+      if (!formulario.id) {
+        abrirModal("advertencia", "Debe seleccionar un proveedor para la orden.");
+        return;
       }
-      
-    } catch (error) {
-      console.error("Error al guardar orden:", error);
-      abrirModal("error", "Error al guardar la orden.");
-    }
 
-  } else {
-    // Lógica de guardado para proveedores
-    const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
-    if (!correoValido) {
-      abrirModal("advertencia", "Por favor ingresa un correo válido.");
-      return;
-    }
+      if (!formulario.items || formulario.items.length === 0) {
+        abrirModal("advertencia", "La orden debe tener al menos un ítem.");
+        return;
+      }
 
-    const telefonoValido = /^\d{10}$/.test(formulario.telefono);
-    if (!telefonoValido) {
-      abrirModal(
-        "advertencia",
-        "El teléfono debe tener exactamente 10 dígitos."
+      const hasInvalidItem = formulario.items.some(
+        (item) =>
+          !item.idMateria ||
+          isNaN(parseInt(item.idMateria)) ||
+          parseInt(item.idMateria) <= 0
       );
-      return;
-    }
+      if (hasInvalidItem) {
+        abrirModal(
+          "error",
+          "Uno o más ítems tienen un ID de materia prima inválido."
+        );
+        return;
+      }
 
-    const existe = await verificarCorreoExistente(
-      formulario.correo,
-      formulario.id || 0
-    );
-    if (existe) {
-      abrirModal("advertencia", "Ya existe un proveedor con ese correo.");
-      return;
-    }
+      const datosOrdenParaGuardar = {
+        id: formulario.id,
+        idOrden: formulario.idOrden,
+        notas: formulario.notas,
+        items: formulario.items,
+        total: formulario.total,
+      };
 
-    try {
-      await onGuardar({ ...formulario });
-    } catch (error) {
-      console.error("Error al guardar proveedor:", error);
-      abrirModal("error", "Error al guardar el proveedor.");
+      try {
+        await onGuardar(datosOrdenParaGuardar);
+
+        if (enviarCorreo && formulario.idOrden) {
+          setTimeout(async () => {
+            await enviarOrdenPorCorreo(formulario.idOrden);
+          }, 500);
+        }
+      } catch (error) {
+        console.error("Error al guardar orden:", error);
+        abrirModal("error", "Error al guardar la orden.");
+      }
+    } else {
+      // Validaciones para proveedores
+      if (!formulario.nombre || formulario.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formulario.nombre)) {
+        abrirModal("advertencia", "El nombre debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+        return;
+      }
+
+      if (!formulario.telefono || !/^\d{10}$/.test(formulario.telefono)) {
+        abrirModal("advertencia", "El teléfono debe tener exactamente 10 dígitos numéricos.");
+        return;
+      }
+
+      const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulario.correo);
+      if (!correoValido) {
+        abrirModal("advertencia", "Por favor ingresa un correo válido.");
+        return;
+      }
+
+      if (!formulario.direccion || formulario.direccion.length <= 3) {
+        abrirModal("advertencia", "La dirección debe tener más de 3 caracteres.");
+        return;
+      }
+
+      const existe = await verificarCorreoExistente(formulario.correo, formulario.id || 0);
+      if (existe) {
+        abrirModal("advertencia", "Ya existe un proveedor con ese correo.");
+        return;
+      }
+
+      try {
+        await onGuardar({ ...formulario });
+      } catch (error) {
+        console.error("Error al guardar proveedor:", error);
+        abrirModal("error", "Error al guardar el proveedor.");
+      }
     }
-  }
-};
+  };
 
   if (!isOpen) return null;
 
@@ -425,8 +439,8 @@ const ModalProveedor = ({
               {esOrden
                 ? "Orden de compra"
                 : datosIniciales
-                ? "Editar proveedor"
-                : "Agregar proveedor"}
+                  ? "Editar proveedor"
+                  : "Agregar proveedor"}
             </h2>
           </div>
 
@@ -454,12 +468,12 @@ const ModalProveedor = ({
                 value={
                   formulario.id
                     ? {
-                        value: parseInt(formulario.id),
-                        label:
-                          proveedoresDisponibles.find(
-                            (p) => p.idProveedor === parseInt(formulario.id)
-                          )?.nombre || "Proveedor seleccionado",
-                      }
+                      value: parseInt(formulario.id),
+                      label:
+                        proveedoresDisponibles.find(
+                          (p) => p.idProveedor === parseInt(formulario.id)
+                        )?.nombre || "Proveedor seleccionado",
+                    }
                     : null
                 }
                 onChange={(selected) => {
@@ -489,9 +503,10 @@ const ModalProveedor = ({
               <input
                 name="nombre"
                 value={formulario.nombre}
-                onChange={handleChange}
+                onChange={(e) => manejarCambio(e, setFormulario, "nombre")}
                 className="form-control"
                 required
+                placeholder="Solo letras, mínimo 3 caracteres"
               />
             )}
           </div>
@@ -503,9 +518,10 @@ const ModalProveedor = ({
                 <input
                   name="telefono"
                   value={formulario.telefono}
-                  onChange={handleChange}
+                  onChange={(e) => manejarCambio(e, setFormulario, "telefono")}
                   className="form-control"
                   required
+                  placeholder="Solo 10 dígitos"
                 />
               </div>
 
@@ -515,9 +531,10 @@ const ModalProveedor = ({
                   name="correo"
                   type="email"
                   value={formulario.correo}
-                  onChange={handleChange}
+                  onChange={(e) => manejarCambio(e, setFormulario, "correo")}
                   className="form-control"
                   required
+                  placeholder="ejemplo@dominio.com"
                 />
               </div>
 
@@ -526,9 +543,10 @@ const ModalProveedor = ({
                 <input
                   name="direccion"
                   value={formulario.direccion}
-                  onChange={handleChange}
+                  onChange={(e) => manejarCambio(e, setFormulario, "direccion")}
                   className="form-control"
                   required
+                  placeholder="Mínimo 4 caracteres"
                 />
               </div>
             </>
@@ -548,13 +566,13 @@ const ModalProveedor = ({
                   value={
                     nuevoItem.idMateria && !isNaN(parseInt(nuevoItem.idMateria))
                       ? {
-                          value: parseInt(nuevoItem.idMateria),
-                          label:
-                            materiasPrimasDisponibles.find(
-                              (m) =>
-                                m.idMateria === parseInt(nuevoItem.idMateria)
-                            )?.nombre || "Materia prima seleccionada",
-                        }
+                        value: parseInt(nuevoItem.idMateria),
+                        label:
+                          materiasPrimasDisponibles.find(
+                            (m) =>
+                              m.idMateria === parseInt(nuevoItem.idMateria)
+                          )?.nombre || "Materia prima seleccionada",
+                      }
                       : null
                   }
                   onChange={(selected) => {
@@ -719,16 +737,16 @@ const ModalProveedor = ({
               modalMensaje.tipo === "exito"
                 ? "bi bi-check-circle-fill text-success display-4 mb-2"
                 : modalMensaje.tipo === "error"
-                ? "bi bi-x-circle-fill text-danger display-4 mb-2"
-                : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
+                  ? "bi bi-x-circle-fill text-danger display-4 mb-2"
+                  : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
             }
           ></i>
           <h2>
             {modalMensaje.tipo === "exito"
               ? "¡Éxito!"
               : modalMensaje.tipo === "error"
-              ? "Error"
-              : "Advertencia"}
+                ? "Error"
+                : "Advertencia"}
           </h2>
           <p>{modalMensaje.mensaje}</p>
         </div>

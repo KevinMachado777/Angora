@@ -1,70 +1,109 @@
-import React from "react";
+import React, { useState } from "react";
 import BotonEditar from "../components/BotonEditar";
 import BotonEliminar from "../components/BotonEliminar";
 import BotonAceptar from "../components/BotonAceptar";
-import "../styles/botones.css"
+import "../styles/botones.css";
 import "../styles/inventario.css";
 
-// Componente creador de tablas para Órdenes de Compra
 export const CreadorTablaOrdenes = ({ cabeceros = [], registros = [], onEditar, onEliminar, onConfirmar }) => {
-  // Validar que registros sea un array
-  if (!Array.isArray(registros)) {
-    console.error("CreadorTablaOrdenes: registros no es un array:", registros);
-    return (
-      <div className="error-message">
-        <p>Error: No se pudieron cargar las órdenes. Los datos no tienen el formato correcto.</p>
-      </div>
-    );
-  }
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
+
+  // Paginación
+  const totalItems = Array.isArray(registros) ? registros.length : 0;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const currentItems = Array.isArray(registros) ? registros.slice(startIndex, endIndex) : [];
+
+  // Renderizar botones con elipsis
+  const renderPageButtons = (totalPages, currentPage, setPageFn) => {
+    if (totalPages <= 1) return null;
+    const delta = 2;
+    const range = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      } else if (range[range.length - 1] !== "...") {
+        range.push("...");
+      }
+    }
+    return range.map((p, idx) => {
+      if (p === "...") {
+        return (
+          <li key={`dots-${idx}`} className="page-item disabled">
+            <span className="page-link">…</span>
+          </li>
+        );
+      }
+      return (
+        <li key={p} className={`page-item ${currentPage === p ? "active" : ""}`}>
+          <button className="page-link" onClick={() => setPageFn(p)}>{p}</button>
+        </li>
+      );
+    });
+  };
 
   return (
-    <table>
-      <thead>
-        <tr>
-          {cabeceros.map((header, index) => (
-            <th key={index}>{header}</th>
-          ))}
-          <th>Opciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        {registros.map((registro, filaIndex) => {
-          // Validar que el registro tenga la estructura esperada
-          if (!registro || typeof registro !== 'object') {
-            console.error("Registro inválido en índice", filaIndex, ":", registro);
-            return (
-              <tr key={filaIndex}>
-                <td colSpan={cabeceros.length + 1}>Error: Registro inválido</td>
-              </tr>
-            );
-          }
-
-          // Accede a las propiedades directamente desde el objeto 'registro'
-          const { idOrden, proveedor, ordenMateriaPrimas, notas, estado } = registro;
-          const nombreProveedor = proveedor?.nombre || "Desconocido";
-          const cantidadArticulos = Array.isArray(ordenMateriaPrimas) ? ordenMateriaPrimas.length : 0;
-
-          return (
-            <tr key={filaIndex}>
-              <td>{idOrden || "N/A"}</td>
-              <td>{nombreProveedor}</td>
-              <td>{cantidadArticulos}</td>
-              <td>{notas || ""}</td>
-              <td>
-                {onEditar && (
-                  <BotonEditar onClick={() => onEditar(registro)} />
-                )}
-                {onEliminar && (
-                  <BotonEliminar onClick={() => onEliminar(registro)} />
-                )}
-                {onConfirmar && !estado && (
-                  <BotonAceptar className="btn-aceptar-pequeno" onClick={() => onConfirmar(registro)}></BotonAceptar>
-                )}
+    <div className="tabla-contenedor">
+      <table className="tabla-productos">
+        <thead>
+          <tr>
+            {cabeceros.map((header, index) => (
+              <th key={index}>{header}</th>
+            ))}
+            <th>Opciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {currentItems.length === 0 ? (
+            <tr>
+              <td colSpan={cabeceros.length + 1} className="text-center text-muted">
+                Error: No se pudieron cargar las órdenes. Los datos no tienen el formato correcto.
               </td>
             </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          ) : (
+            currentItems.map((registro, filaIndex) => {
+              const { idOrden, proveedor, ordenMateriaPrimas, notas, estado } = registro;
+              const nombreProveedor = proveedor?.nombre || "Desconocido";
+              const cantidadArticulos = Array.isArray(ordenMateriaPrimas) ? ordenMateriaPrimas.length : 0;
+
+              return (
+                <tr key={filaIndex}>
+                  <td>{idOrden || "N/A"}</td>
+                  <td>{nombreProveedor}</td>
+                  <td>{cantidadArticulos}</td>
+                  <td>{notas || ""}</td>
+                  <td>
+                    {onEditar && <BotonEditar onClick={() => onEditar(registro)} />}
+                    {onEliminar && <BotonEliminar onClick={() => onEliminar(registro)} />}
+                    {onConfirmar && !estado && (
+                      <BotonAceptar className="btn-aceptar-pequeno" onClick={() => onConfirmar(registro)} />
+                    )}
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+
+      {/* Paginación */}
+      <nav>
+        <ul className="pagination justify-content-center">
+          <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+            <button className="page-link" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}>
+              Anterior
+            </button>
+          </li>
+          {renderPageButtons(totalPages, currentPage, setCurrentPage)}
+          <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+            <button className="page-link" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}>
+              Siguiente
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </div>
   );
 };
