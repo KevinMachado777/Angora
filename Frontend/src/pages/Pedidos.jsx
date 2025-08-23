@@ -32,9 +32,14 @@ const Pedidos = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [enviarCorreo, setEnviarCorreo] = useState(false);
 
+  // Estados para paginación
+  const [currentPagePedidos, setCurrentPagePedidos] = useState(1); // Restaurado para Pedidos Pendientes
+  const [pageStates, setPageStates] = useState({}); // Para Clientes por Producto
+
+  const pageSize = 10;
+
   // Función helper para obtener precios correctos según estado de factura
   const obtenerPreciosProducto = (producto, estadoFactura) => {
-    // Si la factura ya está CONFIRMADA, usar precios estáticos si existen
     if (
       estadoFactura === "CONFIRMADO" &&
       producto.precioUnitario !== null &&
@@ -47,8 +52,6 @@ const Pedidos = () => {
           : producto.precioUnitario,
       };
     }
-
-    // Si está PENDIENTE, usar precios dinámicos
     return {
       precioBase: producto.precio,
       precioConIva: producto.iva ? producto.precio * 1.19 : producto.precio,
@@ -57,13 +60,11 @@ const Pedidos = () => {
 
   const calcularTotalDinamico = (pedido) => {
     let totalCalculado = 0;
-
     pedido.productos.forEach((item) => {
       const { precioConIva } = obtenerPreciosProducto(item, pedido.estado);
       const totalItem = item.cantidad * precioConIva;
       totalCalculado += totalItem;
     });
-
     return roundToNearest50(totalCalculado);
   };
 
@@ -79,7 +80,6 @@ const Pedidos = () => {
     setConfirmarEliminacion(true);
   };
 
-  // Helper function to round to the nearest multiple of 50
   const roundToNearest50 = (value) => {
     return Math.round(value / 50) * 50;
   };
@@ -94,8 +94,6 @@ const Pedidos = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-
-        // Cargar inventario
         const inventarioResponse = await axios.get(
           "http://localhost:8080/angora/api/v1/inventarioProducto/listado",
           {
@@ -107,7 +105,6 @@ const Pedidos = () => {
         );
         setInventario(inventarioResponse.data);
 
-        // Cargar facturas pendientes
         const pedidosResponse = await axios.get(
           "http://localhost:8080/angora/api/v1/pedidos/pendientes",
           {
@@ -166,7 +163,6 @@ const Pedidos = () => {
     };
 
     try {
-      // Confirmar la factura
       await axios.put(
         `http://localhost:8080/angora/api/v1/pedidos/confirmar/${pedidoAConfirmar.idFactura}`,
         confirmarFacturaDTO,
@@ -178,7 +174,6 @@ const Pedidos = () => {
         }
       );
 
-      // Enviar correo si está habilitado
       if (
         enviarCorreo &&
         pedidoAConfirmar.cliente &&
@@ -241,7 +236,6 @@ const Pedidos = () => {
     }
   };
 
-  // Función corregida para generar PDF con precios correctos
   const generarPDF = (pedido) => {
     const doc = new jsPDF();
     doc.setFontSize(16);
@@ -274,11 +268,9 @@ const Pedidos = () => {
       y += 10;
     }
 
-    // Línea separadora
     doc.line(10, y, 200, y);
     y += 10;
 
-    // Encabezados de tabla
     doc.setFontSize(10);
     doc.text("Producto", 10, y);
     doc.text("Cant.", 80, y);
@@ -287,12 +279,9 @@ const Pedidos = () => {
     doc.text("Total", 180, y);
     y += 10;
 
-    // Línea separadora
     doc.line(10, y - 5, 200, y - 5);
 
-    // Productos con precios dinámicos (facturas PENDIENTES)
     pedido.productos.forEach((p) => {
-      // Usar precio dinámico ya que aún está PENDIENTE
       const precioSinIva = p.precio;
       const precioConIva = p.iva ? p.precio * 1.19 : p.precio;
       const totalProducto = p.cantidad * precioConIva;
@@ -305,12 +294,10 @@ const Pedidos = () => {
       y += 8;
     });
 
-    // Línea separadora
     y += 5;
     doc.line(10, y, 200, y);
     y += 10;
 
-    // Totales
     doc.setFontSize(11);
     doc.text(
       `Subtotal (sin IVA): $${pedido.subtotal.toLocaleString()}`,
@@ -325,7 +312,6 @@ const Pedidos = () => {
       y
     );
 
-    // Pie de página
     y += 20;
     doc.setFontSize(10);
     doc.text("¡Gracias por tu compra!", 105, y, { align: "center" });
@@ -347,10 +333,9 @@ const Pedidos = () => {
   const produccionPendiente = inventario
     .map((producto) => {
       const cantidadTotal = pedidosPendiente.reduce((total, pedido) => {
-        const encontrado = pedido.productos.find((p) => {
-          const match = (p.idProducto || p.id) === producto.idProducto;
-          return match;
-        });
+        const encontrado = pedido.productos.find(
+          (p) => (p.idProducto || p.id) === producto.idProducto
+        );
         return encontrado ? total + encontrado.cantidad : total;
       }, 0);
       return {
@@ -383,6 +368,11 @@ const Pedidos = () => {
       .filter(Boolean);
     setClientesProducto(resultado);
     setProductoSeleccionado(producto);
+    // Reiniciar la página al abrir el modal para este producto
+    setPageStates((prev) => ({
+      ...prev,
+      [producto.idProducto]: 1,
+    }));
     setMostrarClientesProducto(true);
   };
 
@@ -429,6 +419,54 @@ const Pedidos = () => {
     exito: "¡Éxito!",
     error: "Error",
     advertencia: "Advertencia",
+  };
+
+  // Renderizar botones de paginación con elipsis
+  const renderPageButtons = (totalPages, currentPage, setPageFn) => {
+    if (totalPages <= 1) return null;
+    const delta = 2;
+    const range = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      } else if (range[range.length - 1] !== "...") {
+        range.push("...");
+      }
+    }
+    return range.map((p, idx) => {
+      if (p === "...") {
+        return (
+          <li key={`dots-${idx}`} className="page-item disabled">
+            <span className="page-link">…</span>
+          </li>
+        );
+      }
+      return (
+        <li key={p} className={`page-item ${currentPage === p ? "active" : ""}`}>
+          <button className="page-link" onClick={() => setPageFn(p)}>{p}</button>
+        </li>
+      );
+    });
+  };
+
+  // Paginación para Pedidos Pendientes
+  const totalPagesPedidos = Math.ceil(pedidosPendiente.length / pageSize);
+  const startIndexPedidos = (currentPagePedidos - 1) * pageSize;
+  const endIndexPedidos = startIndexPedidos + pageSize;
+  const currentPedidos = pedidosPendiente.slice(startIndexPedidos, endIndexPedidos);
+
+  // Paginación para Clientes Producto (por producto)
+  const currentPageClientes = pageStates[productoSeleccionado?.idProducto] || 1;
+  const totalPagesClientes = Math.ceil(clientesProducto.length / pageSize);
+  const startIndexClientes = (currentPageClientes - 1) * pageSize;
+  const endIndexClientes = startIndexClientes + pageSize;
+  const currentClientes = clientesProducto.slice(startIndexClientes, endIndexClientes);
+
+  const setCurrentPageForProduct = (page) => {
+    setPageStates((prev) => ({
+      ...prev,
+      [productoSeleccionado?.idProducto]: page,
+    }));
   };
 
   return (
@@ -486,50 +524,89 @@ const Pedidos = () => {
               </tbody>
             </table>
           ) : (
-            <table className="table table-sm table-bordered">
-              <thead>
-                <tr>
-                  <th># Ticket</th>
-                  <th>Cliente</th>
-                  <th>Precio Total</th>
-                  <th>Opciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pedidosPendiente.map((pedido, i) => (
-                  <tr key={i}>
-                    <td>{pedido.idFactura}</td>
-                    <td>
-                      {pedido.cliente
-                        ? `${pedido.cliente.nombre} ${
-                            pedido.cliente.apellido || ""
-                          }`
-                        : "Consumidor final"}
-                    </td>
-                    <td>
-                      <NumericFormat
-                        value={calcularTotalDinamico(pedido)} // <- Valor calculado dinámicamente
-                        displayType="text"
-                        thousandSeparator="."
-                        decimalSeparator=","
-                        prefix="$"
-                      />
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-success btn-sm me-2"
-                        onClick={() => abrirModalConfirmar(pedido)}
-                      >
-                        Confirmar
-                      </button>
-                      <BotonEliminar
-                        onClick={() => abrirModalEliminarPedido(pedido)}
-                      />
-                    </td>
+            <>
+              <table className="table table-sm table-bordered">
+                <thead>
+                  <tr>
+                    <th># Ticket</th>
+                    <th>Cliente</th>
+                    <th>Precio Total</th>
+                    <th>Opciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {currentPedidos.map((pedido, i) => (
+                    <tr key={i}>
+                      <td>{pedido.idFactura}</td>
+                      <td>
+                        {pedido.cliente
+                          ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
+                          : "Consumidor final"}
+                      </td>
+                      <td>
+                        <NumericFormat
+                          value={calcularTotalDinamico(pedido)}
+                          displayType="text"
+                          thousandSeparator="."
+                          decimalSeparator=","
+                          prefix="$"
+                        />
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-success btn-sm me-2"
+                          onClick={() => abrirModalConfirmar(pedido)}
+                        >
+                          Confirmar
+                        </button>
+                        <BotonEliminar
+                          onClick={() => abrirModalEliminarPedido(pedido)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {pedidosPendiente.length > pageSize && (
+                <nav>
+                  <ul className="pagination justify-content-center">
+                    <li
+                      className={`page-item ${currentPagePedidos === 1 ? "disabled" : ""}`}
+                    >
+                      <button
+                        className="page-link"
+                        onClick={() =>
+                          setCurrentPagePedidos(Math.max(1, currentPagePedidos - 1))
+                        }
+                      >
+                        Anterior
+                      </button>
+                    </li>
+                    {renderPageButtons(
+                      totalPagesPedidos,
+                      currentPagePedidos,
+                      setCurrentPagePedidos
+                    )}
+                    <li
+                      className={`page-item ${
+                        currentPagePedidos === totalPagesPedidos ? "disabled" : ""
+                      }`}
+                    >
+                      <button
+                        className="page-link"
+                        onClick={() =>
+                          setCurrentPagePedidos(
+                            Math.min(totalPagesPedidos, currentPagePedidos + 1)
+                          )
+                        }
+                      >
+                        Siguiente
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -553,8 +630,8 @@ const Pedidos = () => {
               No hay clientes con este producto pendiente.
             </p>
           ) : (
-            clientesProducto.map((c, i) => (
-              <div key={i}>
+            currentClientes.map((c, i) => (
+              <div key={i} className="col-md-4 mb-3">
                 <div className="card card-cliente shadow-sm">
                   <div className="card-body">
                     <p>
@@ -581,6 +658,45 @@ const Pedidos = () => {
             ))
           )}
         </div>
+        {clientesProducto.length > pageSize && (
+          <nav>
+            <ul className="pagination justify-content-center">
+              <li
+                className={`page-item ${currentPageClientes === 1 ? "disabled" : ""}`}
+              >
+                <button
+                  className="page-link"
+                  onClick={() =>
+                    setCurrentPageForProduct(Math.max(1, currentPageClientes - 1))
+                  }
+                >
+                  Anterior
+                </button>
+              </li>
+              {renderPageButtons(
+                totalPagesClientes,
+                currentPageClientes,
+                setCurrentPageForProduct
+              )}
+              <li
+                className={`page-item ${
+                  currentPageClientes === totalPagesClientes ? "disabled" : ""
+                }`}
+              >
+                <button
+                  className="page-link"
+                  onClick={() =>
+                    setCurrentPageForProduct(
+                      Math.min(totalPagesClientes, currentPageClientes + 1)
+                    )
+                  }
+                >
+                  Siguiente
+                </button>
+              </li>
+            </ul>
+          </nav>
+        )}
         <div className="pie-modal mt-2">
           <BotonAceptar onClick={() => setMostrarClientesProducto(false)} />
         </div>
@@ -642,8 +758,6 @@ const Pedidos = () => {
             </thead>
             <tbody>
               {productosAConfirmar.map((item, i) => {
-                // Para facturas PENDIENTES siempre usar precios dinámicos
-                // (los precios estáticos se guardarán al confirmar en backend)
                 const precioSinIva = item.precio;
                 const precioConIva = item.iva
                   ? item.precio * 1.19
@@ -680,7 +794,6 @@ const Pedidos = () => {
           </table>
           <hr />
           {(() => {
-            // Calcular totales dinámicamente basado en precios actuales
             let subtotalCalculado = 0;
             let totalCalculado = 0;
 
