@@ -11,15 +11,33 @@ public class FacturaPendienteDTO {
     private LocalDateTime fecha;
     private ClienteDTO cliente;
     private List<ProductoDTO> productos;
-    private Integer subtotal; // Changed to Float
-    private Integer total; // Changed to Float
+    private Integer subtotal;
+    private Integer total;
     private Integer saldoPendiente;
     private String estado;
     private CarteraDTO idCartera;
     private UsuarioDTO cajero;
     private String notas;
+    private String cajeroNombre;
+    private String cajeroApellido;
 
     // Getters y setters
+    public String getCajeroNombre() {
+        return cajeroNombre;
+    }
+
+    public void setCajeroNombre(String cajeroNombre) {
+        this.cajeroNombre = cajeroNombre;
+    }
+
+    public String getCajeroApellido() {
+        return cajeroApellido;
+    }
+
+    public void setCajeroApellido(String cajeroApellido) {
+        this.cajeroApellido = cajeroApellido;
+    }
+
     public Long getIdFactura() {
         return idFactura;
     }

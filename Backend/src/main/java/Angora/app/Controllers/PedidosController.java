@@ -51,7 +51,7 @@ public class PedidosController {
     @GetMapping("/pendientes")
     public ResponseEntity<?> obtenerFacturasPendientes() {
         try {
-            List<Factura> facturas = facturaRepository.findByEstado("PENDIENTE");
+            List<Factura> facturas = facturaRepository.findByEstadoWithCajeroLeftJoin("PENDIENTE");
             log.info("Facturas pendientes encontradas: {}", facturas.size());
             List<FacturaPendienteDTO> facturasDTO = facturas.stream().map(factura -> {
                 FacturaPendienteDTO dto = new FacturaPendienteDTO();
@@ -113,11 +113,18 @@ public class PedidosController {
                     cajeroDTO.setNombre(factura.getCajero().getNombre());
                     cajeroDTO.setApellido(factura.getCajero().getApellido());
                     dto.setCajero(cajeroDTO);
+                    dto.setCajeroNombre(factura.getCajero().getNombre());
+                    dto.setCajeroApellido(factura.getCajero().getApellido());
+                } else {
+                    dto.setCajero(null);
+                    dto.setCajeroNombre(factura.getCajeroNombre() != null ? factura.getCajeroNombre() : "Desconocido");
+                    dto.setCajeroApellido(factura.getCajeroApellido() != null ? factura.getCajeroApellido() : "");
                 }
 
                 return dto;
             }).collect(Collectors.toList());
 
+            log.info("Facturas DTO generadas: {}", facturasDTO.size());
             return ResponseEntity.ok(facturasDTO);
         } catch (Exception e) {
             log.error("Error al obtener facturas pendientes: ", e);

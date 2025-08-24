@@ -117,10 +117,9 @@ const Pedidos = () => {
         console.log("Facturas pendientes recibidas:", pedidosResponse.data);
         pedidosResponse.data.forEach((pedido) => {
           console.log(
-            `Factura ID: ${pedido.idFactura}, Cliente: ${
-              pedido.cliente
-                ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
-                : "Consumidor final"
+            `Factura ID: ${pedido.idFactura}, Cliente: ${pedido.cliente
+              ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
+              : "Consumidor final"
             }, Notas: ${pedido.notas || "Sin notas"}`
           );
         });
@@ -243,19 +242,19 @@ const Pedidos = () => {
     doc.setFontSize(12);
     doc.text(`Factura - Ticket #${pedido.idFactura}`, 10, 25);
     doc.text(
-      `Cliente: ${
-        pedido.cliente
-          ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
-          : "Consumidor final"
+      `Cliente: ${pedido.cliente
+        ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
+        : "Consumidor final"
       }`,
       10,
       35
     );
     doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 45);
     doc.text(
-      `Cajero: ${
-        pedido.cajero
-          ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}`
+      `Cajero: ${pedido.cajero
+        ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}`
+        : pedido.cajeroNombre
+          ? `${pedido.cajeroNombre} ${pedido.cajeroApellido || ""}`
           : "Sin cajero asignado"
       }`,
       10,
@@ -402,8 +401,7 @@ const Pedidos = () => {
       );
       abrirModal(
         "error",
-        `Error al eliminar la factura: ${
-          err.response?.data?.message || err.message
+        `Error al eliminar la factura: ${err.response?.data?.message || err.message
         }`
       );
     }
@@ -588,9 +586,8 @@ const Pedidos = () => {
                       setCurrentPagePedidos
                     )}
                     <li
-                      className={`page-item ${
-                        currentPagePedidos === totalPagesPedidos ? "disabled" : ""
-                      }`}
+                      className={`page-item ${currentPagePedidos === totalPagesPedidos ? "disabled" : ""
+                        }`}
                     >
                       <button
                         className="page-link"
@@ -679,9 +676,8 @@ const Pedidos = () => {
                 setCurrentPageForProduct
               )}
               <li
-                className={`page-item ${
-                  currentPageClientes === totalPagesClientes ? "disabled" : ""
-                }`}
+                className={`page-item ${currentPageClientes === totalPagesClientes ? "disabled" : ""
+                  }`}
               >
                 <button
                   className="page-link"
@@ -727,17 +723,18 @@ const Pedidos = () => {
           <p>
             Cajero:{" "}
             {pedidoAConfirmar?.cajero
-              ? `${pedidoAConfirmar.cajero.nombre} ${
-                  pedidoAConfirmar.cajero.apellido || ""
+              ? `${pedidoAConfirmar.cajero.nombre} ${pedidoAConfirmar.cajero.apellido || ""
+              }`
+              : pedidoAConfirmar?.cajeroNombre
+                ? `${pedidoAConfirmar.cajeroNombre} ${pedidoAConfirmar.cajeroApellido || ""
                 }`
-              : "Sin cajero asignado"}
+                : "Sin cajero asignado"}
           </p>
           <p>
             Cliente:{" "}
             {pedidoAConfirmar?.cliente
-              ? `${pedidoAConfirmar.cliente.nombre} ${
-                  pedidoAConfirmar.cliente.apellido || ""
-                }`
+              ? `${pedidoAConfirmar.cliente.nombre} ${pedidoAConfirmar.cliente.apellido || ""
+              }`
               : "Consumidor final"}
           </p>
           {pedidoAConfirmar?.notas && (
@@ -759,9 +756,7 @@ const Pedidos = () => {
             <tbody>
               {productosAConfirmar.map((item, i) => {
                 const precioSinIva = item.precio;
-                const precioConIva = item.iva
-                  ? item.precio * 1.19
-                  : item.precio;
+                const precioConIva = item.iva ? item.precio * 1.19 : item.precio;
                 const subtotalProducto = item.cantidad * precioConIva;
 
                 return (
@@ -877,12 +872,10 @@ const Pedidos = () => {
           ¿Desea eliminar la factura del cliente{" "}
           <strong>
             {pedidoAEliminar?.cliente
-              ? `${pedidoAEliminar.cliente.nombre} ${
-                  pedidoAEliminar.cliente.apellido || ""
-                }`
-              : `Consumidor final${
-                  pedidoAEliminar?.notas ? ` (${pedidoAEliminar.notas})` : ""
-                }`}
+              ? `${pedidoAEliminar.cliente.nombre} ${pedidoAEliminar.cliente.apellido || ""
+              }`
+              : `Consumidor final${pedidoAEliminar?.notas ? ` (${pedidoAEliminar.notas})` : ""
+              }`}
           </strong>
           ?
         </p>

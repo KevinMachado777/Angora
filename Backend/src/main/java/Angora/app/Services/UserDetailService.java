@@ -3,8 +3,10 @@ package Angora.app.Services;
 import Angora.app.Controllers.dto.AuthCreateUserRequest;
 import Angora.app.Controllers.dto.AuthLoginRequest;
 import Angora.app.Controllers.dto.AuthResponse;
+import Angora.app.Entities.Factura;
 import Angora.app.Entities.Permiso;
 import Angora.app.Entities.RefreshToken;
+import Angora.app.Repositories.FacturaRepository;
 import Angora.app.Repositories.PermisoRepository;
 import Angora.app.Repositories.RefreshTokenRepository;
 import Angora.app.Repositories.UsuarioRepository;
@@ -45,6 +47,9 @@ public class UserDetailService implements UserDetailsService{
     // Repositorio del permiso
     @Autowired
     private PermisoRepository permisoRepository;
+
+    @Autowired
+    private FacturaRepository facturaRepository;
 
     // Servicio de correo
     @Autowired
@@ -370,11 +375,19 @@ public class UserDetailService implements UserDetailsService{
     }
 
     // Elimina un usuario de la base de datos, incluyendo la eliminación de su foto de Cloudinary.
-
     public void eliminarUsuario(Long id) throws IOException {
         Usuario usuario = usuarioRepository.findById(id).orElse(null);
         if (usuario == null) {
             throw new RuntimeException("Usuario no encontrado con ID: " + id);
+        }
+
+        // Copiar los datos del cajero a las facturas antes de eliminarlo
+        List<Factura> facturas = facturaRepository.findByCajero(id);
+        for (Factura factura : facturas) {
+            factura.setCajeroNombre(usuario.getNombre());
+            factura.setCajeroApellido(usuario.getApellido());
+            factura.setCajero(null); // Desasociar el usuario de la factura
+            facturaRepository.save(factura);
         }
 
         // Eliminar la foto de Cloudinary si existe

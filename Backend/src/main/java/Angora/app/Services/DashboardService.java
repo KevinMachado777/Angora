@@ -205,8 +205,8 @@ public class DashboardService implements IDashboardService {
      * En este sistema, los pedidos son facturas no confirmadas
      */
     public List<FacturaPendienteDTO> getPedidosPendientes() {
-        // Buscar facturas con estado false (pedidos no confirmados)
-        List<Factura> facturasPendientes = facturaRepository.findByEstado("PENDIENTE"); // o usar el método boolean si existe
+        // Buscar facturas con estado PENDIENTE usando LEFT JOIN para cajero
+        List<Factura> facturasPendientes = facturaRepository.findByEstadoWithCajeroLeftJoin("PENDIENTE");
 
         return facturasPendientes.stream()
                 .map(this::convertirAFacturaPendienteDTO)
@@ -385,6 +385,11 @@ public class DashboardService implements IDashboardService {
             cajeroDTO.setNombre(factura.getCajero().getNombre());
             cajeroDTO.setApellido(factura.getCajero().getApellido());
             dto.setCajero(cajeroDTO);
+        } else {
+            // Si no hay cajero, usar cajeroNombre y cajeroApellido de la factura
+            dto.setCajero(null);
+            dto.setCajeroNombre(factura.getCajeroNombre() != null ? factura.getCajeroNombre() : "Desconocido");
+            dto.setCajeroApellido(factura.getCajeroApellido() != null ? factura.getCajeroApellido() : "");
         }
 
         // Convertir cartera
@@ -407,7 +412,7 @@ public class DashboardService implements IDashboardService {
                             productoDTO.setNombre(fp.getProducto().getNombre());
                             // Asumo que FacturaProducto tiene cantidad y precio
                             productoDTO.setCantidad(fp.getCantidad());
-                            productoDTO.setPrecio(fp.getPrecioUnitario());
+                            productoDTO.setPrecio(fp.getPrecioUnitario() != null ? fp.getPrecioUnitario() : fp.getProducto().getPrecio());
                             productoDTO.setIva(fp.getProducto().getIva());
                         }
                         return productoDTO;
@@ -418,6 +423,7 @@ public class DashboardService implements IDashboardService {
 
         return dto;
     }
+
     public DashboardController.ConfiguracionDashboardDTO getConfiguracionEnvio() {
         Optional<ConfiguracionDashboard> config = configuracionRepository.findByActivoTrue();
 
@@ -563,9 +569,6 @@ public class DashboardService implements IDashboardService {
         }
     }
 
-    /**
-     * Genera el HTML del resumen del dashboard para el correo
-     */
     /**
      * Genera el HTML del resumen del dashboard para el correo
      */
