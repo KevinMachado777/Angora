@@ -135,7 +135,7 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.DELETE, "/passwordReset/**").permitAll();
 
                     // Proveedores
-                    http.requestMatchers(HttpMethod.GET,"/proveedores/**").hasAuthority("PROVEEDORES");
+                    http.requestMatchers(HttpMethod.GET,"/proveedores/**").hasAnyAuthority("PROVEEDORES", "INVENTARIOS");
                     http.requestMatchers(HttpMethod.POST,"/proveedores/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.PUT,"/proveedores/**").hasAuthority("PROVEEDORES");
                     http.requestMatchers(HttpMethod.DELETE,"/proveedores/**").hasAuthority("PROVEEDORES");

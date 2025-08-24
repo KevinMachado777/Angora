@@ -188,14 +188,22 @@ public class CarteraController {
                 dto.setIdCartera(carteraDTO);
             }
 
-            // Mapear el cajero si existe
+            // Mapear el cajero si existe, y usar cajeroNombre/cajeroApellido incluso si es null
             if (factura.getCajero() != null) {
                 FacturaPendienteDTO.UsuarioDTO cajeroDTO = new FacturaPendienteDTO.UsuarioDTO();
                 cajeroDTO.setId(factura.getCajero().getId());
                 cajeroDTO.setNombre(factura.getCajero().getNombre());
                 cajeroDTO.setApellido(factura.getCajero().getApellido());
                 dto.setCajero(cajeroDTO);
+                dto.setCajeroNombre(factura.getCajero().getNombre());
+                dto.setCajeroApellido(factura.getCajero().getApellido());
+            } else {
+                // Si no hay cajero, usar los valores guardados en la factura (si existen)
+                dto.setCajeroNombre(factura.getCajeroNombre() != null ? factura.getCajeroNombre() : "Desconocido");
+                dto.setCajeroApellido(factura.getCajeroApellido() != null ? factura.getCajeroApellido() : "");
             }
+
+            dto.setNotas(factura.getNotas());
 
             // Devolver el DTO en la respuesta
             return ResponseEntity.ok(dto);

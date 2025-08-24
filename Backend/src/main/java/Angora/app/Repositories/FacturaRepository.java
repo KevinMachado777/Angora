@@ -53,4 +53,6 @@ public interface FacturaRepository extends JpaRepository<Factura, Long> {
     Long countDistinctClientesByFechaBetween(@Param("fechaInicio") LocalDateTime fechaInicio,
                                              @Param("fechaFin") LocalDateTime fechaFin);
 
+    @Query("SELECT f FROM Factura f LEFT JOIN FETCH f.cajero WHERE f.estado = ?1")
+    List<Factura> findByEstadoWithCajeroLeftJoin(String estado);
 }

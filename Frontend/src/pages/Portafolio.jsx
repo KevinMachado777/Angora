@@ -856,14 +856,12 @@ const Portafolio = () => {
         try {
             console.log("facturaRow recibida en abrirModalDetalles:", facturaRow);
 
-            // Extraer el ID de la factura
             const idFactura = facturaRow.idFactura;
 
             if (!idFactura) {
                 throw new Error("ID de factura no válido.");
             }
 
-            // Hacer solicitud al backend para obtener la factura completa
             const respuesta = await axios.get(`${urlBackend}/carteras/facturas/${idFactura}`, {
                 headers: {
                     'Accept': 'application/json',
@@ -871,16 +869,19 @@ const Portafolio = () => {
                 }
             });
 
+            console.log("Respuesta completa del endpoint /carteras/facturas/", idFactura, ":", JSON.stringify(respuesta.data, null, 2));
+
             const facturaCompleta = respuesta.data;
 
-            // Asegurarse de que la factura tenga los datos necesarios
             const factura = {
                 ...facturaCompleta,
-                cajero: facturaCompleta.cajero || { id: "Desconocido" }, // Fallback si el cajero no está presente
+                cajero: facturaCompleta.cajero || null,
+                cajeroNombre: facturaCompleta.cajeroNombre || 'Desconocido',
+                cajeroApellido: facturaCompleta.cajeroApellido || '',
                 productos: Array.isArray(facturaCompleta.productos) ? facturaCompleta.productos : []
             };
 
-            console.log("Factura completa cargada para detalles:", factura);
+            console.log("Factura mapeada para detalles:", factura);
             setFacturaSeleccionada(factura);
             setModalDetallesAbierta(true);
         } catch (error) {
@@ -1181,12 +1182,12 @@ const Portafolio = () => {
                                     setFacturaSeleccionadaParaAbono(factura || null);
                                     setBotonDesactivado(
                                         parseFloat(cantidadAbonar) <= 0 || !factura
-                                    );             
+                                    );
                                 }}
                                 size={
                                     (creditosPorCliente[personaCartera.id]?.facturas?.length || 0) < 5
-                                    ? creditosPorCliente[personaCartera.id]?.facturas?.length
-                                    : 5
+                                        ? creditosPorCliente[personaCartera.id]?.facturas?.length
+                                        : 5
                                 }>
                                 <option value="">Seleccione una factura</option>
                                 {creditosPorCliente[personaCartera.id]?.facturas?.filter(f => f.saldoPendiente > 0).map(factura => (
@@ -1261,7 +1262,7 @@ const Portafolio = () => {
                             <p><strong>Factura #{facturaSeleccionada.idFactura}</strong></p>
                             <p>Fecha: {new Date(facturaSeleccionada.fecha).toLocaleDateString('es-CO')}</p>
                             <p>Cliente: {personaCartera?.nombre || personaSelect?.nombre} {personaCartera?.apellido || personaSelect?.apellido}</p>
-                            <p>Cajero: {`${facturaSeleccionada.cajero?.nombre || 'Desconocido'} ${facturaSeleccionada.cajero?.apellido || ''}`.trim() || 'Desconocido'}</p>
+                            <p>Cajero: {`${facturaSeleccionada.cajeroNombre || 'Desconocido'} ${facturaSeleccionada.cajeroApellido || ''}`.trim() || 'Desconocido'}</p>
                             <p>Estado: {facturaSeleccionada.estado}</p>
                             <hr />
                             <table>

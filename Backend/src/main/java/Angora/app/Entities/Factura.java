@@ -51,4 +51,10 @@ public class Factura {
 
     @Column(name = "notas", length = 255)
     private String notas;
+
+    @Column(name = "cajero_nombre", length = 100)
+    private String cajeroNombre;
+
+    @Column(name = "cajero_apellido", length = 100)
+    private String cajeroApellido;
 }
