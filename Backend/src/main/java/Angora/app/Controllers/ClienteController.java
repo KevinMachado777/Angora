@@ -109,27 +109,24 @@ public class ClienteController {
     @PutMapping(value = "/{id}/desactivar", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> desactivarCliente(@PathVariable Long id) {
         Map<String, String> response = new HashMap<>();
-        // Busca el cliente activo
         Optional<Cliente> cliente = clienteRepository.findByIdClienteAndActivo(id, true);
         if (!cliente.isPresent()) {
             response.put("mensaje", "Cliente no encontrado o ya está inactivo.");
             return ResponseEntity.notFound().build();
         }
 
-        // Chequea si tiene una cartera activa o deudas
         Cartera cartera = carteraRepository.findByIdCliente_IdCliente(id);
         if (cartera != null) {
             if (cartera.getEstado()) {
                 response.put("mensaje", "No se puede desactivar un cliente con cartera activa.");
                 return ResponseEntity.badRequest().body(response);
             }
-            if (cartera.getDeudas() > 0) {
-                response.put("mensaje", "No se puede desactivar un cliente con deudas pendientes.");
+            if (cartera.getDeudas() > 0 || cartera.getAbono() > cartera.getDeudas()) {
+                response.put("mensaje", "No se puede desactivar un cliente con deudas o créditos a favor.");
                 return ResponseEntity.badRequest().body(response);
             }
         }
 
-        // Desactiva el cliente
         cliente.get().setActivo(false);
         clienteRepository.save(cliente.get());
         response.put("mensaje", "Cliente desactivado exitosamente.");
@@ -154,6 +151,7 @@ public class ClienteController {
         return ResponseEntity.ok(response);
     }
 
+    // Metodo para ver los clientes acivos con cartera
     @GetMapping(value = "/activos-con-cartera", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ClienteConCarteraDTO>> obtenerClientesActivosConCartera() {
         List<Cliente> clientesActivos = clienteRepository.findByActivoTrue();
@@ -171,5 +169,4 @@ public class ClienteController {
 
         return ResponseEntity.ok(clientesConCartera);
     }
-
 }
