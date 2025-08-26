@@ -240,7 +240,7 @@ const Pedidos = () => {
     doc.setFontSize(16);
     doc.text("Fragancey's", 105, 15, { align: "center" });
     doc.setFontSize(12);
-    doc.text(`Factura - Ticket #${pedido.idFactura}`, 10, 25);
+    doc.text(`Factura #${pedido.idFactura}`, 10, 25);
     doc.text(
       `Cliente: ${pedido.cliente
         ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
@@ -251,11 +251,11 @@ const Pedidos = () => {
     );
     doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 45);
     doc.text(
-      `Cajero: ${pedido.cajero
+      `Usuario: ${pedido.cajero
         ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}`
         : pedido.cajeroNombre
           ? `${pedido.cajeroNombre} ${pedido.cajeroApellido || ""}`
-          : "Sin cajero asignado"
+          : "Sin usuario asignado"
       }`,
       10,
       55
@@ -315,7 +315,7 @@ const Pedidos = () => {
     doc.setFontSize(10);
     doc.text("¡Gracias por tu compra!", 105, y, { align: "center" });
 
-    doc.save(`Factura_Ticket_${pedido.idFactura}.pdf`);
+    doc.save(`Factura_${pedido.idFactura}.pdf`);
   };
 
   const abrirModalConfirmar = (pedido) => {
@@ -507,7 +507,7 @@ const Pedidos = () => {
             <table className="table table-sm table-bordered">
               <thead>
                 <tr>
-                  <th># Ticket</th>
+                  <th># Factura</th>
                   <th>Cliente</th>
                   <th>Precio Total</th>
                   <th>Opciones</th>
@@ -526,7 +526,7 @@ const Pedidos = () => {
               <table className="table table-sm table-bordered">
                 <thead>
                   <tr>
-                    <th># Ticket</th>
+                    <th># Factura</th>
                     <th>Cliente</th>
                     <th>Precio Total</th>
                     <th>Opciones</th>
@@ -637,7 +637,7 @@ const Pedidos = () => {
                     </p>
                     <p>
                       <i className="bi bi-receipt-cutoff text-dark"></i>
-                      Ticket #{c.ticketId}
+                      Factura #{c.ticketId}
                     </p>
                     <p>
                       <i className="bi bi-box2-heart-fill text-success"></i>
@@ -711,7 +711,7 @@ const Pedidos = () => {
         <hr className="my-3" />
         <p className="text-center text-muted">
           Seleccione una opción para finalizar la venta de la factura{" "}
-          <strong>(Ticket #{pedidoAConfirmar?.idFactura})</strong>.
+          <strong>(Factura #{pedidoAConfirmar?.idFactura})</strong>.
         </p>
         <div className="ticket">
           <h3 style={{ textAlign: "center" }}>Fraganceys</h3>
@@ -721,14 +721,14 @@ const Pedidos = () => {
               new Date(pedidoAConfirmar.fecha).toLocaleString()}
           </p>
           <p>
-            Cajero:{" "}
+            Usuario:{" "}
             {pedidoAConfirmar?.cajero
               ? `${pedidoAConfirmar.cajero.nombre} ${pedidoAConfirmar.cajero.apellido || ""
               }`
               : pedidoAConfirmar?.cajeroNombre
                 ? `${pedidoAConfirmar.cajeroNombre} ${pedidoAConfirmar.cajeroApellido || ""
                 }`
-                : "Sin cajero asignado"}
+                : "Sin usuario asignado"}
           </p>
           <p>
             Cliente:{" "}
