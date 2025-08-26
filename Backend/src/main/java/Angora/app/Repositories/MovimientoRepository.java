@@ -29,7 +29,7 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
 
     List<Movimiento> findByProducto_IdProducto(Long idProducto);
 
-    List<Movimiento> findByMateriaPrima_IdMateria(Long idMateria);
+    List<Movimiento> findByMateriaPrima_IdMateria(String idMateria);
 
     Integer countByFechaMovimientoBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);
 

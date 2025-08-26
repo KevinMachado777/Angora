@@ -62,7 +62,6 @@ public class MovimientoInventarioService {
         productoRepository.save(producto);
     }
 
-
      // Ajustar stock manualmente (por producción manual, ajustes, etc).
     @Transactional
     public void ajustarStockProducto(Long idProducto, Integer cantidadAjuste, String motivo) {
@@ -104,5 +103,4 @@ public class MovimientoInventarioService {
         mov.setFechaMovimiento(LocalDateTime.now());
         movimientoRepository.save(mov);
     }
-
 }

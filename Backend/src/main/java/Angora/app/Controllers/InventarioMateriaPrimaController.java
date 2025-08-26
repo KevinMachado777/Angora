@@ -10,37 +10,33 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// Controlador de materia prima
 @RestController
 @RequestMapping("/inventarioMateria")
 public class InventarioMateriaPrimaController {
 
-    // Servicio de inventario de materia prima
     @Autowired
     private MateriaPrimaService materiaPrimaService;
 
-    // Obtener todas las materias primas del inventario
+    // Metodo que obtiene todas las materias
     @GetMapping
     public ResponseEntity<?> getAll(){
         return new ResponseEntity<>(materiaPrimaService.findAll(), HttpStatus.OK);
     }
 
-    // Obtener una materia por ID
+    // Metodo para buscar una materia por id
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id){
+    public ResponseEntity<?> getById(@PathVariable String id){ // Modificado: Long a String
         return new ResponseEntity<>(materiaPrimaService.findById(id), HttpStatus.OK);
     }
 
-    // Guardar una materia prima
-    // ¡IMPORTANTE crear otro metodo en el servicio si es para orden y otro metodo en el controlador!
-    // Este metodo es exclusivo para guardar si la materia no tiene proveedor
+    // Metodo para crear una materia
     @PostMapping
     public ResponseEntity<?> create(@RequestBody MateriaDTO materia){
         System.out.println("Materia a guardar: " + materia);
         return new ResponseEntity<>(materiaPrimaService.save(materia), HttpStatus.CREATED);
     }
 
-    // Actualizar una materia
+    // Metodo para actualizar una materia
     @PutMapping
     public ResponseEntity<?> update(@RequestBody MateriaDTO materia){
         System.out.println("Materia a modificar: " + materia);
