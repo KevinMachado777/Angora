@@ -86,6 +86,7 @@ public class ClienteService implements IClienteService {
             clienteExistente.setEmail(cliente.getEmail());
             clienteExistente.setTelefono(cliente.getTelefono());
             clienteExistente.setDireccion(cliente.getDireccion());
+            clienteExistente.setMayorista(cliente.getMayorista());
             Cliente clienteActualizado = clienteRepository.save(clienteExistente);
             logger.info("Cliente actualizado con ID: " + clienteActualizado.getIdCliente());
             return clienteActualizado;
@@ -96,17 +97,15 @@ public class ClienteService implements IClienteService {
     @Override
     public void eliminarCliente(Long idCliente) {
         logger.info("Eliminando cliente con ID: " + idCliente);
-        // Verifica que el cliente exista
         Cliente cliente = clienteRepository.findById(idCliente)
                 .orElseThrow(() -> {
                     logger.error("Cliente con ID " + idCliente + " no encontrado");
                     return new RecursoNoEncontrado("Cliente no encontrado con ID: " + idCliente);
                 });
-        // Impide eliminar si tiene una cartera activa
         Cartera cartera = carteraRepository.findByIdCliente_IdCliente(idCliente);
-        if (cartera != null && cartera.getEstado()) {
-            logger.error("No se puede eliminar el cliente con ID " + idCliente + " porque tiene una cartera activa");
-            throw new IllegalStateException("No se puede eliminar un cliente con cartera activa");
+        if (cartera != null && (cartera.getDeudas() > 0 || cartera.getAbono() > cartera.getDeudas())) {
+            logger.error("No se puede eliminar el cliente con ID " + idCliente + " porque tiene deudas o créditos a favor.");
+            throw new IllegalStateException("No se puede eliminar un cliente con deudas o créditos a favor.");
         }
         clienteRepository.delete(cliente);
         logger.info("Cliente eliminado con ID: " + idCliente);

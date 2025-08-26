@@ -39,7 +39,7 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     // Verifica si el correo ya está en la BD
     boolean existsByEmail(String email);
 
-    //
+    // Contar el numero de compras asociadas a un cliente
     @Query("SELECT c FROM Cliente c LEFT JOIN Factura f ON c.idCliente = f.cliente.idCliente GROUP BY c.idCliente")
     List<Cliente> findAllWithCompraCount();
 }

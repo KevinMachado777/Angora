@@ -2,10 +2,7 @@ package Angora.app.Controllers;
 
 import Angora.app.Controllers.dto.ConfirmarFacturaDTO;
 import Angora.app.Controllers.dto.FacturaPendienteDTO;
-import Angora.app.Entities.Cartera;
-import Angora.app.Entities.Factura;
-import Angora.app.Entities.FacturaProducto;
-import Angora.app.Entities.Producto;
+import Angora.app.Entities.*;
 import Angora.app.Repositories.*;
 import Angora.app.Services.Email.EnviarCorreo;
 import Angora.app.Services.MovimientoInventarioService;
@@ -19,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +43,9 @@ public class PedidosController {
 
     @Autowired
     private MovimientoInventarioService movimientoInventarioService;
+
+    @Autowired
+    private HistorialAbonoRepository historialAbonoRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -137,8 +139,10 @@ public class PedidosController {
     @Transactional
     public ResponseEntity<?> confirmarFactura(@PathVariable Long id, @RequestBody ConfirmarFacturaDTO dto) {
         try {
-            Factura factura = facturaRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Factura no encontrada: " + id));
+            Factura factura = entityManager.find(Factura.class, id, LockModeType.PESSIMISTIC_WRITE);
+            if (factura == null) {
+                throw new RuntimeException("Factura no encontrada: " + id);
+            }
 
             if (!factura.getEstado().equals("PENDIENTE")) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("La factura no está en estado PENDIENTE");
@@ -153,18 +157,45 @@ public class PedidosController {
                 }
             }
 
-            // *** NUEVO: HACER SNAPSHOT DE PRECIOS ANTES DE CONFIRMAR ***
+            // Hacer snapshot de precios antes de confirmar
             for (FacturaProducto fp : factura.getProductos()) {
                 Integer precioActual = fp.getProducto().getPrecio();
                 Integer subtotalItem = precioActual * fp.getCantidad();
 
-                // Guardar precios estáticos
                 fp.setPrecioUnitario(precioActual);
                 fp.setSubtotal(subtotalItem);
             }
 
-            // Recalcular totales con precios estáticos
+            // Recalcular totales
             recalcularTotalesFactura(factura);
+
+            // Aplicar crédito a favor solo al confirmar
+            if (factura.getIdCartera() != null) {
+                Cartera cartera = carteraRepository.findById(factura.getIdCartera().getIdCartera())
+                        .orElseThrow(() -> new RuntimeException("Cartera no encontrada: " + factura.getIdCartera().getIdCartera()));
+                Float creditoAFavor = cartera.getCreditoAFavor() != null ? cartera.getCreditoAFavor() : 0f;
+                Float total = factura.getTotal() != null ? factura.getTotal().floatValue() : 0f;
+                Float nuevoSaldoPendiente = Math.max(0f, total - creditoAFavor);
+                Float nuevoCreditoAFavor = Math.max(0f, creditoAFavor - total);
+
+                factura.setSaldoPendiente(nuevoSaldoPendiente.intValue());
+                cartera.setDeudas(cartera.getDeudas() + nuevoSaldoPendiente);
+                cartera.setCreditoAFavor(nuevoCreditoAFavor);
+                carteraRepository.save(cartera);
+
+                // Registrar historial si se usó crédito a favor
+                if (creditoAFavor > 0) {
+                    HistorialAbono historial = new HistorialAbono();
+                    historial.setCliente(factura.getCliente());
+                    historial.setFactura(factura);
+                    historial.setMontoAbono(Math.min(creditoAFavor, total));
+                    historial.setSaldoAnterior(total);
+                    historial.setSaldoNuevo(nuevoSaldoPendiente);
+                    historial.setFechaAbono(LocalDateTime.now());
+                    historial.setDescripcion("Abono automático desde crédito a favor para factura #" + factura.getIdFactura());
+                    historialAbonoRepository.save(historial); // Asegúrate de inyectar historialAbonoRepository
+                }
+            }
 
             // Cambiar estado a CONFIRMADO
             factura.setEstado("CONFIRMADO");
@@ -172,22 +203,6 @@ public class PedidosController {
             // Actualizar inventario
             for (ConfirmarFacturaDTO.FacturaProductoDTO fp : dto.getProductos()) {
                 movimientoInventarioService.descontarPorVenta(fp.getIdProducto(), fp.getCantidad());
-            }
-
-            // Gestionar cartera si saldoPendiente > 0
-            if (factura.getSaldoPendiente() != null && factura.getSaldoPendiente() > 0 && factura.getIdCartera() != null) {
-                Cartera cartera = carteraRepository.findById(factura.getIdCartera().getIdCartera())
-                        .orElseThrow(() -> new RuntimeException("Cartera no encontrada: " + factura.getIdCartera().getIdCartera()));
-                Float deudaActual = cartera.getDeudas() != null ? cartera.getDeudas() : 0f;
-                Float nuevaDeuda = Float.valueOf(deudaActual + factura.getSaldoPendiente());
-                if (nuevaDeuda < 0) {
-                    throw new RuntimeException("Deuda calculada inválida para la cartera");
-                }
-                cartera.setDeudas(nuevaDeuda);
-                carteraRepository.save(cartera);
-            } else {
-                factura.setIdCartera(null);
-                factura.setSaldoPendiente(0);
             }
 
             // Guardar la factura actualizada
@@ -283,6 +298,7 @@ public class PedidosController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
         }
     }
+
     private void recalcularTotalesFactura(Factura factura) {
         Integer subtotalCalculado = 0;
         Integer totalCalculado = 0;

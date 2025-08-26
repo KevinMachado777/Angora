@@ -29,4 +29,6 @@ public class Cliente {
     @OneToMany(mappedBy = "cliente")
     @JsonManagedReference("cliente-facturas")
     private List<Factura> facturas;
+
+    private Boolean mayorista;
 }

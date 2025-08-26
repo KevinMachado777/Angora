@@ -30,4 +30,6 @@ public class Cartera {
     @OneToMany(mappedBy = "idCartera")
     @JsonManagedReference("cartera-facturas")
     private List<Factura> facturas = new ArrayList<>();
+
+    private Float creditoAFavor;
 }

@@ -1,16 +1,20 @@
 package Angora.app.Services;
 
 import Angora.app.Entities.Cartera;
+import Angora.app.Entities.Cliente;
 import Angora.app.Entities.Factura;
+import Angora.app.Entities.HistorialAbono;
 import Angora.app.Repositories.CarteraRepository;
 import Angora.app.Repositories.ClienteRepository;
 import Angora.app.Repositories.FacturaRepository;
 import Angora.app.Exceptions.RecursoNoEncontrado;
+import Angora.app.Repositories.HistorialAbonoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -27,6 +31,9 @@ public class CarteraService implements ICarteraService {
 
     @Autowired
     private FacturaRepository facturaRepository;
+
+    @Autowired
+    private HistorialAbonoRepository historialAbonoRepository;
 
     // Busca la cartera de un cliente por su ID
     @Override
@@ -56,60 +63,37 @@ public class CarteraService implements ICarteraService {
         return carteras;
     }
 
-    // Procesa un abono para una factura específica de un cliente
+    // Procesa un abono para una factura específica de un cliente y almacena el historial
     @Override
     public Cartera procesarAbono(Long idCliente, Integer cantidad, String fecha, Long idFactura) {
         logger.info("Procesando abono de " + cantidad + " para cliente con ID: " + idCliente + ", factura ID: " + idFactura);
-        // Verifica que el cliente exista
-        clienteRepository.findById(idCliente)
-                .orElseThrow(() -> {
-                    logger.error("Cliente con ID " + idCliente + " no encontrado");
-                    return new RecursoNoEncontrado("Cliente no encontrado con ID: " + idCliente);
-                });
-        // Verifica que la cartera exista y esté activa
+
+        Cliente cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new RecursoNoEncontrado("Cliente no encontrado con ID: " + idCliente));
+
         Cartera cartera = carteraRepository.findByIdCliente_IdCliente(idCliente);
         if (cartera == null || !cartera.getEstado()) {
-            logger.error("El cliente con ID " + idCliente + " no tiene una cartera activa");
             throw new IllegalStateException("El cliente no tiene una cartera activa");
         }
-        // Valida que el abono sea mayor a 0
+
         if (cantidad <= 0) {
-            logger.error("Cantidad de abono inválida: " + cantidad);
             throw new IllegalArgumentException("El abono no puede ser menor o igual a 0");
         }
-        // Valida que el abono no exceda la deuda total
-        if (cantidad > cartera.getDeudas()) {
-            logger.error("El abono de " + cantidad + " excede la deuda total de " + cartera.getDeudas());
-            throw new IllegalArgumentException("El abono no puede ser mayor al saldo pendiente total de la cartera.");
-        }
-        // Valida que el abono sea múltiplo de 50
-        if (cantidad % 50 != 0) {
-            logger.error("El abono de " + cantidad + " no es un múltiplo de 50.");
-            throw new IllegalArgumentException("El abono debe ser un valor en múltiplos de 50 (ejemplo: 15.850).");
-        }
-        // Valida que el abono sea mínimo 2.000
-        if (cantidad < 500) {
-            logger.error("El abono de " + cantidad + " es menor al mínimo de 2.000.");
-            throw new IllegalArgumentException("El abono debe ser al menos 2.000.");
-        }
-        // Obtiene las facturas de la cartera
+
         List<Factura> facturas = facturaRepository.findByIdCarteraIdCartera(cartera.getIdCartera());
         if (facturas.isEmpty()) {
-            logger.error("No hay facturas asociadas a la cartera del cliente con ID: " + idCliente);
             throw new IllegalStateException("No hay facturas para abonar");
         }
-        // Ordena facturas por fecha (de más antigua a más reciente)
         facturas.sort(Comparator.comparing(Factura::getFecha));
-        // Busca la factura seleccionada
+
         Factura facturaInicial = facturas.stream()
                 .filter(f -> f.getIdFactura().equals(idFactura))
                 .findFirst()
-                .orElseThrow(() -> {
-                    logger.error("Factura con ID " + idFactura + " no encontrada");
-                    return new RecursoNoEncontrado("Factura no encontrada con ID: " + idFactura);
-                });
-        // Aplica el abono a la factura seleccionada
+                .orElseThrow(() -> new RecursoNoEncontrado("Factura no encontrada con ID: " + idFactura));
+
+        Integer saldoAnteriorInicial = facturaInicial.getSaldoPendiente();
         Integer cantidadRestante = cantidad;
+
         Integer nuevoSaldo = facturaInicial.getSaldoPendiente() - cantidadRestante;
         if (nuevoSaldo < 0) {
             cantidadRestante = -nuevoSaldo;
@@ -119,37 +103,77 @@ public class CarteraService implements ICarteraService {
             cantidadRestante = 0;
         }
         facturaRepository.save(facturaInicial);
-        // Distribuye el excedente a otras facturas en orden de fecha
+
+        HistorialAbono historial = new HistorialAbono();
+        historial.setCliente(cliente);
+        historial.setFactura(facturaInicial);
+        historial.setMontoAbono(Float.valueOf(cantidad - (cantidadRestante > 0 ? cantidadRestante : 0)));
+        historial.setSaldoAnterior(Float.valueOf(saldoAnteriorInicial));
+        historial.setSaldoNuevo(Float.valueOf(facturaInicial.getSaldoPendiente()));
+        historial.setFechaAbono(LocalDateTime.now());
+        historial.setDescripcion("Abono aplicado a factura #" + facturaInicial.getIdFactura());
+        historialAbonoRepository.save(historial);
+
         if (cantidadRestante > 0) {
-            for (Factura factura : facturas) {
-                if (!factura.getIdFactura().equals(idFactura) && factura.getSaldoPendiente() > 0) {
-                    nuevoSaldo = factura.getSaldoPendiente() - cantidadRestante;
-                    if (nuevoSaldo < 0) {
-                        cantidadRestante = -nuevoSaldo;
-                        factura.setSaldoPendiente(0);
-                    } else {
-                        factura.setSaldoPendiente(nuevoSaldo);
-                        cantidadRestante = 0;
-                    }
-                    facturaRepository.save(factura);
-                    if (cantidadRestante == 0) break;
+            List<Factura> facturasRestantes = facturas.stream()
+                    .filter(f -> !f.getIdFactura().equals(idFactura) && f.getSaldoPendiente() > 0)
+                    .sorted(Comparator.comparing(Factura::getFecha))
+                    .toList();
+
+            for (Factura factura : facturasRestantes) {
+                Integer saldoAnterior = factura.getSaldoPendiente();
+                nuevoSaldo = factura.getSaldoPendiente() - cantidadRestante;
+                Integer montoAplicado;
+
+                if (nuevoSaldo < 0) {
+                    montoAplicado = cantidadRestante + nuevoSaldo;
+                    cantidadRestante = -nuevoSaldo;
+                    factura.setSaldoPendiente(0);
+                } else {
+                    montoAplicado = cantidadRestante;
+                    factura.setSaldoPendiente(nuevoSaldo);
+                    cantidadRestante = 0;
                 }
+                facturaRepository.save(factura);
+
+                HistorialAbono historialExcedente = new HistorialAbono();
+                historialExcedente.setCliente(cliente);
+                historialExcedente.setFactura(factura);
+                historialExcedente.setMontoAbono(Float.valueOf(montoAplicado));
+                historialExcedente.setSaldoAnterior(Float.valueOf(saldoAnterior));
+                historialExcedente.setSaldoNuevo(Float.valueOf(factura.getSaldoPendiente()));
+                historialExcedente.setFechaAbono(LocalDateTime.now());
+                historialExcedente.setDescripcion("Excedente aplicado desde factura #" + facturaInicial.getIdFactura());
+                historialAbonoRepository.save(historialExcedente);
+
+                if (cantidadRestante == 0) break;
             }
         }
-        // Actualiza el total de deudas y abonos en la cartera
-        float nuevasDeudas = facturas.stream()
-                .map(Factura::getSaldoPendiente)
-                .reduce(0, Integer::sum);
-        Float nuevoAbono = (float) (cartera.getAbono() + cantidad);
+
+        // Recalcular deudas, abono y crédito a favor
+        List<Factura> todasLasFacturas = facturaRepository.findByIdCarteraIdCartera(cartera.getIdCartera());
+        float nuevasDeudas = todasLasFacturas.stream().mapToInt(Factura::getSaldoPendiente).sum();
+        Float nuevoAbono = cartera.getAbono() + cantidad;
+
+        // Calcular crédito a favor considerando nuevas facturas
+        float nuevoCreditoAFavor = (cantidadRestante > 0 && nuevasDeudas == 0) ? cartera.getCreditoAFavor() + cantidadRestante : 0f;
+        if (nuevoCreditoAFavor > 0 && nuevasDeudas == 0) {
+            cartera.setCreditoAFavor(nuevoCreditoAFavor);
+        } else {
+            cartera.setCreditoAFavor(0f); // Resetear si hay deudas
+        }
+
         cartera.setAbono(nuevoAbono);
         cartera.setDeudas(nuevasDeudas);
         Cartera carteraActualizada = carteraRepository.save(cartera);
-        // Filtra facturas activas (con saldo pendiente) para el frontend
-        List<Factura> facturasActivas = facturas.stream()
-                .filter(f -> f.getSaldoPendiente() > 0)
-                .toList();
+
+        // Actualizar facturas activas
+        List<Factura> facturasActivas = todasLasFacturas.stream().filter(f -> f.getSaldoPendiente() > 0).toList();
         carteraActualizada.setFacturas(facturasActivas);
-        logger.info("Abono procesado. Nuevo saldo pendiente: " + carteraActualizada.getDeudas());
+
+        logger.info("Abono procesado. Nuevo saldo pendiente: " + carteraActualizada.getDeudas() +
+                ", Crédito a favor: " + carteraActualizada.getCreditoAFavor() +
+                ", Dinero restante sin aplicar: " + cantidadRestante);
         return carteraActualizada;
     }
 
@@ -197,4 +221,19 @@ public class CarteraService implements ICarteraService {
         return cartera;
     }
 
+    // Metodo para obtener historial de abonos
+    public List<HistorialAbono> obtenerHistorialAbonos(Long idCliente) {
+        logger.info("Obteniendo historial de abonos para cliente con ID: " + idCliente);
+
+        // Verifica que el cliente exista
+        clienteRepository.findById(idCliente)
+                .orElseThrow(() -> {
+                    logger.error("Cliente con ID " + idCliente + " no encontrado");
+                    return new RecursoNoEncontrado("Cliente no encontrado con ID: " + idCliente);
+                });
+
+        List<HistorialAbono> historial = historialAbonoRepository.findByClienteIdClienteOrderByFechaAbonoDesc(idCliente);
+        logger.info("Se encontraron " + historial.size() + " registros de abonos para el cliente");
+        return historial;
+    }
 }

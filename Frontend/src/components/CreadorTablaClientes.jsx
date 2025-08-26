@@ -3,7 +3,7 @@ import "../styles/inventario.css";
 import BotonEditar from "../components/BotonEditar";
 import BotonDesactivar from "./BotonDesactivar";
 
-export const CreadorTablaClientes = ({ cabeceros = [], registros = [], onEditar, onEliminar }) => {
+export const CreadorTablaClientes = ({ cabeceros = [], registros = [], onEditar, onEliminar, onHistorial }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 5;
 
@@ -64,6 +64,15 @@ export const CreadorTablaClientes = ({ cabeceros = [], registros = [], onEditar,
                                 <td>
                                     <BotonEditar onClick={() => onEditar(registro)} />
                                     <BotonDesactivar onClick={() => onEliminar(registro)} />
+                                    {onHistorial && (
+                                        <button
+                                            className="btn btn-info"
+                                            onClick={() => onHistorial(registro)}
+                                            style={{ marginLeft: '5px' }}
+                                        >
+                                            <i className="bi bi-clock-history"></i> Historial
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         );

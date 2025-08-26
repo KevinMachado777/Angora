@@ -4,6 +4,8 @@ import Angora.app.Controllers.dto.FacturaPendienteDTO;
 import Angora.app.Entities.Cartera;
 import Angora.app.Entities.Cliente;
 import Angora.app.Entities.Factura;
+import Angora.app.Entities.HistorialAbono;
+import Angora.app.Exceptions.RecursoNoEncontrado;
 import Angora.app.Repositories.CarteraRepository;
 import Angora.app.Repositories.ClienteRepository;
 import Angora.app.Repositories.FacturaRepository;
@@ -210,6 +212,19 @@ public class CarteraController {
         } catch (Exception e) {
             // Manejar errores y devolver una respuesta adecuada
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    // Metodo para obtener el historial de abonos de un cliente
+    @GetMapping(value = "/{idCliente}/historial")
+    public ResponseEntity<List<HistorialAbono>> obtenerHistorialAbonos(@PathVariable Long idCliente) {
+        try {
+            List<HistorialAbono> historial = carteraService.obtenerHistorialAbonos(idCliente);
+            return ResponseEntity.ok(historial);
+        } catch (RecursoNoEncontrado e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
         }
     }
 }
