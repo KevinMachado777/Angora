@@ -2,7 +2,6 @@ package Angora.app.Entities;
 
 import Angora.app.Contract.Inventariable;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -10,7 +9,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -27,7 +25,10 @@ public class Producto implements Inventariable {
     private Long idProducto;
 
     private Integer costo;
+
+    @Column(name = "precio_detal")
     private Integer precio;
+
     private Boolean iva;
 
     @ManyToOne
@@ -38,8 +39,7 @@ public class Producto implements Inventariable {
     private String nombre;
     private Integer stock;
 
-    // Porcentaje de ganancia
-    @Column(name = "Porcentaje_ganancia")
+    @Column(name = "porcentaje_ganancia")
     @Builder.Default
     private Integer porcentajeGanancia = 15;
 
@@ -57,10 +57,8 @@ public class Producto implements Inventariable {
         return stock;
     }
 
-    // Producto.java
     @Override
     public String toString() {
         return "Producto{id=" + idProducto + ", nombre='" + nombre + "'}";
     }
-
 }
