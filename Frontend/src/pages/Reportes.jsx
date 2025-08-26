@@ -286,8 +286,8 @@ const Reportes = () => {
         switch (tipoReporte) {
             case 'inventario':
                 return filtroTipo === 'productos'
-                    ? ['Id', 'Producto', 'Cantidad Pasada', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento']
-                    : ['Id', 'Materia Prima', 'Cantidad Pasada', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento'];
+                    ? ['Id', 'Producto', 'Cantidad Pasada', 'Movimiento', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento']
+                    : ['Id', 'Materia Prima', 'Cantidad Pasada', 'Movimiento', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento'];
             case 'finanzas':
                 return filtroTipo === 'ingresos'
                     ? ['Id', 'Cliente', 'Método Pago', 'Fecha', 'Total']
@@ -488,6 +488,7 @@ const Reportes = () => {
                         'Id': 'id',
                         'Producto': 'nombre',
                         'Cantidad Pasada': 'cantidadPasada',
+                        'Movimiento': 'movimiento', // Campo calculado
                         'Cantidad Actual': 'cantidadActual',
                         'Concepto': 'tipoMovimiento',
                         'Fecha Movimiento': 'fechaMovimiento',
@@ -496,6 +497,7 @@ const Reportes = () => {
                         'Id': 'id',
                         'Materia Prima': 'nombre',
                         'Cantidad Pasada': 'cantidadPasada',
+                        'Movimiento': 'movimiento', // Campo calculado
                         'Cantidad Actual': 'cantidadActual',
                         'Concepto': 'tipoMovimiento',
                         'Fecha Movimiento': 'fechaMovimiento',
