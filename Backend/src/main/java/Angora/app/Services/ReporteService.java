@@ -26,7 +26,6 @@ public class ReporteService implements IReporteService {
     @Autowired private LoteRepository loteRepository;
     @Autowired(required = false) private ProveedorRepository proveedorRepository;
 
-
     // Metodo para obtener la lista de ingresos basada en un rango de fechas
     // Si no se proporcionan fechas, retorna todos los ingresos disponibles
     public List<ReporteIngresosDTO> getIngresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
@@ -83,7 +82,7 @@ public class ReporteService implements IReporteService {
                     * (l.getCantidad() != null ? l.getCantidad() : 0f);
 
             egresos.add(new ReporteEgresosDTO(
-                    l.getIdLote(),
+                    l.getIdLote(), // Modificado: String en lugar de Long
                     proveedor,
                     l.getFechaIngreso(),
                     total
@@ -138,7 +137,6 @@ public class ReporteService implements IReporteService {
         return totalLotes;
     }
 
-
     // Metodo para calcular el margen de utilidad restando egresos de ingresos
     public Float getUtilidadMargin(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         Float ingresos = getTotalIngresos(fechaInicio, fechaFin);
@@ -171,7 +169,7 @@ public class ReporteService implements IReporteService {
             Float costo = m.getCosto() != null ? m.getCosto() : 0f;
             Integer cantidad = m.getCantidad() != null ? m.getCantidad().intValue() : 0;
             materias.add(new ReporteMateriaPrimaDTO(
-                    m.getId(),
+                    m.getId(), // Modificado: String en lugar de Long
                     m.getNombre(),
                     cantidad,
                     costo
@@ -320,7 +318,7 @@ public class ReporteService implements IReporteService {
                         m.getTipoMovimiento(),
                         m.getFechaMovimiento(),
                         esProducto ? m.getProducto().getId() : null,
-                        esMateria  ? m.getMateriaPrima().getId() : null
+                        esMateria  ? m.getMateriaPrima().getId() : null // Modificado: String en lugar de Long
                 ));
             }
         }

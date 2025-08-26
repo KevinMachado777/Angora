@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class MateriaProductoDTO {
-
-    private Long idMateria;
+    private String idMateria;
     private Float cantidad;
 }

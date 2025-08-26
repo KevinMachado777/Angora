@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AlertaInventarioDTO {
-    private Integer id;
+    private String id;
     private String nombre;
     private String tipo; // "Producto" o "Materia Prima"
     private Float cantidadActual;

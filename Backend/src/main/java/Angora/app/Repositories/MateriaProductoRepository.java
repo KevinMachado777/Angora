@@ -12,5 +12,5 @@ public interface MateriaProductoRepository extends JpaRepository<MateriaProducto
     void deleteByProducto_IdProducto(Long idProducto);
 
     // Devuelve todas las relaciones materia-producto para una materia dada
-    List<MateriaProducto> findByIdMateria(Long idMateria);
+    List<MateriaProducto> findByIdMateria(String idMateria);
 }

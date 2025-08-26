@@ -562,7 +562,7 @@ const Ventas = () => {
           <div className="ticket">
             <h2 style={{ textAlign: "center" }}>Fragancey's</h2>
             <p>
-              <strong>Ticket</strong>
+              <strong>Factura</strong>
             </p>
             <p>
               Fecha:{" "}
@@ -579,7 +579,7 @@ const Ventas = () => {
             </p>
 
             <p>
-              Cajero: {user?.nombre} {user?.apellido || ""}
+              Usuario: {user?.nombre} {user?.apellido || ""}
             </p>
             <p>Cliente: {clienteSeleccionado?.nombre || "Consumidor final"}</p>
             <p>Método de pago: {metodoPago}</p>

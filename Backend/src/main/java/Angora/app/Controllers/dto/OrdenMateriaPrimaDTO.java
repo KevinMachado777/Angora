@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class OrdenMateriaPrimaDTO {
     private Long id;
-    private Long idMateria; // Solo el ID de la materia prima
+    private String idMateria; // Solo el ID de la materia prima
     private Float cantidad;
     private Integer costoUnitario;
 }

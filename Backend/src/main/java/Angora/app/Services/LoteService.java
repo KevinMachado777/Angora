@@ -28,14 +28,13 @@ public class LoteService {
     private MovimientoRepository movimientoRepository;
 
     @Autowired
-    private MateriaPrimaService materiaPrimaService; // Inyectamos MateriaPrimaService
+    private MateriaPrimaService materiaPrimaService;
 
     public List<Lote> findAll() {
         return loteRepository.findAll();
     }
 
-    // Busca un lote por su ID
-    public LoteDTO findById(Long id) {
+    public LoteDTO findById(String id) {
         Lote loteEntity = loteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Lote no encontrado"));
         LoteDTO loteDto = new LoteDTO();
@@ -49,8 +48,7 @@ public class LoteService {
         return loteDto;
     }
 
-    // Metodo para guardar un lote
-    public LoteDTO findUltimoLotePorMateria(Long idMateria) {
+    public LoteDTO findUltimoLotePorMateria(String idMateria) {
         Optional<Lote> loteOptional = loteRepository.findTopByIdMateriaOrderByFechaIngresoDescIdLoteDesc(idMateria);
         if (loteOptional.isEmpty()) {
             return null;
@@ -67,15 +65,19 @@ public class LoteService {
         return loteDto;
     }
 
-    // Metodo para guardar un lote
     @Transactional
     public LoteDTO save(LoteDTO loteDto) {
+        // Validar ID único
+        if (loteRepository.findById(loteDto.getIdLote()).isPresent()) {
+            throw new RuntimeException("El ID del lote ya existe");
+        }
         MateriaPrima materia = materiaPrimaRepository.findById(loteDto.getIdMateria())
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
 
         Float anterior = materia.getCantidad() != null ? materia.getCantidad() : 0f;
 
         Lote loteEntity = new Lote();
+        loteEntity.setIdLote(loteDto.getIdLote()); // ID manual
         loteEntity.setIdMateria(loteDto.getIdMateria());
         loteEntity.setCostoUnitario(loteDto.getCostoUnitario());
         loteEntity.setCantidad(loteDto.getCantidad());
@@ -85,10 +87,8 @@ public class LoteService {
         loteEntity.setIdOrden(loteDto.getIdOrden());
         Lote savedLote = loteRepository.save(loteEntity);
 
-        // Delegar la actualización de la materia a MateriaPrimaService
         materiaPrimaService.recomputeMateriaTotalsAndCosto(loteDto.getIdMateria());
 
-        // Registrar movimiento
         MateriaPrima updatedMateria = materiaPrimaRepository.findById(loteDto.getIdMateria())
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
         Float delta = (updatedMateria.getCantidad() != null ? updatedMateria.getCantidad() : 0f) - anterior;
@@ -102,7 +102,6 @@ public class LoteService {
             movimientoRepository.save(mov);
         }
 
-        // Preparar DTO de salida
         LoteDTO dto = new LoteDTO();
         dto.setIdLote(savedLote.getIdLote());
         dto.setIdMateria(savedLote.getIdMateria());
@@ -115,7 +114,6 @@ public class LoteService {
         return dto;
     }
 
-    // Metodo para actualizar un lote
     @Transactional
     public LoteDTO update(LoteDTO loteDto) {
         Lote existing = loteRepository.findById(loteDto.getIdLote())
@@ -125,26 +123,15 @@ public class LoteService {
 
         Float anterior = materia.getCantidad() != null ? materia.getCantidad() : 0f;
 
-        // La cantidad disponible no puede ser mayor que la cantidad original
-        if (loteDto.getCantidadDisponible() > existing.getCantidad()) {
-            throw new RuntimeException("La cantidad disponible (" + loteDto.getCantidadDisponible() +
-                    ") no puede ser mayor que la cantidad original del lote (" + existing.getCantidad() + ")");
-        }
-
-        // La cantidad disponible no puede ser negativa
-        if (loteDto.getCantidadDisponible() < 0) {
-            throw new RuntimeException("La cantidad disponible no puede ser negativa");
-        }
-
+        // Eliminada validación de cantidadDisponible
         existing.setCostoUnitario(loteDto.getCostoUnitario());
+        existing.setCantidad(loteDto.getCantidad()); // Permitir actualizar cantidad
         existing.setCantidadDisponible(loteDto.getCantidadDisponible());
-        // No permitir modificar cantidad inicial ni fechaIngreso para consistencia
+        existing.setIdProveedor(loteDto.getIdProveedor()); // Permitir actualizar proveedor
         Lote saved = loteRepository.save(existing);
 
-        // Recalcular total disponible y actualizar materia
         materiaPrimaService.recomputeMateriaTotalsAndCosto(loteDto.getIdMateria());
 
-        // Registrar movimiento
         MateriaPrima updatedMateria = materiaPrimaRepository.findById(loteDto.getIdMateria())
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
         Float delta = (updatedMateria.getCantidad() != null ? updatedMateria.getCantidad() : 0f) - anterior;
