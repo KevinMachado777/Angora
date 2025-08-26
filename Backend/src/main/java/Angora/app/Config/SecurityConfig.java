@@ -83,6 +83,8 @@ public class SecurityConfig {
                     http.requestMatchers(HttpMethod.POST, "/carteras/**").hasAuthority("CLIENTES");
                     http.requestMatchers(HttpMethod.PUT, "/carteras/**").hasAuthority("CLIENTES");
                     http.requestMatchers(HttpMethod.OPTIONS, "/carteras/**").hasAuthority("CLIENTES");
+                    http.requestMatchers(HttpMethod.GET, "/carteras/{idCliente}/historial").hasAuthority("CLIENTES");
+
 
                     // Rutas de reportes
                     http.requestMatchers(HttpMethod.GET, "/reportes/**").hasAuthority("REPORTES");

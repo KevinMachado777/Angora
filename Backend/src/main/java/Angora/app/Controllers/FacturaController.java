@@ -1,11 +1,6 @@
 package Angora.app.Controllers;
 
-import Angora.app.Entities.Factura;
-import Angora.app.Entities.FacturaProducto;
-import Angora.app.Entities.Producto;
-import Angora.app.Entities.Cliente;
-import Angora.app.Entities.Usuario;
-import Angora.app.Entities.Cartera;
+import Angora.app.Entities.*;
 import Angora.app.Controllers.dto.ConfirmarFacturaDTO;
 import Angora.app.Controllers.dto.FacturaPendienteDTO;
 import Angora.app.Repositories.FacturaRepository;
@@ -22,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -49,6 +45,7 @@ public class FacturaController {
     private CarteraRepository carteraRepository;
 
     @PostMapping
+    @Transactional
     public ResponseEntity<?> crearFactura(@RequestBody Factura factura) {
         try {
             // Validar y mapear productos con precios dinámicos
@@ -85,14 +82,14 @@ public class FacturaController {
                 factura.setCajero(null);
             }
 
-            // Validar y asignar cartera si existe, sin actualizar deudas
+            // Validar y asignar cartera sin aplicar crédito a favor
             if (factura.getIdCartera() != null) {
                 Cartera cartera = carteraRepository.findById(factura.getIdCartera().getIdCartera())
                         .orElseThrow(() -> new RuntimeException("Cartera no encontrada: " + factura.getIdCartera().getIdCartera()));
                 factura.setIdCartera(cartera);
             }
 
-            // Establecer estado inicial como PENDIENTE
+            // Establecer estado inicial como PENDIENTE y saldoPendiente = total
             factura.setEstado("PENDIENTE");
             factura.setSaldoPendiente(factura.getTotal() != null ? factura.getTotal() : 0);
 
@@ -105,5 +102,4 @@ public class FacturaController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
         }
     }
-
 }
