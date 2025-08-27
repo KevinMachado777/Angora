@@ -27,7 +27,7 @@ public class InventarioMateriaPrimaController {
 
     // Obtener una materia por ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id){
+    public ResponseEntity<?> getById(@PathVariable(name = "id") Long id){
         return new ResponseEntity<>(materiaPrimaService.findById(id), HttpStatus.OK);
     }
 

@@ -87,7 +87,7 @@ public class InventarioProductoController {
     // Disminuir el stock de un producto por perdidas
     @PutMapping("/{id}/disminuir-stock")
     public ResponseEntity<ProductoDTO> disminuirStockPorPerdida(
-            @PathVariable String id,
+            @PathVariable(name = "id") String id,
             @RequestBody Map<String, Integer> request) {
         try {
             Integer cantidadADisminuir = request.get("cantidadADisminuir");

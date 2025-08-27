@@ -354,36 +354,32 @@ const TablaProductos = forwardRef(
     };
 
     // Abrir modal stock
-    const abrirModalStock = (producto) => {
-      setProductoStock(producto);
-      setDisminuirChecked(false);
-      setCantidadDisminuir(0);
-      setNuevaCantidad(0);
-      if (producto?.materias?.length) {
-        const cantidadesPosibles = producto.materias.map((mat) => {
-          const lotes = (lotesMateriaPrima || [])
-            .filter(
-              (lote) =>
-                lote.idMateria === mat.idMateria &&
-                (lote.cantidadDisponible ?? lote.cantidad) > 0
-            )
-            .sort(
-              (a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso)
-            );
-          let totalDisponible = 0;
-          for (const lote of lotes) {
-            totalDisponible += Number(
-              lote.cantidadDisponible ?? lote.cantidad ?? 0
-            );
-          }
-          return Math.floor(totalDisponible / mat.cantidad);
-        });
-        setMaxFabricable(Math.min(...cantidadesPosibles));
-      } else {
-        setMaxFabricable(0);
+const abrirModalStock = (producto) => {
+  setProductoStock(producto);
+  setDisminuirChecked(false);
+  setCantidadDisminuir(0);
+  setNuevaCantidad(0);
+  let max = 0;
+  if (producto?.materias?.length && lotesMateriaPrima?.length) {
+    const cantidadesPosibles = producto.materias.map((mat) => {
+      const lotes = (lotesMateriaPrima || [])
+        .filter(
+          (lote) =>
+            lote.idMateria === mat.idMateria &&
+            (lote.cantidadDisponible ?? lote.cantidad ?? 0) > 0
+        )
+        .sort((a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso));
+      let totalDisponible = 0;
+      for (const lote of lotes) {
+        totalDisponible += Number(lote.cantidadDisponible ?? lote.cantidad ?? 0);
       }
-      setModalStock(true);
-    };
+      return totalDisponible > 0 ? Math.floor(totalDisponible / Number(mat.cantidad || 1)) : 0;
+    });
+    max = Math.min(...cantidadesPosibles);
+  }
+  setMaxFabricable(max);
+  setModalStock(true);
+};
 
     // Abrir modal lotes usados
     const abrirModalLotesUsados = (producto) => {
@@ -917,57 +913,58 @@ const TablaProductos = forwardRef(
       }
     };
 
-    // Actualizar stock (aumentar / disminuir)
     const actualizarStock = async (e) => {
-      e.preventDefault();
-      if (!token) {
-        setError(
-          "No se encontró un token de autenticación. Por favor, inicia sesión."
-        );
-        return;
-      }
-      if (disminuirChecked) {
-        const disminuir = Math.floor(Number(cantidadDisminuir)); // Integer
-        if (disminuir <= 0) {
-          setError("La cantidad a disminuir debe ser un entero mayor que 0.");
-          return;
-        }
-        if (!productoStock) {
-          setError("Producto inválido.");
-          return;
-        }
-        if (disminuir > Number(productoStock.stock || 0)) {
-          setError(
-            "La cantidad a disminuir no puede ser mayor al stock actual."
-          );
-          return;
-        }
-        setModalConfirmDecrease(true);
-        return;
-      }
-      const nuevaCantidadInt = Math.floor(Number(nuevaCantidad)); // Integer
-      if (nuevaCantidadInt < 0) {
-        setError("La cantidad debe ser un entero mayor o igual a 0");
-        return;
-      }
-      if (maxFabricable !== null && nuevaCantidadInt > maxFabricable) {
-        setModalErrorStockInsuficiente(true);
-        return;
-      }
-      try {
-        const headers = authHeaders();
-        await api.put(
-          `/inventarioProducto/${productoStock.idProducto}/stock`,
-          { nuevaCantidad: nuevaCantidadInt },
-          { headers }
-        );
-        await cargarDatosFromBackend();
-        setModalStock(false);
-        setNuevaCantidad(0);
-      } catch (err) {
-        handleApiError(err, "actualización de stock");
-      }
-    };
+  e.preventDefault();
+  if (!token) {
+    setError(
+      "No se encontró un token de autenticación. Por favor, inicia sesión."
+    );
+    return;
+  }
+  if (disminuirChecked) {
+    const disminuir = Math.floor(Number(cantidadDisminuir));
+    if (disminuir <= 0) {
+      setError("La cantidad a disminuir debe ser un entero mayor que 0.");
+      return;
+    }
+    if (!productoStock) {
+      setError("Producto inválido.");
+      return;
+    }
+    if (disminuir > Number(productoStock.stock || 0)) {
+      setError(
+        "La cantidad a disminuir no puede ser mayor al stock actual."
+      );
+      return;
+    }
+    setModalConfirmDecrease(true);
+    return;
+  }
+  const cantidadAAgregar = Math.floor(Number(nuevaCantidad));
+  if (cantidadAAgregar <= 0) {
+    setError("La cantidad a agregar debe ser un entero mayor que 0");
+    return;
+  }
+  if (maxFabricable !== null && cantidadAAgregar > maxFabricable) {
+    setModalErrorStockInsuficiente(true);
+    return;
+  }
+  try {
+    const headers = authHeaders();
+    const currentStock = Number(productoStock.stock || 0);
+    const nuevaCantidadTotal = currentStock + cantidadAAgregar;
+    await api.put(
+      `/inventarioProducto/${productoStock.idProducto}/stock`,
+      { nuevaCantidad: nuevaCantidadTotal },
+      { headers }
+    );
+    await cargarDatosFromBackend();
+    setModalStock(false);
+    setNuevaCantidad(0);
+  } catch (err) {
+    handleApiError(err, "actualización de stock");
+  }
+};
 
     // Paginador con ellipsis
     const renderPageButtons = (totalPages, currentPage, setPageFn) => {
