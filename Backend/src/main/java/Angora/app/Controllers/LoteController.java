@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/lotes")
 public class LoteController {
@@ -33,12 +35,19 @@ public class LoteController {
 
     // Metodo para obtener el ultimo lote de una materia en especifico
     @GetMapping("/ultimo/{idMateria}")
-    public ResponseEntity<LoteDTO> getUltimoLotePorMateria(@PathVariable(name = "idMateria") String idMateria) {
-        LoteDTO lote = loteService.findUltimoLotePorMateria(idMateria);
-        if (lote == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    public ResponseEntity<Lote> getUltimoLotePorMateria(@PathVariable String idMateria) {
+        try {
+            // Buscar el último lote de la materia prima ordenado por fecha de ingreso descendente
+            Optional<Lote> ultimoLote = loteRepository.findFirstByIdMateriaOrderByFechaIngresoDesc(idMateria);
+
+            if (ultimoLote.isPresent()) {
+                return ResponseEntity.ok(ultimoLote.get());
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-        return ResponseEntity.ok(lote);
     }
 
     // Metodo para crear un lote

@@ -220,10 +220,17 @@ const ModalProveedor = ({
   }, [isOpen, datosIniciales, tipo, token]);
 
   useEffect(() => {
-    if (!modalMensaje.visible && modalMensaje.tipo === "exito") {
-      onClose();
+    // Cerramos el modal padre SOLO cuando mostramos un mensaje de 'exito'
+    // y dejamos un timeout para permitir ver el mensaje.
+    let timer;
+    if (modalMensaje.visible && modalMensaje.tipo === "exito") {
+      timer = setTimeout(() => {
+        onClose();
+      }, 1500); // 1.5s para que se vea el mensaje
     }
+    return () => clearTimeout(timer);
   }, [modalMensaje.visible, modalMensaje.tipo, onClose]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -235,35 +242,73 @@ const ModalProveedor = ({
     setNuevoItem((prev) => ({ ...prev, [name]: value }));
   };
 
+  // En la función agregarItem, cambiar esta parte:
   const agregarItem = () => {
-    console.log("nuevoItem antes de agregar:", nuevoItem);
-    const idMateria = parseInt(nuevoItem.idMateria);
-    if (!idMateria || isNaN(idMateria) || idMateria <= 0) {
-      abrirModal("advertencia", "Debe seleccionar una materia prima válida.");
+    // Validaciones básicas
+    if (!nuevoItem.idMateria || !nuevoItem.cantidad) {
+      abrirModal(
+        "advertencia",
+        "Por favor complete todos los campos del producto."
+      );
       return;
     }
-    const cantidad = parseFloat(nuevoItem.cantidad);
-    if (isNaN(cantidad) || cantidad <= 0) {
+
+    if (parseFloat(nuevoItem.cantidad) <= 0) {
       abrirModal("advertencia", "La cantidad debe ser mayor a 0.");
       return;
     }
-    const repetido = formulario.items.some(
-      (item) => parseInt(item.idMateria) === idMateria
+
+    // CORRECCIÓN: Comparar como strings directamente
+    const materiaEncontrada = materiasPrimasDisponibles.find(
+      (mp) => mp.idMateria === nuevoItem.idMateria
     );
-    if (repetido) {
-      abrirModal("advertencia", "Ya has agregado esa materia prima.");
+
+    if (!materiaEncontrada) {
+      console.log("ID buscado:", nuevoItem.idMateria);
+      console.log("IDs disponibles:", materiasPrimasDisponibles.map(mp => mp.idMateria));
+      abrirModal("advertencia", "Materia prima no encontrada o ID inválido.");
       return;
     }
-    const nuevo = {
-      idMateria: idMateria,
-      nombre: nuevoItem.nombre,
-      cantidad: cantidad,
+
+    // Verificar que no esté duplicado
+    const yaExiste = formulario.items.some(
+      (item) => item.idMateria === nuevoItem.idMateria
+    );
+
+    if (yaExiste) {
+      abrirModal("advertencia", "Esta materia prima ya está en la lista.");
+      return;
+    }
+
+    // Crear el nuevo item con el costo de la materia prima encontrada
+    const itemCompleto = {
+      idMateria: nuevoItem.idMateria,
+      nombre: materiaEncontrada.nombre,
+      cantidad: parseFloat(nuevoItem.cantidad),
+      costoUnitario: materiaEncontrada.costo || 0,
     };
-    setFormulario((prev) => ({
-      ...prev,
-      items: [...prev.items, nuevo],
-    }));
-    setNuevoItem({ idMateria: null, nombre: "", cantidad: "" });
+
+    // Agregar el item y recalcular el total
+    setFormulario((prev) => {
+      const nuevosItems = [...prev.items, itemCompleto];
+      const nuevoTotal = nuevosItems.reduce(
+        (total, item) => total + item.cantidad * item.costoUnitario,
+        0
+      );
+
+      return {
+        ...prev,
+        items: nuevosItems,
+        total: nuevoTotal,
+      };
+    });
+
+    // Limpiar el formulario de nuevo item
+    setNuevoItem({
+      idMateria: "",
+      nombre: "",
+      cantidad: "",
+    });
   };
 
   const editarProducto = (item) => {
@@ -353,20 +398,6 @@ const ModalProveedor = ({
 
       if (!formulario.items || formulario.items.length === 0) {
         abrirModal("advertencia", "La orden debe tener al menos un ítem.");
-        return;
-      }
-
-      const hasInvalidItem = formulario.items.some(
-        (item) =>
-          !item.idMateria ||
-          isNaN(parseInt(item.idMateria)) ||
-          parseInt(item.idMateria) <= 0
-      );
-      if (hasInvalidItem) {
-        abrirModal(
-          "error",
-          "Uno o más ítems tienen un ID de materia prima inválido."
-        );
         return;
       }
 
@@ -560,17 +591,16 @@ const ModalProveedor = ({
                 </h3>
                 <Select
                   options={materiasPrimasDisponibles.map((m) => ({
-                    value: m.idMateria,
+                    value: m.idMateria, // Mantener como string
                     label: m.nombre,
                   }))}
                   value={
-                    nuevoItem.idMateria && !isNaN(parseInt(nuevoItem.idMateria))
+                    nuevoItem.idMateria
                       ? {
-                        value: parseInt(nuevoItem.idMateria),
+                        value: nuevoItem.idMateria,
                         label:
                           materiasPrimasDisponibles.find(
-                            (m) =>
-                              m.idMateria === parseInt(nuevoItem.idMateria)
+                            (m) => m.idMateria === nuevoItem.idMateria
                           )?.nombre || "Materia prima seleccionada",
                       }
                       : null
@@ -580,7 +610,7 @@ const ModalProveedor = ({
                     if (!selected || !selected.value) {
                       setNuevoItem((prev) => ({
                         ...prev,
-                        idMateria: null,
+                        idMateria: "",
                         nombre: "",
                       }));
                       abrirModal(
@@ -593,25 +623,26 @@ const ModalProveedor = ({
                       (m) => m.idMateria === selected.value
                     );
                     console.log("Found materia:", materia);
-                    if (!materia || isNaN(parseInt(materia.idMateria))) {
+                    if (!materia) {
                       abrirModal(
                         "error",
                         "Materia prima no encontrada o ID inválido."
                       );
                       setNuevoItem((prev) => ({
                         ...prev,
-                        idMateria: null,
+                        idMateria: "",
                         nombre: "",
                       }));
                       return;
                     }
                     setNuevoItem((prev) => ({
                       ...prev,
-                      idMateria: parseInt(materia.idMateria),
+                      idMateria: materia.idMateria, // Mantener como string
                       nombre: materia.nombre,
                     }));
                   }}
                 />
+
                 <input
                   placeholder="Cantidad"
                   type="number"
@@ -640,6 +671,10 @@ const ModalProveedor = ({
                 }))}
                 onEditar={editarProducto}
                 onEliminar={eliminarItem}
+                onPageChange={(newPage) => {
+                  // Prevenir cualquier efecto secundario
+                  console.log("Cambiando a página:", newPage);
+                }}
               />
 
               <div className="grupo-formulario">
@@ -722,7 +757,7 @@ const ModalProveedor = ({
                 setProductoEditando(null);
               }}
             />
-            <BotonAceptar onClick={guardarProductoEditado} />
+            <BotonAceptar type="button" onClick={guardarProductoEditado} />
           </div>
         </Modal>
       )}

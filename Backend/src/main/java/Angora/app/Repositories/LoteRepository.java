@@ -33,4 +33,6 @@ public interface LoteRepository extends JpaRepository<Lote, String> {
     // Metodo para buscar los lotes asociados a una materia
     @Query("SELECT l FROM Lote l WHERE l.idMateria = :idMateria")
     List<Lote> findByIdMateria(@Param("idMateria") String idMateria);
+
+    Optional<Lote> findFirstByIdMateriaOrderByFechaIngresoDesc(String idMateria);
 }
