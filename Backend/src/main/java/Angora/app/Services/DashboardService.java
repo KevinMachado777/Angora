@@ -221,10 +221,10 @@ public class DashboardService implements IDashboardService {
         // Alertas de productos
         List<Producto> productos = productoRepository.findAll();
         for (Producto p : productos) {
-            Float cantidad = p.getCantidad() != null ? p.getCantidad() : 0f;
+            Float cantidad = p.getStock() != null ? p.getStock().floatValue() : 0f; // Cambiado de getCantidad a getStock
             if (cantidad <= stockMinimo) {
                 alertas.add(new AlertaInventarioDTO(
-                        Math.toIntExact(p.getId()),
+                        String.valueOf(p.getIdProducto()), // Convertir Long a String
                         p.getNombre(),
                         "Producto",
                         cantidad,
@@ -240,7 +240,7 @@ public class DashboardService implements IDashboardService {
             Float cantidad = m.getCantidad() != null ? m.getCantidad() : 0f;
             if (cantidad <= stockMinimo) {
                 alertas.add(new AlertaInventarioDTO(
-                        Math.toIntExact(m.getId()),
+                        m.getIdMateria(), // Usar String directamente
                         m.getNombre(),
                         "Materia Prima",
                         cantidad,

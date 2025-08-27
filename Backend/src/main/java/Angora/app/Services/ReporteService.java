@@ -24,7 +24,9 @@ public class ReporteService implements IReporteService {
     @Autowired private LoteRepository loteRepository;
     @Autowired(required = false) private ProveedorRepository proveedorRepository;
 
-    @Override
+
+    // Metodo para obtener la lista de ingresos basada en un rango de fechas
+    // Si no se proporcionan fechas, retorna todos los ingresos disponibles
     public List<ReporteIngresosDTO> getIngresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteIngresosDTO> ingresos = new ArrayList<>();
         List<Factura> facturas = (fechaInicio == null && fechaFin == null)
@@ -78,7 +80,7 @@ public class ReporteService implements IReporteService {
             Float total = costoUnitario * cantidad;
 
             egresos.add(new ReporteEgresosDTO(
-                    l.getIdLote(),
+                    l.getIdLote(), // Modificado: String en lugar de Long
                     proveedor,
                     l.getFechaIngreso(),
                     total
@@ -131,6 +133,7 @@ public class ReporteService implements IReporteService {
     }
 
     @Override
+    // Metodo para calcular el margen de utilidad restando egresos de ingresos
     public Float getUtilidadMargin(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         Float ingresos = getTotalIngresos(fechaInicio, fechaFin);
         Float egresos = getTotalEgresos(fechaInicio, fechaFin);
@@ -177,7 +180,8 @@ public class ReporteService implements IReporteService {
             Integer costo = m.getCosto() != null ? m.getCosto() : 0;
             Integer cantidad = m.getCantidad() != null ? Math.round(m.getCantidad()) : 0;
             materias.add(new ReporteMateriaPrimaDTO(
-                    m.getIdMateria(),
+
+                    m.getId(), // Modificado: String en lugar de Long
                     m.getNombre(),
                     cantidad,
                     costo.floatValue()
@@ -332,8 +336,8 @@ public class ReporteService implements IReporteService {
                         cantActual,
                         m.getTipoMovimiento(),
                         m.getFechaMovimiento(),
-                        esProducto ? Long.parseLong(m.getProducto().getIdProducto()) : null, // Parse to Long for DTO
-                        esMateria ? m.getMateriaPrima().getIdMateria() : null
+                        esProducto ? m.getProducto().getId() : null,
+                        esMateria  ? m.getMateriaPrima().getId() : null // Modificado: String en lugar de Long
                 ));
             }
         }

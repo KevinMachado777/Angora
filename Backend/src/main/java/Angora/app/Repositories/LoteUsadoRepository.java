@@ -15,5 +15,5 @@ public interface LoteUsadoRepository extends JpaRepository<LoteUsado, Long> {
     List<LoteUsado> findByIdProducto(@Param("idProducto") Long idProducto);
 
     @Query("SELECT lu FROM LoteUsado lu WHERE lu.idLote = :idLote ORDER BY lu.fechaProduccion")
-    List<LoteUsado> findByIdLote(@Param("idLote") Long idLote);
+    List<LoteUsado> findByIdLote(@Param("idLote") String idLote);
 }
