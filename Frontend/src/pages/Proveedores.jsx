@@ -60,8 +60,7 @@ const Proveedores = () => {
       );
       abrirModal(
         "error",
-        `Error al cargar órdenes: ${
-          error.response?.data?.message || error.message
+        `Error al cargar órdenes: ${error.response?.data?.message || error.message
         }`
       );
       setOrdenes([]);
@@ -84,8 +83,7 @@ const Proveedores = () => {
       );
       abrirModal(
         "error",
-        `Error al cargar proveedores: ${
-          error.response?.data?.message || error.message
+        `Error al cargar proveedores: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -187,8 +185,7 @@ const Proveedores = () => {
       );
       abrirModal(
         "error",
-        `Error al ${tipoAccion}: ${
-          error.response?.data?.message || error.message
+        `Error al ${tipoAccion}: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -224,8 +221,7 @@ const Proveedores = () => {
       );
       abrirModal(
         "error",
-        `Error al guardar proveedor: ${
-          error.response?.data?.message || error.message
+        `Error al guardar proveedor: ${error.response?.data?.message || error.message
         }`
       );
     }
@@ -240,22 +236,18 @@ const Proveedores = () => {
         proveedor: { idProveedor: parseInt(nuevaOrden.id) },
         ordenMateriaPrimas: nuevaOrden.items.map((item) => {
           console.log("Item antes de mapear:", item);
-          const parsedIdMateria = parseInt(item.idMateria);
-          if (
-            !parsedIdMateria ||
-            isNaN(parsedIdMateria) ||
-            parsedIdMateria <= 0
-          ) {
+
+          // CORRECCIÓN: No convertir idMateria a entero, mantener como string
+          if (!item.idMateria || item.idMateria.trim() === "") {
             throw new Error(
-              `ID de Materia Prima inválido para el ítem: ${JSON.stringify(
-                item
-              )}`
+              `ID de Materia Prima inválido para el ítem: ${JSON.stringify(item)}`
             );
           }
 
           const ordenMateriaPrimaObj = {
-            materiaPrima: { idMateria: parsedIdMateria },
+            materiaPrima: { idMateria: item.idMateria }, // Mantener como string
             cantidad: parseFloat(item.cantidad),
+            costoUnitario: item.costoUnitario || 0 // Agregar costoUnitario
           };
 
           if (item.id) {
@@ -291,9 +283,7 @@ const Proveedores = () => {
       );
       abrirModal(
         "error",
-        `Error al guardar orden: ${
-          error.response?.data?.message || error.message
-        }`
+        `Error al guardar orden: ${error.response?.data?.message || error.message}`
       );
     }
   };
@@ -314,13 +304,13 @@ const Proveedores = () => {
 
   const registrosTabla = modoProveedor
     ? proveedores?.map((p) => ({
-        id: p.idProveedor,
-        nombre: p.nombre,
-        teléfono: p.telefono,
-        correoelectrónico: p.correo,
-        dirección: p.direccion,
-        original: p,
-      })) ?? []
+      id: p.idProveedor,
+      nombre: p.nombre,
+      teléfono: p.telefono,
+      correoelectrónico: p.correo,
+      dirección: p.direccion,
+      original: p,
+    })) ?? []
     : [];
 
   // Función para obtener el texto del botón de acción
@@ -349,9 +339,8 @@ const Proveedores = () => {
             <BotonOrdenes onClick={() => setModoProveedor(false)} />
             <button
               onClick={alternarVistaProveedores}
-              className={`btn ${
-                verInactivos ? "btn-primary" : "btn-secondary"
-              }`}
+              className={`btn ${verInactivos ? "btn-primary" : "btn-secondary"
+                }`}
             >
               {verInactivos ? "Ver Activos" : "Ver Inactivos"}
             </button>
@@ -384,25 +373,32 @@ const Proveedores = () => {
         />
       )}
       <ModalProveedor
-  isOpen={modalAbierta}
-  onClose={() => setModalAbierta(false)}
-  tipo={tipoModal}
-  onGuardar={modoProveedor ? guardarProveedor : guardarOrden} // Simplificado
-  datosIniciales={editando}
-/>
+        isOpen={modalAbierta}
+        onClose={() => setModalAbierta(false)}
+        tipo={tipoModal}
+        onGuardar={modoProveedor ? guardarProveedor : guardarOrden} // Simplificado
+        datosIniciales={editando}
+      />
       <ModalConfirmarOrden
         isOpen={modalConfirmarOrden}
-        onClose={() => setModalConfirmarOrden(false)}
-        orden={ordenConfirmar}
-        onConfirmar={async () => {
+        onClose={() => {
           setModalConfirmarOrden(false);
           setOrdenConfirmar(null);
-          abrirModal("exito", "Orden confirmada correctamente.");
+        }}
+        orden={ordenConfirmar}
+        onConfirmar={async (idOrden, confirmacionData) => {
           try {
-            await cargarOrdenesPendientes();
+            await api.post(`/ordenes/confirmar/${idOrden}`, confirmacionData);
+            abrirModal("exito", "Orden confirmada exitosamente. Los lotes han sido creados e ingresados al inventario.");
+            setModalConfirmarOrden(false);
+            setOrdenConfirmar(null);
+            if (!modoProveedor) {
+              cargarOrdenesPendientes();
+            }
           } catch (error) {
-            console.error("Error al recargar órdenes:", error);
-            abrirModal("error", "Error al recargar la lista de órdenes.");
+            console.error("Error al confirmar orden:", error);
+            const mensajeError = error.response?.data || error.message;
+            abrirModal("error", `Error al confirmar orden: ${mensajeError}`);
           }
         }}
       />
@@ -417,8 +413,8 @@ const Proveedores = () => {
               {tipoAccion === "desactivar"
                 ? "Desactivación"
                 : tipoAccion === "reactivar"
-                ? "Reactivación"
-                : "Eliminación"}
+                  ? "Reactivación"
+                  : "Eliminación"}
             </h2>
           </div>
           <p>
@@ -426,8 +422,8 @@ const Proveedores = () => {
             {tipoAccion === "desactivar"
               ? "desactivar"
               : tipoAccion === "reactivar"
-              ? "reactivar"
-              : "eliminar"}{" "}
+                ? "reactivar"
+                : "eliminar"}{" "}
             {modoProveedor ? "el proveedor" : "la orden"}{" "}
             <strong>{registroAccion?.nombre}</strong>?
           </p>
@@ -447,16 +443,16 @@ const Proveedores = () => {
               modalMensaje.tipo === "exito"
                 ? "bi bi-check-circle-fill text-success display-4 mb-2"
                 : modalMensaje.tipo === "error"
-                ? "bi bi-x-circle-fill text-danger display-4 mb-2"
-                : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
+                  ? "bi bi-x-circle-fill text-danger display-4 mb-2"
+                  : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
             }
           ></i>
           <h2>
             {modalMensaje.tipo === "exito"
               ? "¡Éxito!"
               : modalMensaje.tipo === "error"
-              ? "Error"
-              : "Advertencia"}
+                ? "Error"
+                : "Advertencia"}
           </h2>
           <p>{modalMensaje.mensaje}</p>
         </div>
