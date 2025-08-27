@@ -32,41 +32,10 @@ const Pedidos = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [enviarCorreo, setEnviarCorreo] = useState(false);
 
-  // Estados para paginación
-  const [currentPagePedidos, setCurrentPagePedidos] = useState(1); // Restaurado para Pedidos Pendientes
-  const [pageStates, setPageStates] = useState({}); // Para Clientes por Producto
+  const [currentPagePedidos, setCurrentPagePedidos] = useState(1);
+  const [pageStates, setPageStates] = useState({});
 
   const pageSize = 10;
-
-  // Función helper para obtener precios correctos según estado de factura
-  const obtenerPreciosProducto = (producto, estadoFactura) => {
-    if (
-      estadoFactura === "CONFIRMADO" &&
-      producto.precioUnitario !== null &&
-      producto.precioUnitario !== undefined
-    ) {
-      return {
-        precioBase: producto.precioUnitario,
-        precioConIva: producto.iva
-          ? producto.precioUnitario * 1.19
-          : producto.precioUnitario,
-      };
-    }
-    return {
-      precioBase: producto.precio,
-      precioConIva: producto.iva ? producto.precio * 1.19 : producto.precio,
-    };
-  };
-
-  const calcularTotalDinamico = (pedido) => {
-    let totalCalculado = 0;
-    pedido.productos.forEach((item) => {
-      const { precioConIva } = obtenerPreciosProducto(item, pedido.estado);
-      const totalItem = item.cantidad * precioConIva;
-      totalCalculado += totalItem;
-    });
-    return roundToNearest50(totalCalculado);
-  };
 
   const abrirModal = (tipo, mensaje) => {
     setModalMensaje({ tipo, mensaje, visible: true });
@@ -82,6 +51,37 @@ const Pedidos = () => {
 
   const roundToNearest50 = (value) => {
     return Math.round(value / 50) * 50;
+  };
+
+  const obtenerPreciosProducto = (producto, estadoFactura) => {
+    if (
+      estadoFactura === "CONFIRMADO" &&
+      producto.precioUnitario !== null &&
+      producto.precioUnitario !== undefined
+    ) {
+      return {
+        precioBase: producto.precioUnitario,
+        precioConIva: producto.iva
+          ? producto.precioUnitario * 1.19
+          : producto.precioUnitario,
+      };
+    }
+    return {
+      precioBase: producto.precioOpcional || producto.precio,
+      precioConIva: producto.iva
+        ? (producto.precioOpcional || producto.precio) * 1.19
+        : (producto.precioOpcional || producto.precio),
+    };
+  };
+
+  const calcularTotalDinamico = (pedido) => {
+    let totalCalculado = 0;
+    pedido.productos.forEach((item) => {
+      const { precioConIva } = obtenerPreciosProducto(item, pedido.estado);
+      const totalItem = item.cantidad * precioConIva;
+      totalCalculado += totalItem;
+    });
+    return roundToNearest50(totalCalculado);
   };
 
   useEffect(() => {
@@ -115,15 +115,16 @@ const Pedidos = () => {
           }
         );
         console.log("Facturas pendientes recibidas:", pedidosResponse.data);
-        pedidosResponse.data.forEach((pedido) => {
-          console.log(
-            `Factura ID: ${pedido.idFactura}, Cliente: ${pedido.cliente
-              ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
-              : "Consumidor final"
-            }, Notas: ${pedido.notas || "Sin notas"}`
-          );
-        });
-        setPedidosPendiente(pedidosResponse.data);
+        setPedidosPendiente(
+          pedidosResponse.data.map((pedido) => ({
+            ...pedido,
+            productos: pedido.productos.map((p) => ({
+              ...p,
+              tipoPrecio: p.tipoPrecio || "detal",
+              precioOpcional: p.precio,
+            })),
+          }))
+        );
       } catch (err) {
         console.error(
           "Error al cargar datos:",
@@ -142,10 +143,63 @@ const Pedidos = () => {
     fetchData();
   }, [token]);
 
+  const handleTipoPrecioChange = (index, tipoPrecio) => {
+    const productoInventario = inventario.find(
+      (p) => p.idProducto === productosAConfirmar[index].id
+    );
+    let precio = productosAConfirmar[index].precioOpcional || productosAConfirmar[index].precio;
+
+    if (productoInventario) {
+      if (tipoPrecio === "detal") {
+        precio = Number(productoInventario.precioDetal);
+      } else if (tipoPrecio === "mayorista") {
+        precio = productoInventario.precioMayorista
+          ? Number(productoInventario.precioMayorista)
+          : precio;
+      } else if (tipoPrecio === "opcional") {
+        precio = "";
+      }
+    }
+
+    setProductosAConfirmar((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, tipoPrecio, precioOpcional: precio } : item
+      )
+    );
+  };
+
+  const handlePrecioChange = (index, value) => {
+    if (value < 0) {
+      abrirModal("error", "El precio no puede ser negativo");
+      return;
+    }
+    setProductosAConfirmar((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, precioOpcional: value || "" } : item
+      )
+    );
+  };
+
   const confirmarVenta = async (imprimir) => {
     if (!pedidoAConfirmar || productosAConfirmar.length === 0) {
       abrirModal("advertencia", "No hay productos para confirmar la factura.");
       return;
+    }
+
+    for (const producto of productosAConfirmar) {
+      if (producto.tipoPrecio === "mayorista") {
+        const productoInventario = inventario.find(
+          (p) => p.idProducto === producto.id
+        );
+        if (!productoInventario?.precioMayorista) {
+          abrirModal("error", `El producto ${producto.nombre} no tiene precio mayorista disponible`);
+          return;
+        }
+      }
+      if (producto.tipoPrecio === "opcional" && (!producto.precioOpcional || Number(producto.precioOpcional) <= 0)) {
+        abrirModal("error", `Debes ingresar un precio válido para ${producto.nombre}`);
+        return;
+      }
     }
 
     const actualizarCartera =
@@ -154,6 +208,8 @@ const Pedidos = () => {
     const productosDTO = productosAConfirmar.map((p) => ({
       idProducto: p.idProducto || p.id,
       cantidad: p.cantidad,
+      tipoPrecio: p.tipoPrecio,
+      precioOpcional: Number(p.precioOpcional || p.precio),
     }));
 
     const confirmarFacturaDTO = {
@@ -230,7 +286,7 @@ const Pedidos = () => {
       );
       abrirModal(
         "error",
-        `Error al confirmar la factura: ${err.response?.data || err.message}`
+        `Error al confirmar la factura: ${err.response?.data?.message || err.message}`
       );
     }
   };
@@ -243,14 +299,19 @@ const Pedidos = () => {
     doc.text(`Factura #${pedido.idFactura}`, 10, 25);
     doc.text(
       `Cliente: ${pedido.cliente
-        ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
-        : "Consumidor final"
+        ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""} (Común)`
+        : "Consumidor final (Común)"
       }`,
       10,
       35
     );
-    doc.text(`Fecha: ${new Date(pedido.fecha).toLocaleString()}`, 10, 45);
     doc.text(
+      `Fecha: ${new Date(pedido.fecha).toLocaleString("es-CO")}`,
+      10,
+      45
+    );
+    doc.text(
+
       `Usuario: ${pedido.cajero
         ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}`
         : pedido.cajeroNombre
@@ -273,23 +334,25 @@ const Pedidos = () => {
     doc.setFontSize(10);
     doc.text("Producto", 10, y);
     doc.text("Cant.", 80, y);
-    doc.text("P. Unit. (sin IVA)", 100, y);
-    doc.text("P. Unit. (con IVA)", 140, y);
-    doc.text("Total", 180, y);
+    doc.text("Tipo Precio", 100, y);
+    doc.text("P. Unit. (sin IVA)", 130, y);
+    doc.text("Total", 170, y);
     y += 10;
 
     doc.line(10, y - 5, 200, y - 5);
 
+    let subtotalCalculado = 0;
     pedido.productos.forEach((p) => {
-      const precioSinIva = p.precio;
-      const precioConIva = p.iva ? p.precio * 1.19 : p.precio;
+      const precioSinIva = p.precioOpcional || p.precio;
+      const precioConIva = p.iva ? precioSinIva * 1.19 : precioSinIva;
       const totalProducto = p.cantidad * precioConIva;
+      subtotalCalculado += p.cantidad * precioSinIva;
 
       doc.text(`${p.nombre}`, 10, y);
       doc.text(`${p.cantidad}`, 80, y);
-      doc.text(`$${precioSinIva.toLocaleString()}`, 100, y);
-      doc.text(`$${precioConIva.toLocaleString()}`, 140, y);
-      doc.text(`$${totalProducto.toLocaleString()}`, 180, y);
+      doc.text(`${p.tipoPrecio}`, 100, y);
+      doc.text(`$${precioSinIva.toLocaleString()}`, 130, y);
+      doc.text(`$${totalProducto.toLocaleString()}`, 170, y);
       y += 8;
     });
 
@@ -299,14 +362,14 @@ const Pedidos = () => {
 
     doc.setFontSize(11);
     doc.text(
-      `Subtotal (sin IVA): $${pedido.subtotal.toLocaleString()}`,
+      `Subtotal (sin IVA): $${subtotalCalculado.toLocaleString()}`,
       120,
       y
     );
     y += 8;
     doc.setFontSize(12);
     doc.text(
-      `TOTAL: $${roundToNearest50(pedido.total).toLocaleString()}`,
+      `TOTAL: $${calcularTotalDinamico(pedido).toLocaleString()}`,
       120,
       y
     );
@@ -324,7 +387,13 @@ const Pedidos = () => {
       return;
     }
     setPedidoAConfirmar(pedido);
-    setProductosAConfirmar([...pedido.productos]);
+    setProductosAConfirmar(
+      pedido.productos.map((p) => ({
+        ...p,
+        tipoPrecio: p.tipoPrecio || "detal",
+        precioOpcional: p.precio,
+      }))
+    );
     setEnviarCorreo(false);
     setMostrarConfirmarVenta(true);
   };
@@ -355,8 +424,8 @@ const Pedidos = () => {
         if (productoEnFactura) {
           return {
             cliente: ticket.cliente
-              ? `${ticket.cliente.nombre} ${ticket.cliente.apellido || ""}`
-              : "Consumidor final",
+              ? `${ticket.cliente.nombre} ${ticket.cliente.apellido || ""} (Común)`
+              : "Consumidor final (Común)",
             cantidad: productoEnFactura.cantidad,
             ticketId: ticket.idFactura,
             notas: ticket.notas,
@@ -367,7 +436,6 @@ const Pedidos = () => {
       .filter(Boolean);
     setClientesProducto(resultado);
     setProductoSeleccionado(producto);
-    // Reiniciar la página al abrir el modal para este producto
     setPageStates((prev) => ({
       ...prev,
       [producto.idProducto]: 1,
@@ -401,8 +469,7 @@ const Pedidos = () => {
       );
       abrirModal(
         "error",
-        `Error al eliminar la factura: ${err.response?.data?.message || err.message
-        }`
+        `Error al eliminar la factura: ${err.response?.data?.message || err.message}`
       );
     }
   };
@@ -419,7 +486,24 @@ const Pedidos = () => {
     advertencia: "Advertencia",
   };
 
-  // Renderizar botones de paginación con elipsis
+  const totalPagesPedidos = Math.ceil(pedidosPendiente.length / pageSize);
+  const startIndexPedidos = (currentPagePedidos - 1) * pageSize;
+  const endIndexPedidos = startIndexPedidos + pageSize;
+  const currentPedidos = pedidosPendiente.slice(startIndexPedidos, endIndexPedidos);
+
+  const currentPageClientes = pageStates[productoSeleccionado?.idProducto] || 1;
+  const totalPagesClientes = Math.ceil(clientesProducto.length / pageSize);
+  const startIndexClientes = (currentPageClientes - 1) * pageSize;
+  const endIndexClientes = startIndexClientes + pageSize;
+  const currentClientes = clientesProducto.slice(startIndexClientes, endIndexClientes);
+
+  const setCurrentPageForProduct = (page) => {
+    setPageStates((prev) => ({
+      ...prev,
+      [productoSeleccionado?.idProducto]: page,
+    }));
+  };
+
   const renderPageButtons = (totalPages, currentPage, setPageFn) => {
     if (totalPages <= 1) return null;
     const delta = 2;
@@ -445,26 +529,6 @@ const Pedidos = () => {
         </li>
       );
     });
-  };
-
-  // Paginación para Pedidos Pendientes
-  const totalPagesPedidos = Math.ceil(pedidosPendiente.length / pageSize);
-  const startIndexPedidos = (currentPagePedidos - 1) * pageSize;
-  const endIndexPedidos = startIndexPedidos + pageSize;
-  const currentPedidos = pedidosPendiente.slice(startIndexPedidos, endIndexPedidos);
-
-  // Paginación para Clientes Producto (por producto)
-  const currentPageClientes = pageStates[productoSeleccionado?.idProducto] || 1;
-  const totalPagesClientes = Math.ceil(clientesProducto.length / pageSize);
-  const startIndexClientes = (currentPageClientes - 1) * pageSize;
-  const endIndexClientes = startIndexClientes + pageSize;
-  const currentClientes = clientesProducto.slice(startIndexClientes, endIndexClientes);
-
-  const setCurrentPageForProduct = (page) => {
-    setPageStates((prev) => ({
-      ...prev,
-      [productoSeleccionado?.idProducto]: page,
-    }));
   };
 
   return (
@@ -538,8 +602,8 @@ const Pedidos = () => {
                       <td>{pedido.idFactura}</td>
                       <td>
                         {pedido.cliente
-                          ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""}`
-                          : "Consumidor final"}
+                          ? `${pedido.cliente.nombre} ${pedido.cliente.apellido || ""} (Común)`
+                          : "Consumidor final (Común)"}
                       </td>
                       <td>
                         <NumericFormat
@@ -586,8 +650,7 @@ const Pedidos = () => {
                       setCurrentPagePedidos
                     )}
                     <li
-                      className={`page-item ${currentPagePedidos === totalPagesPedidos ? "disabled" : ""
-                        }`}
+                      className={`page-item ${currentPagePedidos === totalPagesPedidos ? "disabled" : ""}`}
                     >
                       <button
                         className="page-link"
@@ -676,8 +739,7 @@ const Pedidos = () => {
                 setCurrentPageForProduct
               )}
               <li
-                className={`page-item ${currentPageClientes === totalPagesClientes ? "disabled" : ""
-                  }`}
+                className={`page-item ${currentPageClientes === totalPagesClientes ? "disabled" : ""}`}
               >
                 <button
                   className="page-link"
@@ -718,24 +780,22 @@ const Pedidos = () => {
           <p>
             Fecha:{" "}
             {pedidoAConfirmar &&
-              new Date(pedidoAConfirmar.fecha).toLocaleString()}
+              new Date(pedidoAConfirmar.fecha).toLocaleString("es-CO")}
           </p>
           <p>
             Usuario:{" "}
             {pedidoAConfirmar?.cajero
-              ? `${pedidoAConfirmar.cajero.nombre} ${pedidoAConfirmar.cajero.apellido || ""
-              }`
+              ? `${pedidoAConfirmar.cajero.nombre} ${pedidoAConfirmar.cajero.apellido || ""}`
               : pedidoAConfirmar?.cajeroNombre
-                ? `${pedidoAConfirmar.cajeroNombre} ${pedidoAConfirmar.cajeroApellido || ""
-                }`
+                ? `${pedidoAConfirmar.cajeroNombre} ${pedidoAConfirmar.cajeroApellido || ""}`
+
                 : "Sin usuario asignado"}
           </p>
           <p>
             Cliente:{" "}
             {pedidoAConfirmar?.cliente
-              ? `${pedidoAConfirmar.cliente.nombre} ${pedidoAConfirmar.cliente.apellido || ""
-              }`
-              : "Consumidor final"}
+              ? `${pedidoAConfirmar.cliente.nombre} ${pedidoAConfirmar.cliente.apellido || ""} (Común)`
+              : "Consumidor final (Común)"}
           </p>
           {pedidoAConfirmar?.notas && (
             <p>
@@ -748,6 +808,7 @@ const Pedidos = () => {
               <tr>
                 <th>Nombre</th>
                 <th>Cant.</th>
+                <th>Tipo Precio</th>
                 <th>Precio (sin IVA)</th>
                 <th>Subtotal (con IVA)</th>
                 <th>IVA</th>
@@ -755,14 +816,59 @@ const Pedidos = () => {
             </thead>
             <tbody>
               {productosAConfirmar.map((item, i) => {
-                const precioSinIva = item.precio;
-                const precioConIva = item.iva ? item.precio * 1.19 : item.precio;
+                const precioSinIva = item.precioOpcional || item.precio;
+                const precioConIva = item.iva ? precioSinIva * 1.19 : precioSinIva;
                 const subtotalProducto = item.cantidad * precioConIva;
 
                 return (
                   <tr key={i}>
                     <td>{item.nombre}</td>
                     <td>{item.cantidad}</td>
+                    <td>
+                      <div>
+                        <label>
+                          <input
+                            type="radio"
+                            name={`tipoPrecio-${i}`}
+                            value="detal"
+                            checked={item.tipoPrecio === "detal"}
+                            onChange={() => handleTipoPrecioChange(i, "detal")}
+                          />
+                          Detal
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            name={`tipoPrecio-${i}`}
+                            value="mayorista"
+                            checked={item.tipoPrecio === "mayorista"}
+                            onChange={() => handleTipoPrecioChange(i, "mayorista")}
+                          />
+                          Mayorista
+                        </label>
+                        <label>
+                          <input
+                            type="radio"
+                            name={`tipoPrecio-${i}`}
+                            value="opcional"
+                            checked={item.tipoPrecio === "opcional"}
+                            onChange={() => handleTipoPrecioChange(i, "opcional")}
+                          />
+                          Opcional
+                        </label>
+                      </div>
+                      {item.tipoPrecio === "opcional" && (
+                        <NumericFormat
+                          value={item.precioOpcional}
+                          onValueChange={(val) => handlePrecioChange(i, val.floatValue || "")}
+                          thousandSeparator="."
+                          decimalSeparator=","
+                          prefix="$"
+                          allowNegative={false}
+                          placeholder="Ingrese el precio"
+                        />
+                      )}
+                    </td>
                     <td>
                       <NumericFormat
                         value={precioSinIva}
@@ -793,7 +899,7 @@ const Pedidos = () => {
             let totalCalculado = 0;
 
             productosAConfirmar.forEach((item) => {
-              const precioBase = item.precio;
+              const precioBase = item.precioOpcional || item.precio;
               const precioConIva = item.iva ? precioBase * 1.19 : precioBase;
               const subtotalItem = item.cantidad * precioBase;
               const totalItem = item.cantidad * precioConIva;
@@ -872,10 +978,8 @@ const Pedidos = () => {
           ¿Desea eliminar la factura del cliente{" "}
           <strong>
             {pedidoAEliminar?.cliente
-              ? `${pedidoAEliminar.cliente.nombre} ${pedidoAEliminar.cliente.apellido || ""
-              }`
-              : `Consumidor final${pedidoAEliminar?.notas ? ` (${pedidoAEliminar.notas})` : ""
-              }`}
+              ? `${pedidoAEliminar.cliente.nombre} ${pedidoAEliminar.cliente.apellido || ""} (Común)`
+              : `Consumidor final (Común)${pedidoAEliminar?.notas ? ` (${pedidoAEliminar.notas})` : ""}`}
           </strong>
           ?
         </p>

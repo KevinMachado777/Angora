@@ -24,4 +24,6 @@ public interface IReporteService {
     // Métodos para usuarios
     List<ReportePersonalDTO> getPersonal(LocalDateTime fechaInicio, LocalDateTime fechaFin);
     List<ReporteClientesDTO> getClientes(LocalDateTime fechaInicio, LocalDateTime fechaFin);
+
+    List<ReporteMovimientoDTO> getMovimientosInventario(LocalDateTime fechaInicio, LocalDateTime fechaFin, String tipo);
 }

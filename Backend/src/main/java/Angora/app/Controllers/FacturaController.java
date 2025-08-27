@@ -51,7 +51,7 @@ public class FacturaController {
             // Validar y mapear productos con precios dinámicos
             List<FacturaProducto> facturaProductos = new ArrayList<>();
             for (FacturaProducto fp : factura.getProductos()) {
-                Producto producto = productoRepository.findById(fp.getProducto().getId())
+                Producto producto = productoRepository.findById(fp.getProducto().getIdProducto())
                         .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + fp.getProducto().getId()));
                 fp.setProducto(producto);
                 fp.setFactura(factura);

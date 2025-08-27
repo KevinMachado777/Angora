@@ -3,16 +3,7 @@ package Angora.app.Controllers.dto;
 import java.util.List;
 
 public class ConfirmarFacturaDTO {
-    private boolean actualizarCartera;
     private List<FacturaProductoDTO> productos;
-
-    public boolean isActualizarCartera() {
-        return actualizarCartera;
-    }
-
-    public void setActualizarCartera(boolean actualizarCartera) {
-        this.actualizarCartera = actualizarCartera;
-    }
 
     public List<FacturaProductoDTO> getProductos() {
         return productos;
@@ -23,14 +14,16 @@ public class ConfirmarFacturaDTO {
     }
 
     public static class FacturaProductoDTO {
-        private Long idProducto;
+        private String idProducto;
         private Integer cantidad;
+        private String tipoPrecio; // "detal", "mayorista", or "opcional"
+        private Double precioOpcional; // Custom price when tipoPrecio is "opcional"
 
-        public Long getIdProducto() {
+        public String getIdProducto() {
             return idProducto;
         }
 
-        public void setIdProducto(Long idProducto) {
+        public void setIdProducto(String idProducto) {
             this.idProducto = idProducto;
         }
 
@@ -40,6 +33,22 @@ public class ConfirmarFacturaDTO {
 
         public void setCantidad(Integer cantidad) {
             this.cantidad = cantidad;
+        }
+
+        public String getTipoPrecio() {
+            return tipoPrecio;
+        }
+
+        public void setTipoPrecio(String tipoPrecio) {
+            this.tipoPrecio = tipoPrecio;
+        }
+
+        public Double getPrecioOpcional() {
+            return precioOpcional;
+        }
+
+        public void setPrecioOpcional(Double precioOpcional) {
+            this.precioOpcional = precioOpcional;
         }
     }
 }

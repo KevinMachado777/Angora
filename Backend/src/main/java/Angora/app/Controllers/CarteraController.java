@@ -21,12 +21,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-// Controlador para manejar las peticiones de carteras
 @RestController
 @RequestMapping("/carteras")
 public class CarteraController {
 
-    // Inyecta de servicio y repositorios
     @Autowired
     private CarteraService carteraService;
 
@@ -42,10 +40,8 @@ public class CarteraController {
     // Obtiene la cartera de un cliente por su ID
     @GetMapping(value = "/{idCliente}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Cartera> obtenerPorIdCliente(@PathVariable Long idCliente) {
-        // Busca la cartera con sus facturas
         Cartera cartera = carteraService.obtenerPorIdClienteConFacturas(idCliente);
         if (cartera == null) {
-            // Devuelve una cartera vacía si no existe
             Cartera emptyCartera = new Cartera();
             emptyCartera.setIdCartera(0L);
             emptyCartera.setIdCliente(null);
@@ -55,7 +51,6 @@ public class CarteraController {
             emptyCartera.setFacturas(List.of());
             return ResponseEntity.ok(emptyCartera);
         }
-        // Obtiene las facturas asociadas a la cartera
         List<Factura> facturas = facturaRepository.findByIdCarteraIdCartera(cartera.getIdCartera());
         cartera.setFacturas(facturas);
         return ResponseEntity.ok(cartera);
@@ -65,14 +60,11 @@ public class CarteraController {
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Cartera>> obtenerCarteras(@RequestParam(required = false) Boolean estado) {
         List<Cartera> carteras;
-        // Si se especifica estado=true, obtiene solo carteras activas
         if (estado != null && estado) {
             carteras = carteraService.obtenerCarterasActivas();
         } else {
-            // Obtiene todas las carteras si no se especifica estado
             carteras = carteraRepository.findAll();
         }
-        // Asigna las facturas a cada cartera
         carteras.forEach(cartera -> {
             List<Factura> facturas = facturaRepository.findByIdCarteraIdCartera(cartera.getIdCartera());
             cartera.setFacturas(facturas);
@@ -83,19 +75,14 @@ public class CarteraController {
     // Procesa un abono para una factura de un cliente
     @PostMapping(value = "/{idCliente}/abonos", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Cartera> procesarAbono(@PathVariable Long idCliente, @RequestBody Map<String, Object> body) {
-        // Extrae la cantidad del abono del cuerpo
-        Integer cantidad = ((Integer) body.get("cantidad"));
-        // Extrae la fecha del abono
+        Integer cantidad = ((Number) body.get("cantidad")).intValue();
         String fecha = (String) body.get("fecha");
-        // Extrae el ID de la factura, si existe
         Long idFactura = body.get("idFactura") != null ? ((Number) body.get("idFactura")).longValue() : null;
 
-        // Procesa el abono usando el servicio
         Cartera cartera = carteraService.procesarAbono(idCliente, cantidad, fecha, idFactura);
         if (cartera == null) {
             return ResponseEntity.badRequest().body(null);
         }
-        // Obtiene las facturas actualizadas
         List<Factura> facturas = facturaRepository.findByIdCarteraIdCartera(cartera.getIdCartera());
         cartera.setFacturas(facturas);
         return ResponseEntity.ok(cartera);
@@ -105,12 +92,9 @@ public class CarteraController {
     @PutMapping(value = "/{idCliente}/estado", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Cartera> actualizarEstadoCartera(@PathVariable Long idCliente,
                                                            @RequestBody Map<String, Boolean> body) {
-        // Obtiene el estado solicitado del cuerpo
         Boolean estado = body.get("estado");
-        // Intenta actualizar el estado usando el servicio
         Cartera cartera = carteraService.actualizarEstadoCartera(idCliente, estado);
         if (cartera == null) {
-            // Verifica si el cliente existe
             Cliente cliente = clienteRepository.findById(idCliente)
                     .orElseThrow(() -> new IllegalArgumentException("Cliente con ID " + idCliente + " no encontrado."));
             Cartera newCartera = new Cartera();
@@ -119,11 +103,9 @@ public class CarteraController {
             newCartera.setDeudas(0.0f);
             newCartera.setEstado(estado);
             newCartera.setFacturas(List.of());
-            // Guarda la nueva cartera
             carteraRepository.save(newCartera);
             return ResponseEntity.ok(newCartera);
         }
-        // Obtiene las facturas asociadas
         List<Factura> facturas = facturaRepository.findByIdCarteraIdCartera(cartera.getIdCartera());
         cartera.setFacturas(facturas);
         return ResponseEntity.ok(cartera);
@@ -133,18 +115,12 @@ public class CarteraController {
     @GetMapping("/facturas/{id}")
     public ResponseEntity<FacturaPendienteDTO> obtenerFacturaPorId(@PathVariable Long id) {
         try {
-            // Buscar la factura por ID
             Optional<Factura> optionalFactura = facturaRepository.findById(id);
-
-            // Verificar si la factura existe
             if (!optionalFactura.isPresent()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
             }
 
-            // Obtener la factura encontrada
             Factura factura = optionalFactura.get();
-
-            // Mapear la factura a FacturaPendienteDTO
             FacturaPendienteDTO dto = new FacturaPendienteDTO();
             dto.setIdFactura(factura.getIdFactura());
             dto.setFecha(factura.getFecha());
@@ -155,21 +131,14 @@ public class CarteraController {
             clienteDTO.setNombre(factura.getCliente().getNombre());
             dto.setCliente(clienteDTO);
 
-            // Mapear los productos
+            // Mapear los productos, siempre usando precioUnitario si está disponible
             dto.setProductos(factura.getProductos().stream().map(fp -> {
                 FacturaPendienteDTO.ProductoDTO productoDTO = new FacturaPendienteDTO.ProductoDTO();
-                productoDTO.setId(fp.getProducto().getId());
+                productoDTO.setId(fp.getProducto().getIdProducto()); // Updated to idProducto
                 productoDTO.setNombre(fp.getProducto().getNombre());
                 productoDTO.setCantidad(fp.getCantidad());
-
-                // Si la factura está confirmada Y tiene precio estático, usarlo
-                if (factura.getEstado().equals("CONFIRMADO") && fp.getPrecioUnitario() != null) {
-                    productoDTO.setPrecio(fp.getPrecioUnitario());
-                } else {
-                    // Si está pendiente o no tiene precio estático, usar dinámico
-                    productoDTO.setPrecio(fp.getProducto().getPrecio());
-                }
-
+                // Use precioUnitario if available, otherwise fall back to precioDetal
+                productoDTO.setPrecio(fp.getPrecioUnitario() != null ? fp.getPrecioUnitario() : fp.getProducto().getPrecioDetal());
                 productoDTO.setIva(fp.getProducto().getIva());
                 return productoDTO;
             }).collect(Collectors.toList()));
@@ -190,7 +159,7 @@ public class CarteraController {
                 dto.setIdCartera(carteraDTO);
             }
 
-            // Mapear el cajero si existe, y usar cajeroNombre/cajeroApellido incluso si es null
+            // Mapear el cajero si existe
             if (factura.getCajero() != null) {
                 FacturaPendienteDTO.UsuarioDTO cajeroDTO = new FacturaPendienteDTO.UsuarioDTO();
                 cajeroDTO.setId(factura.getCajero().getId());
@@ -200,17 +169,13 @@ public class CarteraController {
                 dto.setCajeroNombre(factura.getCajero().getNombre());
                 dto.setCajeroApellido(factura.getCajero().getApellido());
             } else {
-                // Si no hay cajero, usar los valores guardados en la factura (si existen)
                 dto.setCajeroNombre(factura.getCajeroNombre() != null ? factura.getCajeroNombre() : "Desconocido");
                 dto.setCajeroApellido(factura.getCajeroApellido() != null ? factura.getCajeroApellido() : "");
             }
 
             dto.setNotas(factura.getNotas());
-
-            // Devolver el DTO en la respuesta
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
-            // Manejar errores y devolver una respuesta adecuada
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }

@@ -27,7 +27,7 @@ public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
     @Query("SELECT m FROM Movimiento m WHERE (:fechaInicio IS NULL OR m.fechaMovimiento >= :fechaInicio) AND (:fechaFin IS NULL OR m.fechaMovimiento <= :fechaFin)")
     List<Movimiento> findByFechaBetween(@Param("fechaInicio") LocalDateTime fechaInicio, @Param("fechaFin") LocalDateTime fechaFin);
 
-    List<Movimiento> findByProducto_IdProducto(Long idProducto);
+    List<Movimiento> findByProducto_IdProducto(String idProducto);
 
     List<Movimiento> findByMateriaPrima_IdMateria(String idMateria);
 

@@ -33,9 +33,9 @@ public class Factura {
     @JsonManagedReference("factura-productos")
     private List<FacturaProducto> productos = new ArrayList<>();
 
-    private Integer subtotal;
-    private Integer total;
-    private Integer saldoPendiente;
+    private Double subtotal;
+    private Double total;
+    private Double saldoPendiente;
 
     @ManyToOne
     @JoinColumn(name = "id_cajero")
