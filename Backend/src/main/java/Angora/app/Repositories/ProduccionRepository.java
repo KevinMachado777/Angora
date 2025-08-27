@@ -12,5 +12,5 @@ import java.util.Optional;
 public interface ProduccionRepository extends JpaRepository<Produccion, Long> {
     // Permite obtener la ultima produccion para devoluciones
     @Query("SELECT p FROM Produccion p WHERE p.idProducto = :idProducto ORDER BY p.fecha DESC")
-    Optional<Produccion> findTopByIdProductoOrderByFechaDesc(@Param("idProducto") Long idProducto);
+    Optional<Produccion> findTopByIdProductoOrderByFechaDesc(@Param("idProducto") String idProducto);
 }

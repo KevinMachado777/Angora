@@ -17,9 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList; // Necesario para crear la lista
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class OrdenService implements IOrdenService {
@@ -34,7 +33,13 @@ public class OrdenService implements IOrdenService {
     private MateriaPrimaRepository materiaPrimaRepository;
 
     @Autowired
+    private MateriaPrimaService materiaPrimaService;
+
+    @Autowired
     private OrdenMateriaPrimaRepository ordenMateriaPrimaRepository;
+
+    @Autowired
+    private LoteRepository loteRepository;
 
     @Autowired
     private EnviarCorreo enviarCorreo;
@@ -133,28 +138,103 @@ public class OrdenService implements IOrdenService {
         }
     }
 
+    // Reemplaza el método confirmarOrden en OrdenService.java:
+
     @Transactional
     public void confirmarOrden(Long idOrden, OrdenConfirmacionDTO ordenConfirmacion) {
-        Orden orden = ordenRepository.findById(idOrden)
-                .orElseThrow(() -> new RuntimeException("Orden no encontrada"));
-
-        // Validar que la orden no esté ya confirmada
-        if (orden.getEstado()) {
-            throw new RuntimeException("La orden ya ha sido confirmada.");
+        Optional<Orden> ordenOpt = ordenRepository.findById(idOrden);
+        if (ordenOpt.isEmpty()) {
+            throw new RuntimeException("Orden no encontrada");
         }
 
-        if (ordenConfirmacion.getLotes() != null) {
+        Orden orden = ordenOpt.get();
+
+        // Validar que no haya IDs de lote duplicados
+        List<String> idsLotes = new ArrayList<>();
+        if (ordenConfirmacion.getLotesIds() != null) {
+            idsLotes = new ArrayList<>(ordenConfirmacion.getLotesIds().values());
+        } else if (ordenConfirmacion.getLotes() != null) {
+            idsLotes = ordenConfirmacion.getLotes().stream()
+                    .map(LoteDTO::getIdLote)
+                    .collect(Collectors.toList());
+        }
+
+        Set<String> idsUnicos = new HashSet<>(idsLotes);
+        if (idsLotes.size() != idsUnicos.size()) {
+            throw new RuntimeException("No se permiten IDs de lote duplicados");
+        }
+
+        // Crear los lotes para cada materia prima
+        List<Lote> lotes = new ArrayList<>();
+
+        if (ordenConfirmacion.getLotes() != null && !ordenConfirmacion.getLotes().isEmpty()) {
+            // Nuevo formato: usar los lotes directamente del DTO
             for (LoteDTO loteDTO : ordenConfirmacion.getLotes()) {
-                // Marcar un lote proveniente de una orden
-                loteDTO.setIdOrden(orden.getIdOrden());
-                loteService.save(loteDTO);
+                if (loteDTO.getIdLote() == null || loteDTO.getIdLote().trim().isEmpty()) {
+                    throw new RuntimeException("Falta el ID de lote para la materia: " + loteDTO.getIdMateria());
+                }
+
+                // Verificar que el ID de lote no exista ya
+                if (loteRepository.existsById(loteDTO.getIdLote())) {
+                    throw new RuntimeException("El ID de lote '" + loteDTO.getIdLote() + "' ya existe");
+                }
+
+                Lote nuevoLote = new Lote();
+                nuevoLote.setIdLote(loteDTO.getIdLote());
+                nuevoLote.setIdMateria(loteDTO.getIdMateria());
+                nuevoLote.setCostoUnitario(loteDTO.getCostoUnitario());
+                nuevoLote.setCantidad(loteDTO.getCantidad());
+                nuevoLote.setCantidadDisponible(loteDTO.getCantidadDisponible());
+                nuevoLote.setFechaIngreso(LocalDateTime.now());
+                nuevoLote.setIdProveedor(loteDTO.getIdProveedor());
+                nuevoLote.setIdOrden(idOrden);
+
+                lotes.add(nuevoLote);
+            }
+        } else {
+            // Formato anterior: usar lotesIds (mantener para retrocompatibilidad)
+            for (OrdenMateriaPrima ordenMP : orden.getOrdenMateriaPrimas()) {
+                String idMateria = ordenMP.getMateriaPrima().getIdMateria();
+                String idLote = ordenConfirmacion.getLotesIds().get(idMateria);
+
+                if (idLote == null || idLote.trim().isEmpty()) {
+                    throw new RuntimeException("Falta el ID de lote para la materia: " + ordenMP.getMateriaPrima().getNombre());
+                }
+
+                // Verificar que el ID de lote no exista ya
+                if (loteRepository.existsById(idLote)) {
+                    throw new RuntimeException("El ID de lote '" + idLote + "' ya existe");
+                }
+
+                Lote nuevoLote = new Lote();
+                nuevoLote.setIdLote(idLote);
+                nuevoLote.setIdMateria(idMateria);
+                nuevoLote.setCostoUnitario(ordenMP.getCostoUnitario());
+                nuevoLote.setCantidad(ordenMP.getCantidad());
+                nuevoLote.setCantidadDisponible(ordenMP.getCantidad());
+                nuevoLote.setFechaIngreso(LocalDateTime.now());
+                nuevoLote.setIdProveedor(orden.getProveedor().getIdProveedor());
+                nuevoLote.setIdOrden(idOrden);
+
+                lotes.add(nuevoLote);
             }
         }
 
-        // Actualizar estado de la orden a Completado
-        orden.setEstado(true);
-        orden.setTotal(ordenConfirmacion.getTotalOrden());
+        // Guardar todos los lotes
+        loteRepository.saveAll(lotes);
 
+        // Actualizar el inventario de materias primas
+        for (Lote lote : lotes) {
+            materiaPrimaService.recomputeMateriaTotalsAndCosto(lote.getIdMateria());
+        }
+
+        // Actualizar el total de la orden si se proporciona
+        if (ordenConfirmacion.getTotalOrden() != null) {
+            orden.setTotal(ordenConfirmacion.getTotalOrden());
+        }
+
+        // Marcar la orden como confirmada
+        orden.setEstado(true);
         ordenRepository.save(orden);
     }
 

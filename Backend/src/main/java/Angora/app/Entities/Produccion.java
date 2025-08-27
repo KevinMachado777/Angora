@@ -17,7 +17,7 @@ public class Produccion {
     private Long idProduccion;
 
     @Column(name = "id_producto", nullable = false)
-    private Long idProducto;
+    private String idProducto;
 
     @Column(nullable = false)
     private LocalDateTime fecha;

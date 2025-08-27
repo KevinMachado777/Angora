@@ -11,11 +11,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// Servicio de los reportes
 @Service
 public class ReporteService implements IReporteService {
 
-    // Inyección de los repositorios necesarios para acceder a las entidades de la base de datos
     @Autowired private FacturaRepository facturaRepository;
     @Autowired private OrdenRepository ordenRepository;
     @Autowired private ProductoRepository productoRepository;
@@ -26,27 +24,29 @@ public class ReporteService implements IReporteService {
     @Autowired private LoteRepository loteRepository;
     @Autowired(required = false) private ProveedorRepository proveedorRepository;
 
+
     // Metodo para obtener la lista de ingresos basada en un rango de fechas
     // Si no se proporcionan fechas, retorna todos los ingresos disponibles
     public List<ReporteIngresosDTO> getIngresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteIngresosDTO> ingresos = new ArrayList<>();
         List<Factura> facturas = (fechaInicio == null && fechaFin == null)
-                ? facturaRepository.findAll() // Obtiene todas las facturas si no hay filtro de fechas
-                : facturaRepository.findByFechaBetween(fechaInicio, fechaFin); // Filtra por rango de fechas
+                ? facturaRepository.findAll()
+                : facturaRepository.findByFechaBetween(fechaInicio, fechaFin);
 
         for (Factura f : facturas) {
-            String metodoPago = (f.getIdCartera() != null) ? "Crédito" : "Efectivo"; // Determina el metodo de pago
+            String metodoPago = (f.getIdCartera() != null) ? "Crédito" : "Efectivo";
+            Double totalFactura = f.getTotal() != null ? f.getTotal() : 0.0;
             Float total = 0f;
             if (metodoPago.equals("Efectivo")) {
-                total = f.getTotal() != null ? f.getTotal() : 0f; // Total completo para pagos en efectivo
+                total = totalFactura.floatValue();
             } else {
-                Float pagado = (f.getTotal() != null ? f.getTotal() : 0f) - (f.getSaldoPendiente() != null ? f.getSaldoPendiente() : 0f);
-                total = pagado > 0 ? pagado : 0f; // Calcula lo pagado para créditos, ignorando valores negativos
+                Double saldoPendiente = f.getSaldoPendiente() != null ? f.getSaldoPendiente() : 0.0;
+                Float pagado = (float) (totalFactura - saldoPendiente);
+                total = pagado > 0 ? pagado : 0f;
             }
             ingresos.add(new ReporteIngresosDTO(
                     f.getIdFactura(),
-                    // Nombre del cliente o valor por defecto
-                    f.getCliente() != null ? f.getCliente().getNombre() : "Sin cliente",
+                    f.getCliente() != null ? f.getCliente().getNombre() : "Consumidor final",
                     metodoPago,
                     f.getFecha(),
                     total
@@ -55,11 +55,9 @@ public class ReporteService implements IReporteService {
         return ingresos;
     }
 
-    // Metodo para obtener la lista de egresos basada en un rango de fechas desde entidad de lote
+    @Override
     public List<ReporteEgresosDTO> getEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteEgresosDTO> egresos = new ArrayList<>();
-
-        // Obtener lotes (manuales y generados por orden) en el rango o todos si no hay filtro
         List<Lote> lotes = (fechaInicio == null && fechaFin == null)
                 ? loteRepository.findAll()
                 : loteRepository.findByFechaIngresoBetween(fechaInicio, fechaFin);
@@ -71,15 +69,15 @@ public class ReporteService implements IReporteService {
                         .map(Proveedor::getNombre)
                         .orElse("Proveedor #" + l.getIdProveedor());
             } else if (l.getIdOrden() != null) {
-                // Si el lote proviene de una orden, intentar obtener proveedor desde la orden
                 Orden orden = ordenRepository.findById(l.getIdOrden()).orElse(null);
                 if (orden != null && orden.getProveedor() != null && orden.getProveedor().getNombre() != null) {
                     proveedor = orden.getProveedor().getNombre();
                 }
             }
 
-            Float total = (l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f)
-                    * (l.getCantidad() != null ? l.getCantidad() : 0f);
+            Integer costoUnitario = l.getCostoUnitario() != null ? l.getCostoUnitario() : 0;
+            Float cantidad = l.getCantidad() != null ? l.getCantidad() : 0f;
+            Float total = costoUnitario * cantidad;
 
             egresos.add(new ReporteEgresosDTO(
                     l.getIdLote(), // Modificado: String en lugar de Long
@@ -89,8 +87,7 @@ public class ReporteService implements IReporteService {
             ));
         }
 
-        // ordenar por fecha asc
-        egresos.sort((a,b) -> {
+        egresos.sort((a, b) -> {
             if (a.getFecha() == null && b.getFecha() == null) return 0;
             if (a.getFecha() == null) return -1;
             if (b.getFecha() == null) return 1;
@@ -100,8 +97,7 @@ public class ReporteService implements IReporteService {
         return egresos;
     }
 
-    // Metodo para calcular el total de ingresos en un rango de fechas
-    // Considera pagos parciales en créditos y excluye saldos pendientes
+    @Override
     public Float getTotalIngresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<Factura> facturas = (fechaInicio == null && fechaFin == null)
                 ? facturaRepository.findAll()
@@ -109,34 +105,34 @@ public class ReporteService implements IReporteService {
 
         return (float) facturas.stream()
                 .mapToDouble(f -> {
-                    Float total = f.getTotal() != null ? f.getTotal() : 0f;
-                    Float saldoPendiente = f.getSaldoPendiente() != null ? f.getSaldoPendiente() : 0f;
+                    Double total = f.getTotal() != null ? f.getTotal() : 0.0;
                     if (f.getIdCartera() == null) {
-                        return total; // Total completo para efectivo
+                        return total;
                     } else {
-                        Float pagado = total - saldoPendiente;
-                        return pagado > 0 ? pagado : 0f; // Solo cuenta lo pagado en créditos
+                        Double saldoPendiente = f.getSaldoPendiente() != null ? f.getSaldoPendiente() : 0.0;
+                        double pagado = total - saldoPendiente;
+                        return pagado > 0 ? pagado : 0.0;
                     }
                 })
-                .reduce(0, Double::sum);
+                .sum();
     }
 
-    // Metodo para calcular el total de egresos en un rango de fechas
-    // Suma los totales de todas las órdenes en el período
+    @Override
     public Float getTotalEgresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<Lote> lotes = (fechaInicio == null && fechaFin == null)
                 ? loteRepository.findAll()
                 : loteRepository.findByFechaIngresoBetween(fechaInicio, fechaFin);
 
-        float totalLotes = 0f;
-        for (Lote l : lotes) {
-            Float costoUnit = l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f;
-            Float cantidad = l.getCantidad() != null ? l.getCantidad() : 0f;
-            totalLotes += costoUnit * cantidad;
-        }
-        return totalLotes;
+        return (float) lotes.stream()
+                .mapToDouble(l -> {
+                    Integer costoUnitario = l.getCostoUnitario() != null ? l.getCostoUnitario() : 0;
+                    Float cantidad = l.getCantidad() != null ? l.getCantidad() : 0f;
+                    return costoUnitario * cantidad;
+                })
+                .sum();
     }
 
+    @Override
     // Metodo para calcular el margen de utilidad restando egresos de ingresos
     public Float getUtilidadMargin(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         Float ingresos = getTotalIngresos(fechaInicio, fechaFin);
@@ -144,95 +140,123 @@ public class ReporteService implements IReporteService {
         return ingresos - egresos;
     }
 
-    // Metodo para obtener la lista de productos con sus detalles
-    // Incluye cantidad y precio para cada producto registrado
+    @Override
     public List<ReporteProductoDTO> getProductos() {
         List<ReporteProductoDTO> productos = new ArrayList<>();
+        List<Factura> facturas = facturaRepository.findAll();
+
+        // Aggregate sales data per product
         for (Producto p : productoRepository.findAll()) {
-            Float precio = p.getPrecio() != null ? p.getPrecio() : 0f;
-            Integer cantidad = p.getCantidad() != null ? p.getCantidad().intValue() : 0;
+            Double precioUnitario = 0.0;
+            Integer cantidadVendida = 0;
+
+            // Calculate average price and total quantity sold from facturas
+            for (Factura f : facturas) {
+                for (FacturaProducto fp : f.getProductos()) {
+                    if (fp.getProducto().getIdProducto().equals(p.getIdProducto())) {
+                        precioUnitario += fp.getPrecioUnitario() != null ? fp.getPrecioUnitario() : p.getPrecioDetal();
+                        cantidadVendida += fp.getCantidad();
+                    }
+                }
+            }
+
+            // Average price if sold
+            precioUnitario = cantidadVendida > 0 ? precioUnitario / cantidadVendida : p.getPrecioDetal() != null ? p.getPrecioDetal() : 0.0;
+
             productos.add(new ReporteProductoDTO(
-                    p.getId(),
+                    Long.parseLong(p.getIdProducto()), // Assuming idProducto can be parsed to Long for DTO
                     p.getNombre(),
-                    cantidad,
-                    precio
+                    p.getStock() != null ? p.getStock() : 0,
+                    precioUnitario
             ));
         }
         return productos;
     }
 
-    // Metodo para obtener la lista de materias primas con sus detalles
-    // Incluye cantidad y costo para cada materia prima registrada
+    @Override
     public List<ReporteMateriaPrimaDTO> getMateriaPrima() {
         List<ReporteMateriaPrimaDTO> materias = new ArrayList<>();
         for (MateriaPrima m : materiaPrimaRepository.findAll()) {
-            Float costo = m.getCosto() != null ? m.getCosto() : 0f;
-            Integer cantidad = m.getCantidad() != null ? m.getCantidad().intValue() : 0;
+            Integer costo = m.getCosto() != null ? m.getCosto() : 0;
+            Integer cantidad = m.getCantidad() != null ? Math.round(m.getCantidad()) : 0;
             materias.add(new ReporteMateriaPrimaDTO(
+
                     m.getId(), // Modificado: String en lugar de Long
                     m.getNombre(),
                     cantidad,
-                    costo
+                    costo.floatValue()
             ));
         }
         return materias;
     }
 
-    // Metodo para calcular el total de productos en un rango de fechas
-    // Filtra productos con movimientos si se proporcionan fechas
+    @Override
     public Float getTotalProductos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<Producto> productos = productoRepository.findAll();
         if (fechaInicio != null || fechaFin != null) {
             productos = productos.stream()
-                    .filter(p -> fechaInicio == null && fechaFin == null || movimientoRepository.countByProductoAndFechaBetween(p, fechaInicio, fechaFin) > 0)
+                    .filter(p -> movimientoRepository.countByProductoAndFechaBetween(p, fechaInicio, fechaFin) > 0)
                     .toList();
         }
         return productos.stream()
-                .map(p -> p.getCantidad() != null ? p.getCantidad().floatValue() : 0f)
+                .map(p -> p.getStock() != null ? p.getStock().floatValue() : 0f)
                 .reduce(0f, Float::sum);
     }
 
-    // Metodo para calcular el total de materias primas en un rango de fechas
-    // Filtra materias primas con movimientos si se proporcionan fechas
+    @Override
     public Float getTotalMateriaPrima(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<MateriaPrima> materias = materiaPrimaRepository.findAll();
         if (fechaInicio != null || fechaFin != null) {
             materias = materias.stream()
-                    .filter(m -> fechaInicio == null && fechaFin == null || movimientoRepository.countByMateriaPrimaAndFechaBetween(m, fechaInicio, fechaFin) > 0)
+                    .filter(m -> movimientoRepository.countByMateriaPrimaAndFechaBetween(m, fechaInicio, fechaFin) > 0)
                     .toList();
         }
         return materias.stream()
-                .map(m -> m.getCantidad() != null ? m.getCantidad().floatValue() : 0f)
+                .map(m -> m.getCantidad() != null ? m.getCantidad() : 0f)
                 .reduce(0f, Float::sum);
     }
 
-    // Metodo para obtener total de productos por fecha, reutilizando la lógica existente
+    @Override
     public Float getTotalProductosByFecha(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         return getTotalProductos(fechaInicio, fechaFin);
     }
 
-    // Metodo para obtener total de materias primas por fecha, reutilizando la lógica existente
+    @Override
     public Float getTotalMateriaPrimaByFecha(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         return getTotalMateriaPrima(fechaInicio, fechaFin);
     }
 
-    // Metodo para calcular el valor total del inventario basado en productos
-    // Considera solo productos con movimientos en el rango de fechas si se especifican
+    @Override
     public Float getValorInventario(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<Producto> productos = productoRepository.findAll();
         if (fechaInicio != null || fechaFin != null) {
             productos = productos.stream()
-                    .filter(p -> fechaInicio == null && fechaFin == null || movimientoRepository.countByProductoAndFechaBetween(p, fechaInicio, fechaFin) > 0)
+                    .filter(p -> movimientoRepository.countByProductoAndFechaBetween(p, fechaInicio, fechaFin) > 0)
                     .toList();
         }
-        Float valorProductos = productos.stream()
-                .map(p -> (p.getPrecio() != null ? p.getPrecio() : 0f) * (p.getCantidad() != null ? p.getCantidad() : 0f))
-                .reduce(0f, Float::sum);
-        return valorProductos;
+        List<Factura> facturas = (fechaInicio == null && fechaFin == null)
+                ? facturaRepository.findAll()
+                : facturaRepository.findByFechaBetween(fechaInicio, fechaFin);
+
+        return (float) productos.stream()
+                .mapToDouble(p -> {
+                    Double precioUnitario = 0.0;
+                    Integer cantidadVendida = 0;
+                    for (Factura f : facturas) {
+                        for (FacturaProducto fp : f.getProductos()) {
+                            if (fp.getProducto().getIdProducto().equals(p.getIdProducto())) {
+                                precioUnitario += fp.getPrecioUnitario() != null ? fp.getPrecioUnitario() : p.getPrecioDetal();
+                                cantidadVendida += fp.getCantidad();
+                            }
+                        }
+                    }
+                    precioUnitario = cantidadVendida > 0 ? precioUnitario / cantidadVendida : p.getPrecioDetal() != null ? p.getPrecioDetal() : 0.0;
+                    return precioUnitario * (p.getStock() != null ? p.getStock() : 0);
+                })
+                .sum();
     }
 
-    // Metodo para obtener reportes de personal basado en facturas procesadas
-    // Asocia ventas a usuarios (cajeros) en un rango de fechas
+    @Override
     public List<ReportePersonalDTO> getPersonal(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReportePersonalDTO> personal = new ArrayList<>();
         for (Usuario u : usuarioRepository.findAll()) {
@@ -251,16 +275,18 @@ public class ReporteService implements IReporteService {
         return personal;
     }
 
-    // Metodo para obtener reportes de clientes con historial de compras
-    // Incluye número de compras y última compra en un rango de fechas
+    @Override
     public List<ReporteClientesDTO> getClientes(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteClientesDTO> clientes = new ArrayList<>();
         for (Cliente c : clienteRepository.findAll()) {
             List<Factura> facturas = facturaRepository.findByIdCliente(c.getIdCliente());
+            if (facturas == null) {
+                facturas = new ArrayList<>();
+            }
             if (fechaInicio != null || fechaFin != null) {
                 facturas = facturas.stream()
-                        .filter(f -> (fechaInicio == null || f.getFecha().isAfter(fechaInicio))
-                                && (fechaFin == null || f.getFecha().isBefore(fechaFin)))
+                        .filter(f -> (fechaInicio == null || !f.getFecha().isBefore(fechaInicio))
+                                && (fechaFin == null || !f.getFecha().isAfter(fechaFin)))
                         .toList();
             }
             facturas.sort((f1, f2) -> f2.getFecha().compareTo(f1.getFecha()));
@@ -277,44 +303,37 @@ public class ReporteService implements IReporteService {
         return clientes;
     }
 
-    // Metodo para obtener movimientos de inventario filtrados por tipo y fechas
-    // Permite segmentar por productos o materias primas
+    @Override
     public List<ReporteMovimientoDTO> getMovimientosInventario(LocalDateTime fechaInicio, LocalDateTime fechaFin, String tipo) {
-        // filtrar por fecha si llega
         List<Movimiento> movimientos = (fechaInicio == null && fechaFin == null)
                 ? movimientoRepository.findAll()
-                : movimientoRepository.findAll().stream()
-                .filter(m -> m.getFechaMovimiento() != null
-                        && (fechaInicio == null || !m.getFechaMovimiento().isBefore(fechaInicio))
-                        && (fechaFin    == null || !m.getFechaMovimiento().isAfter(fechaFin)))
-                .toList();
+                : movimientoRepository.findByFechaBetween(fechaInicio, fechaFin);
 
         List<ReporteMovimientoDTO> resultado = new ArrayList<>();
 
         for (Movimiento m : movimientos) {
             boolean esProducto = (m.getProducto() != null);
-            boolean esMateria  = (m.getMateriaPrima() != null);
+            boolean esMateria = (m.getMateriaPrima() != null);
 
             if ("movimientos".equals(tipo)
                     || ("productos".equals(tipo) && esProducto)
                     || ("materiaPrima".equals(tipo) && esMateria)) {
 
-                String nombre = esProducto ? m.getProducto().getNombre() : m.getMateriaPrima().getNombre();
+                String nombre = esProducto ? m.getProducto().getNombre() : (esMateria ? m.getMateriaPrima().getNombre() : "Desconocido");
 
-                // Usar SIEMPRE los valores del movimiento
-                Float cantPasada  = (m.getCantidadAnterior() != null) ? m.getCantidadAnterior()
+                Float cantPasada = m.getCantidadAnterior() != null ? m.getCantidadAnterior()
                         : (m.getCantidadActual() != null && m.getCantidadCambio() != null
                         ? m.getCantidadActual() - m.getCantidadCambio() : 0f);
 
-                Float cantActual  = (m.getCantidadActual() != null) ? m.getCantidadActual()
+                Float cantActual = m.getCantidadActual() != null ? m.getCantidadActual()
                         : (cantPasada != null && m.getCantidadCambio() != null
                         ? cantPasada + m.getCantidadCambio() : 0f);
 
                 resultado.add(new ReporteMovimientoDTO(
                         m.getIdMovimiento(),
                         nombre,
-                        cantPasada != null ? cantPasada : 0f,
-                        cantActual != null ? cantActual : 0f,
+                        cantPasada,
+                        cantActual,
                         m.getTipoMovimiento(),
                         m.getFechaMovimiento(),
                         esProducto ? m.getProducto().getId() : null,

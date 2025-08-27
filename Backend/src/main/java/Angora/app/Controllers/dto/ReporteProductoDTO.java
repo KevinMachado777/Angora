@@ -8,10 +8,10 @@ public class ReporteProductoDTO {
     private Long id;
     private String producto;
     private Integer cantidad;
-    private Float precioUnitario;
+    private Double precioUnitario;
 
     // Constructor con parámetros
-    public ReporteProductoDTO(Long id, String producto, Integer cantidad, Float precioUnitario) {
+    public ReporteProductoDTO(Long id, String producto, Integer cantidad, Double precioUnitario) {
         this.id = id;
         this.producto = producto;
         this.cantidad = cantidad;

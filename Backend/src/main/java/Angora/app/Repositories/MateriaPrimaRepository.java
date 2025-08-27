@@ -6,15 +6,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-// Repositorio para manejar materia prima
 @Repository
 public interface MateriaPrimaRepository extends JpaRepository<MateriaPrima, String> {
-    // Tipo de dato cambiado a Materia, antes era Object
     Optional<MateriaPrima> findByNombre(String nombreMateria);
+
+    // Agregar este método para buscar por ID
+    @Query("SELECT m FROM MateriaPrima m WHERE m.idMateria = :id")
+    Optional<MateriaPrima> findByIdMateria(@Param("id") String id);
 
     void deleteByid(String id);
 }

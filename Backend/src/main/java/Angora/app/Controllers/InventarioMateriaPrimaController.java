@@ -25,6 +25,7 @@ public class InventarioMateriaPrimaController {
 
     // Metodo para buscar una materia por id
     @GetMapping("/{id}")
+
     public ResponseEntity<?> getById(@PathVariable String id){ // Modificado: Long a String
         return new ResponseEntity<>(materiaPrimaService.findById(id), HttpStatus.OK);
     }

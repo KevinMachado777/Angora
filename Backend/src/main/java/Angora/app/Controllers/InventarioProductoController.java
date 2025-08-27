@@ -37,7 +37,7 @@ public class InventarioProductoController {
 
     // Obtener producto por un ID
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
+    public ResponseEntity<?> getById(@PathVariable String id) {
         var productoDto = productoService.findById(id);
         return new ResponseEntity<>(productoDto, HttpStatus.OK);
     }
@@ -45,14 +45,28 @@ public class InventarioProductoController {
     // Guardar un producto
     @PostMapping(consumes = "application/json")
     public ResponseEntity<?> create(@RequestBody ProductoDTO producto) {
+        if (producto.getPrecioDetal() == null || producto.getPrecioDetal() <= 0) {
+            return new ResponseEntity<>("El precio detal debe ser mayor que 0", HttpStatus.BAD_REQUEST);
+        }
+        if (producto.getPrecioMayorista() != null && producto.getPrecioMayorista() <= 0) {
+            return new ResponseEntity<>("El precio mayoreo debe ser mayor que 0", HttpStatus.BAD_REQUEST);
+        }
+        if (producto.getStockMinimo() != null && producto.getStockMinimo() < 0) {
+            return new ResponseEntity<>("El stock mínimo no puede ser negativo", HttpStatus.BAD_REQUEST);
+        }
+        if (producto.getStockMaximo() != null && producto.getStockMaximo() < 0) {
+            return new ResponseEntity<>("El stock máximo no puede ser negativo", HttpStatus.BAD_REQUEST);
+        }
         System.out.println("Producto a guardar: " + producto.toString());
         return new ResponseEntity<>(productoService.crearProductoDesdeDTO(producto), HttpStatus.CREATED);
     }
 
     // Actualizar un producto
     @PutMapping(value = "/{id}", consumes = "application/json")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ProductoDTO producto) {
+    public ResponseEntity<?> update(@PathVariable(name = "id") String id, @RequestBody ProductoDTO producto) {
         // Validar que el id del cuerpo coincida con el id de la ruta (opcional pero recomendado)
+        System.out.println("ID de la ruta: " + id);
+        System.out.println("ID del cuerpo: " + producto.getIdProducto());
         if (!id.equals(producto.getIdProducto())) {
             return new ResponseEntity<>("El ID del cuerpo no coincide con el ID de la ruta", HttpStatus.BAD_REQUEST);
         }
@@ -61,7 +75,7 @@ public class InventarioProductoController {
 
     // Actualizar el stock de un producto (aumentar o reducir)
     @PutMapping("/{id}/stock")
-    public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody NuevaCantidadDTO nuevaCantidadDTO) {
+    public ResponseEntity<?> updateStock(@PathVariable(name = "id") String id, @RequestBody NuevaCantidadDTO nuevaCantidadDTO) {
         try {
             Producto producto = productoService.updateStock(id, nuevaCantidadDTO.getNuevaCantidad());
             return new ResponseEntity<>(producto, HttpStatus.OK);
@@ -73,7 +87,7 @@ public class InventarioProductoController {
     // Disminuir el stock de un producto por perdidas
     @PutMapping("/{id}/disminuir-stock")
     public ResponseEntity<ProductoDTO> disminuirStockPorPerdida(
-            @PathVariable Long id,
+            @PathVariable(name = "id") String id,
             @RequestBody Map<String, Integer> request) {
         try {
             Integer cantidadADisminuir = request.get("cantidadADisminuir");
@@ -93,7 +107,7 @@ public class InventarioProductoController {
 
     // Eliminar un producto
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable String id) {
         productoService.delete(id);
         return new ResponseEntity<>("Producto Eliminado", HttpStatus.NO_CONTENT);
     }

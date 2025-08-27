@@ -2,7 +2,6 @@ package Angora.app.Entities;
 
 import Angora.app.Contract.Inventariable;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -10,7 +9,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -22,12 +20,16 @@ import java.util.List;
 public class Producto implements Inventariable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_producto")
-    private Long idProducto;
+    private String idProducto;
 
     private Integer costo;
-    private Integer precio;
+
+    @Column(name = "precio_detal")
+    private Double precioDetal;
+
+    private Double precioMayorista;
+
     private Boolean iva;
 
     @ManyToOne
@@ -37,9 +39,10 @@ public class Producto implements Inventariable {
 
     private String nombre;
     private Integer stock;
+    private Integer stockMinimo;
+    private Integer stockMaximo;
 
-    // Porcentaje de ganancia
-    @Column(name = "Porcentaje_ganancia")
+    @Column(name = "porcentaje_ganancia")
     @Builder.Default
     private Integer porcentajeGanancia = 15;
 
@@ -49,18 +52,11 @@ public class Producto implements Inventariable {
 
     @Override
     public Long getId() {
-        return idProducto;
+        return 0L;
     }
 
     @Override
     public Integer getCantidad() {
         return stock;
     }
-
-    // Producto.java
-    @Override
-    public String toString() {
-        return "Producto{id=" + idProducto + ", nombre='" + nombre + "'}";
-    }
-
 }

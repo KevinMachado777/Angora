@@ -46,7 +46,11 @@ export const CreadorTabla = ({
   const currentItems = registros.slice(startIndex, endIndex);
 
   // Control de página
-  const goToPage = (page) => {
+  const goToPage = (page, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const newPage = Math.max(1, Math.min(page, totalPages));
     setLocalCurrentPage(newPage);
     if (onPageChange) onPageChange(newPage);
@@ -74,7 +78,17 @@ export const CreadorTabla = ({
       }
       return (
         <li key={p} className={`page-item ${currentPage === p ? "active" : ""}`}>
-          <button className="page-link" onClick={() => setPageFn(p)}>{p}</button>
+          <button 
+            type="button"
+            className="page-link" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setPageFn(p, e);
+            }}
+          >
+            {p}
+          </button>
         </li>
       );
     });
@@ -119,10 +133,18 @@ export const CreadorTabla = ({
       </table>
 
       {/* Paginación */}
-      <nav>
+      <nav onClick={e => e.stopPropagation()}>
         <ul className="pagination justify-content-center">
           <li className={`page-item ${localCurrentPage === 1 ? "disabled" : ""}`}>
-            <button className="page-link" onClick={() => goToPage(localCurrentPage - 1)}>
+            <button 
+              type="button"
+              className="page-link" 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                goToPage(localCurrentPage - 1, e);
+              }}
+            >
               Anterior
             </button>
           </li>

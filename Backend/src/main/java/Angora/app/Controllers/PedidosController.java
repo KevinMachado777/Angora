@@ -73,25 +73,24 @@ public class PedidosController {
                 }
                 dto.setCliente(clienteDTO);
 
-                // Mapear productos con precios dinámicos o estáticos según el estado
+                // Mapear productos con precios persistidos o dinámicos
                 dto.setProductos(factura.getProductos().stream().map(fp -> {
                     FacturaPendienteDTO.ProductoDTO productoDTO = new FacturaPendienteDTO.ProductoDTO();
-                    productoDTO.setId(fp.getProducto().getId());
+                    productoDTO.setId(fp.getProducto().getIdProducto());
                     productoDTO.setNombre(fp.getProducto().getNombre());
                     productoDTO.setCantidad(fp.getCantidad());
 
-                    // Si está CONFIRMADO, usar precios estáticos; si está PENDIENTE, usar dinámicos
-                    if (factura.getEstado().equals("CONFIRMADO") && fp.getPrecioUnitario() != null) {
-                        productoDTO.setPrecio(fp.getPrecioUnitario());
+                    // Usar precio persistido (precioUnitario) si está disponible, sino dinámico
+                    if (fp.getPrecioUnitario() != null) {
+                        productoDTO.setPrecio(fp.getPrecioUnitario().doubleValue());
                     } else {
-                        productoDTO.setPrecio(fp.getProducto().getPrecio());
+                        productoDTO.setPrecio(fp.getProducto().getPrecioDetal());
                     }
 
                     productoDTO.setIva(fp.getProducto().getIva());
                     return productoDTO;
                 }).collect(Collectors.toList()));
 
-                // Convertir Integer a Float para subtotal y total
                 dto.setSubtotal(factura.getSubtotal() != null ? factura.getSubtotal() : 0);
                 dto.setTotal(factura.getTotal() != null ? factura.getTotal() : 0);
                 dto.setSaldoPendiente(factura.getSaldoPendiente());
@@ -149,18 +148,47 @@ public class PedidosController {
             }
 
             // Validar stock de productos
-            for (ConfirmarFacturaDTO.FacturaProductoDTO fp : dto.getProductos()) {
-                Producto producto = productoRepository.findById(fp.getIdProducto())
-                        .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + fp.getIdProducto()));
-                if (producto.getStock() == null || producto.getStock() < fp.getCantidad()) {
+            for (ConfirmarFacturaDTO.FacturaProductoDTO fpDTO : dto.getProductos()) {
+                Producto producto = productoRepository.findById(fpDTO.getIdProducto())
+                        .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + fpDTO.getIdProducto()));
+                if (producto.getStock() == null || producto.getStock() < fpDTO.getCantidad()) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Stock insuficiente para el producto: " + producto.getNombre());
                 }
             }
 
-            // Hacer snapshot de precios antes de confirmar
-            for (FacturaProducto fp : factura.getProductos()) {
-                Integer precioActual = fp.getProducto().getPrecio();
-                Integer subtotalItem = precioActual * fp.getCantidad();
+            // Hacer snapshot de precios basados en el tipo de precio seleccionado
+            if (factura.getProductos().size() != dto.getProductos().size()) {
+                throw new RuntimeException("La cantidad de productos en el DTO no coincide con la factura");
+            }
+
+            for (int i = 0; i < factura.getProductos().size(); i++) {
+                FacturaProducto fp = factura.getProductos().get(i);
+                ConfirmarFacturaDTO.FacturaProductoDTO fpDTO = dto.getProductos().get(i);
+
+                if (!fp.getProducto().getIdProducto().equals(fpDTO.getIdProducto()) || !fp.getCantidad().equals(fpDTO.getCantidad())) {
+                    throw new RuntimeException("Los productos o cantidades no coinciden con la factura");
+                }
+
+                Double precioActual;
+                String tipoPrecio = fpDTO.getTipoPrecio();
+
+                if ("detal".equals(tipoPrecio)) {
+                    precioActual = fp.getProducto().getPrecioDetal();
+                } else if ("mayorista".equals(tipoPrecio)) {
+                    precioActual = fp.getProducto().getPrecioMayorista();
+                    if (precioActual == null) {
+                        throw new RuntimeException("El producto " + fp.getProducto().getNombre() + " no tiene precio mayorista");
+                    }
+                } else if ("opcional".equals(tipoPrecio)) {
+                    precioActual = fpDTO.getPrecioOpcional();
+                    if (precioActual == null || precioActual <= 0) {
+                        throw new RuntimeException("El precio opcional debe ser mayor que 0 para el producto: " + fp.getProducto().getNombre());
+                    }
+                } else {
+                    throw new RuntimeException("Tipo de precio no válido: " + tipoPrecio);
+                }
+
+                Double subtotalItem = precioActual * fp.getCantidad();
 
                 fp.setPrecioUnitario(precioActual);
                 fp.setSubtotal(subtotalItem);
@@ -178,7 +206,7 @@ public class PedidosController {
                 Float nuevoSaldoPendiente = Math.max(0f, total - creditoAFavor);
                 Float nuevoCreditoAFavor = Math.max(0f, creditoAFavor - total);
 
-                factura.setSaldoPendiente(nuevoSaldoPendiente.intValue());
+                factura.setSaldoPendiente(Double.valueOf(nuevoSaldoPendiente));
                 cartera.setDeudas(cartera.getDeudas() + nuevoSaldoPendiente);
                 cartera.setCreditoAFavor(nuevoCreditoAFavor);
                 carteraRepository.save(cartera);
@@ -193,7 +221,7 @@ public class PedidosController {
                     historial.setSaldoNuevo(nuevoSaldoPendiente);
                     historial.setFechaAbono(LocalDateTime.now());
                     historial.setDescripcion("Abono automático desde crédito a favor para factura #" + factura.getIdFactura());
-                    historialAbonoRepository.save(historial); // Asegúrate de inyectar historialAbonoRepository
+                    historialAbonoRepository.save(historial);
                 }
             }
 
@@ -210,8 +238,10 @@ public class PedidosController {
 
             return ResponseEntity.ok(updatedFactura);
         } catch (RuntimeException e) {
+            log.error("Error al confirmar la factura: ", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error al confirmar la factura: " + e.getMessage());
         } catch (Exception e) {
+            log.error("Error inesperado: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
         }
     }
@@ -230,7 +260,7 @@ public class PedidosController {
             }
 
             String productosHTML = factura.getProductos().stream().map(fp -> {
-                Float precioUnitario = Float.valueOf(fp.getProducto().getPrecio()); // sin IVA
+                Float precioUnitario = fp.getPrecioUnitario() != null ? fp.getPrecioUnitario().floatValue() : fp.getProducto().getPrecioDetal().floatValue();
                 Float subtotal = fp.getProducto().getIva()
                         ? precioUnitario * 1.19f * fp.getCantidad()
                         : precioUnitario * fp.getCantidad();
@@ -253,11 +283,10 @@ public class PedidosController {
                     ? "<li style=\"margin-bottom: 10px;\"><strong>Notas:</strong> " + factura.getNotas() + "</li>"
                     : "";
 
-            // Convertir Integer a Float para total si es necesario
             Float totalFactura = factura.getTotal() != null ? factura.getTotal().floatValue() : 0.0f;
 
             Map<String, String> variables = Map.of(
-                    "nombre", factura.getCliente().getNombre(),
+                    "nombre", factura.getCliente() != null ? factura.getCliente().getNombre() : "Consumidor final",
                     "factura", factura.getIdFactura().toString(),
                     "fecha", factura.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")),
                     "productos", productosHTML,
@@ -292,33 +321,34 @@ public class PedidosController {
             facturaRepository.delete(factura);
             return ResponseEntity.ok("Factura eliminada correctamente");
         } catch (RuntimeException e) {
+            log.error("Error al eliminar la factura: ", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error al eliminar la factura: " + e.getMessage());
         } catch (Exception e) {
+            log.error("Error inesperado: ", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
         }
     }
 
     private void recalcularTotalesFactura(Factura factura) {
-        Integer subtotalCalculado = 0;
-        Integer totalCalculado = 0;
+        Double subtotalCalculado = 0d;
+        Double totalCalculado = 0d;
 
         for (FacturaProducto fp : factura.getProductos()) {
-            Integer precioUnitario;
-            Integer subtotalItem;
+            Double precioUnitario;
+            Double subtotalItem;
 
-            // Si está confirmado, usar precios estáticos
-            if (factura.getEstado().equals("CONFIRMADO") && fp.getPrecioUnitario() != null) {
+            // Priorizar precioUnitario persistido si existe
+            if (fp.getPrecioUnitario() != null) {
                 precioUnitario = fp.getPrecioUnitario();
-                subtotalItem = fp.getSubtotal();
+                subtotalItem = fp.getSubtotal() != null ? fp.getSubtotal() : precioUnitario * fp.getCantidad();
             } else {
-                // Si está pendiente, calcular dinámicamente
-                precioUnitario = fp.getProducto().getPrecio();
+                precioUnitario = fp.getProducto().getPrecioDetal();
                 subtotalItem = precioUnitario * fp.getCantidad();
             }
 
             subtotalCalculado += subtotalItem;
 
-            // Aplicar IVA si corresponde
+            // Aplicar IVA si corresponde (19%)
             if (fp.getProducto().getIva()) {
                 totalCalculado += Math.round(subtotalItem * 1.19f);
             } else {

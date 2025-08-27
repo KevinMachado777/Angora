@@ -150,7 +150,7 @@ const Ventas = () => {
       return;
     }
 
-    const producto = productos.find((p) => p.id === formulario.id);
+    const producto = productos.find((p) => p.idProducto === formulario.id);
     if (!producto) {
       abrirModal("error", "Selecciona un producto válido de la lista");
       return;
@@ -170,7 +170,7 @@ const Ventas = () => {
       return;
     }
 
-    const precio = parseInt(producto.precio);
+    const precio = Number(producto.precioDetal);
 
     if (modoEdicion) {
       const actualizado = {
@@ -243,7 +243,7 @@ const Ventas = () => {
     let subtotal = 0;
     let totalWithIVA = 0;
     registros.forEach((item) => {
-      const producto = productos.find((p) => p.id === item.id);
+      const producto = productos.find((p) => p.idProducto === item.id);
       const precioUnitario = producto
         ? producto.iva
           ? item.precio * 1.19
@@ -252,8 +252,7 @@ const Ventas = () => {
       subtotal += item.cantidad * item.precio;
       totalWithIVA += item.cantidad * precioUnitario;
     });
-    const roundedTotal = roundToNearest50(totalWithIVA);
-    return { subtotal, total: roundedTotal };
+    return { subtotal, total: totalWithIVA };
   };
 
   const handleGuardar = () => {
@@ -383,10 +382,6 @@ const Ventas = () => {
     advertencia: "Advertencia",
   };
 
-  const roundToNearest50 = (value) => {
-    return Math.round(value / 50) * 50;
-  };
-
   // Verificar si el crédito está disponible para el cliente seleccionado
   const isCreditoDisponible = () => {
     return (
@@ -407,26 +402,26 @@ const Ventas = () => {
             className="select-react"
             classNamePrefix="select"
             options={productos.map((p) => ({
-              value: p.id,
+              value: p.idProducto,
               label: p.nombre,
             }))}
             value={
               formulario.id
                 ? {
-                    value: parseInt(formulario.id),
+                    value: formulario.id,
                     label:
-                      productos.find((p) => p.id === parseInt(formulario.id))
-                        ?.nombre || "Producto",
+                      productos.find((p) => p.idProducto === formulario.id)?.nombre ||
+                      "Producto",
                   }
                 : null
             }
             onChange={(selected) => {
-              const producto = productos.find((p) => p.id === selected.value);
+              const producto = productos.find((p) => p.idProducto === selected.value);
               setFormulario((prev) => ({
                 ...prev,
-                id: producto.id,
+                id: producto.idProducto,
                 nombre: producto.nombre,
-                precio: producto.precio,
+                precio: Number(producto.precioDetal),
               }));
             }}
             placeholder="Seleccionar producto"
@@ -601,7 +596,7 @@ const Ventas = () => {
               </thead>
               <tbody>
                 {registros.map((item, i) => {
-                  const producto = productos.find((p) => p.id === item.id);
+                  const producto = productos.find((p) => p.idProducto === item.id);
                   const iva = producto ? producto.iva : false;
                   const precioUnitario = iva ? item.precio * 1.19 : item.precio;
                   const totalProducto = item.cantidad * precioUnitario;
