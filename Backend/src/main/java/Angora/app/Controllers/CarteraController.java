@@ -58,7 +58,7 @@ public class CarteraController {
 
     // Obtiene todas las carteras, opcionalmente filtradas por estado
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Cartera>> obtenerCarteras(@RequestParam(required = false) Boolean estado) {
+    public ResponseEntity<List<Cartera>> obtenerCarteras(@RequestParam(required = false, name = "estado") Boolean estado) {
         List<Cartera> carteras;
         if (estado != null && estado) {
             carteras = carteraService.obtenerCarterasActivas();
@@ -90,7 +90,7 @@ public class CarteraController {
 
     // Activa o desactiva la cartera de un cliente
     @PutMapping(value = "/{idCliente}/estado", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Cartera> actualizarEstadoCartera(@PathVariable Long idCliente,
+    public ResponseEntity<Cartera> actualizarEstadoCartera(@PathVariable(name = "idCliente") Long idCliente,
                                                            @RequestBody Map<String, Boolean> body) {
         Boolean estado = body.get("estado");
         Cartera cartera = carteraService.actualizarEstadoCartera(idCliente, estado);

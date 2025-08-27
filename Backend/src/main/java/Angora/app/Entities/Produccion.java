@@ -22,4 +22,7 @@ public class Produccion {
     @Column(nullable = false)
     private LocalDateTime fecha;
 
+    @Column(nullable = true)
+    private String notas;
+
 }

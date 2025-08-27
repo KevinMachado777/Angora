@@ -221,26 +221,38 @@ public class DashboardService implements IDashboardService {
         // Alertas de productos
         List<Producto> productos = productoRepository.findAll();
         for (Producto p : productos) {
-            Float cantidad = p.getStock() != null ? p.getStock().floatValue() : 0f; // Cambiado de getCantidad a getStock
-            if (cantidad <= stockMinimo) {
+            Float cantidad = p.getStock() != null ? p.getStock().floatValue() : 0f;
+            Float stockMin = p.getStockMinimo() != null ? p.getStockMinimo().floatValue() : stockMinimo;
+            Float stockMax = p.getStockMaximo() != null ? p.getStockMaximo().floatValue() : Float.MAX_VALUE;
+
+            if (cantidad <= stockMin) {
                 alertas.add(new AlertaInventarioDTO(
-                        String.valueOf(p.getIdProducto()), // Convertir Long a String
+                        String.valueOf(p.getIdProducto()),
                         p.getNombre(),
                         "Producto",
                         cantidad,
-                        stockMinimo,
-                        calcularNivelAlerta(cantidad, stockMinimo)
+                        stockMin,
+                        calcularNivelAlerta(cantidad, stockMin)
+                ));
+            } else if (cantidad >= stockMax) {
+                alertas.add(new AlertaInventarioDTO(
+                        String.valueOf(p.getIdProducto()),
+                        p.getNombre(),
+                        "Producto",
+                        cantidad,
+                        stockMax,
+                        "STOCK_EXCEDIDO"
                 ));
             }
         }
 
-        // Alertas de materia prima
+        // Alertas de materia prima (sin cambios)
         List<MateriaPrima> materias = materiaPrimaRepository.findAll();
         for (MateriaPrima m : materias) {
             Float cantidad = m.getCantidad() != null ? m.getCantidad() : 0f;
             if (cantidad <= stockMinimo) {
                 alertas.add(new AlertaInventarioDTO(
-                        m.getIdMateria(), // Usar String directamente
+                        m.getIdMateria(),
                         m.getNombre(),
                         "Materia Prima",
                         cantidad,
