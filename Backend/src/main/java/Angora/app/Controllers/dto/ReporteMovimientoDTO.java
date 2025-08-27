@@ -13,10 +13,10 @@ public class ReporteMovimientoDTO {
     private String tipoMovimiento;
     private LocalDateTime fechaMovimiento;
     private Long productoId;
-    private Long materiaPrimaId;
+    private String materiaPrimaId;
 
     // Constructor de parámetros
-    public ReporteMovimientoDTO(Long id, String nombre, Float cantidadPasada, Float cantidadActual, String tipoMovimiento, LocalDateTime fechaMovimiento, Long productoId, Long materiaPrimaId) {
+    public ReporteMovimientoDTO(Long id, String nombre, Float cantidadPasada, Float cantidadActual, String tipoMovimiento, LocalDateTime fechaMovimiento, Long productoId, String materiaPrimaId) {
         this.id = id;
         this.nombre = nombre;
         this.cantidadPasada = cantidadPasada;

@@ -9,10 +9,21 @@ const TablaReportes = ({ encabezados, registros, mapeo }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10; // <-- siempre 10 registros por página como pediste
 
-    // <-- Mover getValue aquí (declaración con function para evitar hoisting issues)
+    // <-- Función getValue con el cálculo de Movimiento
     function getValue(item, header) {
         const key = mapeo[header];
         if (!key) return '-'; // Si no hay mapeo, devuelve "-"
+
+        // Cálculo especial para la columna Movimiento
+        if (header === 'Movimiento') {
+            const cantidadPasada = item.cantidadPasada;
+            const cantidadActual = item.cantidadActual;
+            
+            if (cantidadPasada == null || cantidadActual == null) return '-';
+            
+            const diferencia = Math.abs(cantidadActual - cantidadPasada);
+            return diferencia;
+        }
 
         let value = item[key];
         if (value === undefined || value === null) return '-';
@@ -34,8 +45,8 @@ const TablaReportes = ({ encabezados, registros, mapeo }) => {
             return String(value);
         }
 
-        // Convertir a número si es numérico (Total, Cantidad, Nº Compras)
-        if (header === 'Total' || header === 'Cantidad' || header === 'Cantidad Pasada' || header === 'Cantidad Actual' || header === 'Nº Compras') {
+        // Convertir a número si es numérico (Total, Cantidad, Nº Compras, Movimiento)
+        if (header === 'Total' || header === 'Cantidad' || header === 'Cantidad Pasada' || header === 'Cantidad Actual' || header === 'Nº Compras' || header === 'Movimiento') {
             const numValue = Number(value);
             return isNaN(numValue) ? '-' : numValue;
         }

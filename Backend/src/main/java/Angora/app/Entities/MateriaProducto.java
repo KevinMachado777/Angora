@@ -22,7 +22,7 @@ public class MateriaProducto {
     private Long id;
 
     @Column(name = "id_materia", nullable = false)
-    private Long idMateria;
+    private String idMateria;
 
     @Column(name = "cantidad",nullable = false)
     private Float cantidad;

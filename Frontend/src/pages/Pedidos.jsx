@@ -311,6 +311,7 @@ const Pedidos = () => {
       45
     );
     doc.text(
+
       `Usuario: ${pedido.cajero
         ? `${pedido.cajero.nombre} ${pedido.cajero.apellido || ""}`
         : pedido.cajeroNombre
@@ -787,6 +788,7 @@ const Pedidos = () => {
               ? `${pedidoAConfirmar.cajero.nombre} ${pedidoAConfirmar.cajero.apellido || ""}`
               : pedidoAConfirmar?.cajeroNombre
                 ? `${pedidoAConfirmar.cajeroNombre} ${pedidoAConfirmar.cajeroApellido || ""}`
+
                 : "Sin usuario asignado"}
           </p>
           <p>

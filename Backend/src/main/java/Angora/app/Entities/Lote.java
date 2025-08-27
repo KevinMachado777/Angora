@@ -17,12 +17,11 @@ import java.util.Date;
 public class Lote {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_lote")
-    private Long idLote;
+    private String idLote;
 
     @Column(name = "id_materia", nullable = false)
-    private Long idMateria;
+    private String idMateria;
 
     @Column(nullable = false)
     private Integer costoUnitario;

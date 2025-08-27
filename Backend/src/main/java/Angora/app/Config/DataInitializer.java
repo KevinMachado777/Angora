@@ -238,16 +238,16 @@ public class DataInitializer implements CommandLineRunner {
     private void initializeMateriasPrimas() {
         if (materiaPrimaRepository.count() == 0) {
             List<MateriaPrima> materiasPrimas = List.of(
-                    new MateriaPrima(null, "Ácido sulfónico", 3500, 4200, 50f),
-                    new MateriaPrima(null, "Glicerina", 2500, 3000, 40f),
-                    new MateriaPrima(null, "Carbonato de sodio", 1800, 2200, 60f),
-                    new MateriaPrima(null, "Lauril éter sulfato de sodio", 4200, 4800, 30f),
-                    new MateriaPrima(null, "Fragancia lavanda", 6000, 7000, 20f),
-                    new MateriaPrima(null, "Colorante azul", 1000, 1200, 10f),
-                    new MateriaPrima(null, "Formol", 1500, 1800, 15f),
-                    new MateriaPrima(null, "Agua destilada", 300, 500, 100f),
-                    new MateriaPrima(null, "Cloruro de amonio", 2000, 2500, 25f),
-                    new MateriaPrima(null, "Alcohol etílico", 4500, 5200, 35f)
+                    new MateriaPrima("MP1", "Ácido sulfónico", 3500, 4200, 50f),
+                    new MateriaPrima("MP2", "Glicerina", 2500, 3000, 40f),
+                    new MateriaPrima("MP3", "Carbonato de sodio", 1800, 2200, 60f),
+                    new MateriaPrima("MP4", "Lauril éter sulfato de sodio", 4200, 4800, 30f),
+                    new MateriaPrima("MP5", "Fragancia lavanda", 6000, 7000, 20f),
+                    new MateriaPrima("MP6", "Colorante azul", 1000, 1200, 10f),
+                    new MateriaPrima("MP7", "Formol", 1500, 1800, 15f),
+                    new MateriaPrima("MP8", "Agua destilada", 300, 500, 100f),
+                    new MateriaPrima("MP9", "Cloruro de amonio", 2000, 2500, 25f),
+                    new MateriaPrima("MP10", "Alcohol etílico", 4500, 5200, 35f)
             );
 
             materiaPrimaRepository.saveAll(materiasPrimas);
@@ -311,35 +311,35 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("Creando lotes predeterminados...");
             List<Lote> lotes = new ArrayList<>();
 
-            // Lote para Ácido sulfónico (idMateria = 1)
-            lotes.add(new Lote(null, 1L, 3500, 50f, 50f, LocalDateTime.now(), 1L, null));
+            // Lote para Ácido sulfónico (idMateria = MP1)
+            lotes.add(new Lote("L1", "MP1", 3500, 50f, 50f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Glicerina (idMateria = 2)
-            lotes.add(new Lote(null, 2L, 2500, 40f, 40f, LocalDateTime.now(), 1L, null));
+            // Lote para Glicerina (idMateria = MP2)
+            lotes.add(new Lote("L2", "MP2", 2500, 40f, 40f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Carbonato de sodio (idMateria = 3)
-            lotes.add(new Lote(null, 3L, 1800, 60f, 60f, LocalDateTime.now(), 1L, null));
+            // Lote para Carbonato de sodio (idMateria = MP3)
+            lotes.add(new Lote("L3", "MP3", 1800, 60f, 60f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Lauril éter sulfato de sodio (idMateria = 4)
-            lotes.add(new Lote(null, 4L, 4200, 30f, 30f, LocalDateTime.now(), 1L, null));
+            // Lote para Lauril éter sulfato de sodio (idMateria = MP4)
+            lotes.add(new Lote("L4", "MP4", 4200, 30f, 30f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Fragancia lavanda (idMateria = 5)
-            lotes.add(new Lote(null, 5L, 6000, 20f, 20f, LocalDateTime.now(), 1L, null));
+            // Lote para Fragancia lavanda (idMateria = MP5)
+            lotes.add(new Lote("L5", "MP5", 6000, 20f, 20f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Colorante azul (idMateria = 6)
-            lotes.add(new Lote(null, 6L, 1000, 10f, 10f, LocalDateTime.now(), 1L, null));
+            // Lote para Colorante azul (idMateria = MP6)
+            lotes.add(new Lote("L6", "MP6", 1000, 10f, 10f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Formol (idMateria = 7)
-            lotes.add(new Lote(null, 7L, 1500, 15f, 15f, LocalDateTime.now(), 1L, null));
+            // Lote para Formol (idMateria = MP7)
+            lotes.add(new Lote("L7", "MP7", 1500, 15f, 15f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Agua destilada (idMateria = 8)
-            lotes.add(new Lote(null, 8L, 300, 100f, 100f, LocalDateTime.now(), 1L, null));
+            // Lote para Agua destilada (idMateria = MP8)
+            lotes.add(new Lote("L8", "MP8", 300, 100f, 100f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Cloruro de amonio (idMateria = 9)
-            lotes.add(new Lote(null, 9L, 2000, 25f, 25f, LocalDateTime.now(), 1L, null));
+            // Lote para Cloruro de amonio (idMateria = MP9)
+            lotes.add(new Lote("L9", "MP9", 2000, 25f, 25f, LocalDateTime.now(), 1L, null));
 
-            // Lote para Alcohol etílico (idMateria = 10)
-            lotes.add(new Lote(null, 10L, 4500, 35f, 35f, LocalDateTime.now(), 1L, null));
+            // Lote para Alcohol etílico (idMateria = MP10)
+            lotes.add(new Lote("L10", "MP10", 4500, 35f, 35f, LocalDateTime.now(), 1L, null));
 
             loteRepository.saveAll(lotes);
             System.out.println("Lotes predeterminados creados exitosamente");
@@ -390,9 +390,9 @@ public class DataInitializer implements CommandLineRunner {
         Produccion produccion = new Produccion(null, producto.getIdProducto(), LocalDateTime.now());
         produccion = produccionRepository.save(produccion);
 
-        // Intentamos usar lotes 1 y 3 si existen; si no, buscamos dos lotes disponibles
-        Lote lote1 = loteRepository.findById(1L).orElse(null);
-        Lote lote3 = loteRepository.findById(3L).orElse(null);
+        // Intentamos usar lotes L1 y L3 si existen; si no, buscamos dos lotes disponibles
+        Lote lote1 = loteRepository.findById("L1").orElse(null);
+        Lote lote3 = loteRepository.findById("L3").orElse(null);
 
         // si faltan, intentamos buscar los dos primeros lotes que existan
         if (lote1 == null || lote3 == null) {
@@ -474,7 +474,7 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Producciones iniciales creadas para el producto id: " + producto.getIdProducto());
     }
 
-    private MateriaProductoDTO createMateriaDTO(Long idMateria, Float cantidad) {
+    private MateriaProductoDTO createMateriaDTO(String idMateria, Float cantidad) { // Modificado: Long a String
         MateriaProductoDTO dto = new MateriaProductoDTO();
         dto.setIdMateria(idMateria);
         dto.setCantidad(cantidad);

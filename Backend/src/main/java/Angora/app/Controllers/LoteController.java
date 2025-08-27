@@ -19,18 +19,21 @@ public class LoteController {
     @Autowired
     private LoteService loteService;
 
+    // Metodo para obtener todos los lotes
     @GetMapping
     public ResponseEntity<?> getAll() {
         return new ResponseEntity<>(loteRepository.findAll(), HttpStatus.OK);
     }
 
+    // Metodo para obtener un lote por id
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
+    public ResponseEntity<?> getById(@PathVariable String id) {
         return new ResponseEntity<>(loteService.findById(id), HttpStatus.OK);
     }
 
+    // Metodo para obtener el ultimo lote de una materia en especifico
     @GetMapping("/ultimo/{idMateria}")
-    public ResponseEntity<LoteDTO> getUltimoLotePorMateria(@PathVariable Long idMateria) {
+    public ResponseEntity<LoteDTO> getUltimoLotePorMateria(@PathVariable String idMateria) {
         LoteDTO lote = loteService.findUltimoLotePorMateria(idMateria);
         if (lote == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -38,21 +41,24 @@ public class LoteController {
         return ResponseEntity.ok(lote);
     }
 
+    // Metodo para crear un lote
     @PostMapping
     public ResponseEntity<?> create(@RequestBody LoteDTO lote) {
         return new ResponseEntity<>(loteService.save(lote), HttpStatus.CREATED);
     }
 
+    // Metodo para actualizar un lote
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody LoteDTO loteDto) {
+    public ResponseEntity<?> update(@PathVariable String id, @RequestBody LoteDTO loteDto) { // Modificado: Long a String
         if (!loteRepository.existsById(id)) {
             throw new RuntimeException("Lote no encontrado");
         }
         return new ResponseEntity<>(loteService.update(loteDto), HttpStatus.OK);
     }
 
+    // Metodo para borrar un lote
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable String id) { // Modificado: Long a String
         if (!loteRepository.existsById(id)) {
             throw new RuntimeException("Lote no encontrado");
         }

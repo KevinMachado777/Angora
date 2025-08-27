@@ -1301,7 +1301,7 @@ const Portafolio = () => {
                             <p><strong>Factura #{facturaSeleccionada.idFactura}</strong></p>
                             <p>Fecha: {new Date(facturaSeleccionada.fecha).toLocaleDateString('es-CO')}</p>
                             <p>Cliente: {personaCartera?.nombre || personaSelect?.nombre} {personaCartera?.apellido || personaSelect?.apellido}</p>
-                            <p>Cajero: {`${facturaSeleccionada.cajeroNombre || 'Desconocido'} ${facturaSeleccionada.cajeroApellido || ''}`.trim() || 'Desconocido'}</p>
+                            <p>Usuario: {`${facturaSeleccionada.cajeroNombre || 'Desconocido'} ${facturaSeleccionada.cajeroApellido || ''}`.trim() || 'Desconocido'}</p>
                             <p>Estado: {facturaSeleccionada.estado}</p>
                             <hr />
                             <table>

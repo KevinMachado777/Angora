@@ -63,7 +63,7 @@ public class ProductoService {
             product.setStockMinimo(producto.getStockMinimo());
             product.setStockMaximo(producto.getStockMaximo());
             product.setIva(producto.getIva());
-            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
+            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
 
             // Manejar categoria nullable
             if (producto.getIdCategoria() != null) {
@@ -105,7 +105,8 @@ public class ProductoService {
         productoDto.setStockMinimo(producto.getStockMinimo());
         productoDto.setStockMaximo(producto.getStockMaximo());
         productoDto.setIva(producto.getIva());
-        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
+
+        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
 
         if (producto.getIdCategoria() != null) {
             CategoriaIdDTO categoriaIdDto = new CategoriaIdDTO();
@@ -198,6 +199,7 @@ public class ProductoService {
     }
 
     // Actualizar un producto desde DTO
+
     @Transactional
     public ProductoDTO actualizarProductoDesdeDTO(ProductoDTO productoDTO) {
         Producto producto = productoRepository.findById(productoDTO.getIdProducto())
@@ -264,8 +266,7 @@ public class ProductoService {
         productoRepository.save(producto);
         return productoDTO;
     }
-
-    // Guardar un producto
+    // Metodo para guardar un producto
     @Transactional
     public Producto save(Producto producto) {
         if (producto.getIdCategoria() != null && !categoriaRepository.existsById(producto.getIdCategoria().getIdCategoria())) {
@@ -351,17 +352,17 @@ public class ProductoService {
             Long idProduccion = savedProduccion.getIdProduccion();
 
             for (MateriaProducto mp : producto.getMaterias()) {
-                Long idMateria = mp.getIdMateria();
-                MateriaPrima materia = materiaRepository.findById(idMateria)
-                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateria));
+                String idMateriaAumentar = mp.getIdMateria(); // Usar nombre único para evitar conflicto
+                MateriaPrima materia = materiaRepository.findById(idMateriaAumentar)
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateriaAumentar));
                 Float anteriorMateria = materia.getCantidad() != null ? materia.getCantidad() : 0f;
 
                 float cantidadNecesaria = mp.getCantidad() * diferencia;
-                if (!hasSufficientStock(mp.getIdMateria(), cantidadNecesaria)) {
-                    throw new RuntimeException("Stock insuficiente para la materia prima " + mp.getIdMateria());
+                if (!hasSufficientStock(idMateriaAumentar, cantidadNecesaria)) {
+                    throw new RuntimeException("Stock insuficiente para la materia prima " + idMateriaAumentar);
                 }
 
-                List<Lote> lotes = loteRepository.findByIdMateriaAndCantidadDisponibleGreaterThan(mp.getIdMateria(), 0f);
+                List<Lote> lotes = loteRepository.findByIdMateriaAndCantidadDisponibleGreaterThan(idMateriaAumentar, 0f);
                 float restante = cantidadNecesaria;
 
                 for (Lote lote : lotes) {
@@ -377,9 +378,8 @@ public class ProductoService {
 
                     restante -= usar;
                 }
-
-                // Actualizar cantidad de materia prima
-                Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
+                // después de consumir lotes, recalcular cantidad disponible actual de la materia
+                Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateriaAumentar);
                 if (actualMateria == null) actualMateria = 0f;
                 materia.setCantidad(actualMateria);
                 materiaRepository.save(materia);
@@ -395,8 +395,9 @@ public class ProductoService {
             Long idProduccion = ultimaProduccion.getIdProduccion();
 
             for (MateriaProducto mp : producto.getMaterias()) {
+                String idMateriaDevolver = mp.getIdMateria();
                 float cantidadPorDevolver = mp.getCantidad() * cantidadDevolver;
-                List<Lote> lotes = loteRepository.findByIdMateriaAndCantidadDisponibleGreaterThan(mp.getIdMateria(), 0f);
+                List<Lote> lotes = loteRepository.findByIdMateriaAndCantidadDisponibleGreaterThan(idMateriaDevolver, 0f);
                 float restante = cantidadPorDevolver;
 
                 for (Lote lote : lotes) {
@@ -417,12 +418,12 @@ public class ProductoService {
                     }
                 }
 
-                // Actualizar cantidad de materia prima
-                Long idMateria = mp.getIdMateria();
-                MateriaPrima materia = materiaRepository.findById(idMateria)
-                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateria));
+
+                // después de devolver lotes, recalcular materia y registrar movimiento de materia (entrada)
+                MateriaPrima materia = materiaRepository.findById(idMateriaDevolver)
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateriaDevolver));
                 Float anteriorMateria = materia.getCantidad() != null ? materia.getCantidad() : 0f;
-                Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
+                Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateriaDevolver);
                 if (actualMateria == null) actualMateria = 0f;
                 materia.setCantidad(actualMateria);
                 materiaRepository.save(materia);
@@ -441,8 +442,8 @@ public class ProductoService {
     }
 
     @Transactional
-    private void updateMateriaCantidadForAll(Set<Long> idMaterias) {
-        for (Long idMateria : idMaterias) {
+    private void updateMateriaCantidadForAll(Set<String> idMaterias) {
+        for (String idMateria : idMaterias) {
             Float total = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
             MateriaPrima materia = materiaRepository.findById(idMateria)
                     .orElseThrow(() -> new RuntimeException("Materia no encontrada: " + idMateria));
@@ -451,12 +452,11 @@ public class ProductoService {
         }
     }
 
-    private boolean hasSufficientStock(Long idMateria, float cantidadNecesaria) {
+    private boolean hasSufficientStock(String idMateria, float cantidadNecesaria) {
         Float totalDisponible = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
         return totalDisponible != null && totalDisponible >= cantidadNecesaria;
     }
-
-    // Eliminar un producto
+    // Metodo que elimina un producto
     @Transactional
     public void delete(String id) {
         materiaProductoRepository.deleteByProducto_IdProducto(id);
@@ -486,7 +486,7 @@ public class ProductoService {
             double nuevoCostoRaw = 0.0;
             List<MateriaProducto> materiasDelProducto = producto.getMaterias() != null ? producto.getMaterias() : new ArrayList<>();
             for (MateriaProducto mp : materiasDelProducto) {
-                Long idM = mp.getIdMateria();
+                String idM = mp.getIdMateria();
                 double costoM = 0.0;
                 MateriaPrima mpEntidad = materiaRepository.findById(idM).orElse(null);
                 if (mpEntidad != null && mpEntidad.getCosto() != null) {

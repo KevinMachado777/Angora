@@ -17,9 +17,8 @@ import java.time.LocalDateTime;
 public class MateriaPrima implements InventariableMateria {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_materia")
-    private Long idMateria;
+    private String idMateria;
 
     @Column(nullable = false)
     private String nombre;
@@ -27,14 +26,14 @@ public class MateriaPrima implements InventariableMateria {
     @Column(nullable = false)
     private Integer costo;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Integer venta;
 
     @Column(nullable = false)
     private Float cantidad;
 
     @Override
-    public Long getId() {
+    public String getId() {
         return idMateria;
     }
 }

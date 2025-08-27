@@ -32,7 +32,7 @@ public class MateriaPrimaService {
     @Autowired
     private MovimientoRepository movimientoRepository;
 
-    // Metodo para obtener todas las materias
+    // Obtener todas las materias primas
     public List<MateriaDTO> findAll() {
         List<MateriaPrima> materiasEntity = materiaPrimaRepository.findAll();
         List<MateriaDTO> materiasDto = new ArrayList<>();
@@ -42,14 +42,14 @@ public class MateriaPrimaService {
             materiaDto.setNombre(materia.getNombre());
             materiaDto.setCantidad(materia.getCantidad());
             materiaDto.setCosto(materia.getCosto());
-            materiaDto.setVenta(materia.getVenta());
+            materiaDto.setVenta(materia.getVenta()); // Nullable, mantenido para compatibilidad
             materiasDto.add(materiaDto);
         });
         return materiasDto;
     }
 
-    // Metodo para buscar una materia por ID
-    public MateriaDTO findById(Long id) {
+    // Buscar materia prima por ID
+    public MateriaDTO findById(String id) {
         MateriaPrima materiaPrima = materiaPrimaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
         MateriaDTO materiaDto = new MateriaDTO();
@@ -61,22 +61,30 @@ public class MateriaPrimaService {
         return materiaDto;
     }
 
-    // Metodo para guardar una materia
+    // Guardar una nueva materia prima
     @Transactional
     public MateriaDTO save(MateriaDTO materiaDto) {
+        // Validar ID único
+        if (materiaPrimaRepository.findById(materiaDto.getIdMateria()).isPresent()) {
+            throw new RuntimeException("El ID de la materia prima ya existe");
+        }
+        if (materiaPrimaRepository.findByNombre(materiaDto.getNombre()).isPresent()) {
+            throw new RuntimeException("El nombre de la materia prima ya existe");
+        }
+
         MateriaPrima materiaPrima = new MateriaPrima();
+        materiaPrima.setIdMateria(materiaDto.getIdMateria());
         materiaPrima.setNombre(materiaDto.getNombre());
         materiaPrima.setCantidad(0f);
         materiaPrima.setCosto(0);
-        materiaPrima.setVenta(materiaDto.getVenta());
 
         MateriaPrima savedMateria = materiaPrimaRepository.save(materiaPrima);
-        materiaDto.setIdMateria(savedMateria.getIdMateria());
         recomputeMateriaTotalsAndCosto(savedMateria.getIdMateria());
+        materiaDto.setIdMateria(savedMateria.getIdMateria());
         return materiaDto;
     }
 
-    // Metodo para actualizar una materia
+    // Actualizar una materia prima existente
     @Transactional
     public MateriaDTO update(MateriaDTO materia) {
         MateriaPrima existing = materiaPrimaRepository.findById(materia.getIdMateria())
@@ -84,7 +92,6 @@ public class MateriaPrimaService {
 
         Float previo = existing.getCantidad();
         existing.setNombre(materia.getNombre());
-        existing.setVenta(materia.getVenta());
         recomputeMateriaTotalsAndCosto(existing.getIdMateria());
         existing = materiaPrimaRepository.findById(existing.getIdMateria())
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada después de recálculo"));
@@ -113,36 +120,31 @@ public class MateriaPrimaService {
         return dto;
     }
 
-    // Metodo para volver a calcular el costo de una materia segun los lotes
+    // Recalcular totales y costo promedio de una materia prima
     @Transactional
-    public void recomputeMateriaTotalsAndCosto(Long idMateria) {
+    public void recomputeMateriaTotalsAndCosto(String idMateria) {
         MateriaPrima materia = materiaPrimaRepository.findById(idMateria)
                 .orElseThrow(() -> new RuntimeException("Materia prima no encontrada"));
 
         List<Lote> allLotes = loteRepository.findByIdMateria(idMateria);
 
         float totalDisponible = 0f;
-        float weightedCostNumerator = 0f;
-        float totalCantidadOriginal = 0f; // Para el cálculo del costo promedio
+        float sumaCostosUnitarios = 0f;
+        int cantidadLotes = 0;
 
         for (Lote l : allLotes) {
             float availableQuantity = l.getCantidadDisponible() != null ? l.getCantidadDisponible() : 0f;
-            float originalQuantity = l.getCantidad() != null ? l.getCantidad() : 0f;
             float unitCost = l.getCostoUnitario() != null ? l.getCostoUnitario() : 0f;
 
-            // Solo suma la cantidad disponible para el total
             totalDisponible += availableQuantity;
-
-            // Para el costo, usa la cantidad original de cada lote (no la disponible)
-            // Esto asegura que el costo promedio considere todos los lotes, incluso los agotados
-            totalCantidadOriginal += originalQuantity;
-            weightedCostNumerator += unitCost * originalQuantity;
+            sumaCostosUnitarios += unitCost;
+            cantidadLotes++;
         }
 
         materia.setCantidad(totalDisponible);
 
-        // Calcula el costo promedio basado en las cantidades originales de todos los lotes
-        int costoPromedio = totalCantidadOriginal > 0 ? Math.round(weightedCostNumerator / totalCantidadOriginal) : 0;
+        // Calcular costo promedio aritmético simple, evitar división por cero
+        int costoPromedio = cantidadLotes > 0 ? Math.round(sumaCostosUnitarios / cantidadLotes) : 0;
 
         // Redondeo al múltiplo de 50 más cercano
         costoPromedio = ((costoPromedio + 25) / 50) * 50;
