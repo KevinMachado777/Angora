@@ -181,70 +181,119 @@ canvas {
 .alertas-inventario,
 .info-adicional {
   background-color: #ffffff;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  padding: 2rem; /* Aumentado para más espacio interno */
+  border-radius: 16px; /* Bordes más redondeados */
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1); /* Sombra más pronunciada */
   min-height: 200px;
+  border: 1px solid #e9ecef; /* Borde sutil */
 }
 
 .alertas-inventario h5,
 .info-adicional h5 {
-  font-weight: 600;
-  margin-bottom: 1rem;
+  font-weight: 700; /* Más peso para destacar */
+  font-size: 1.25rem; /* Tamaño más grande */
+  margin-bottom: 1.5rem;
   color: #212529;
   display: flex;
   align-items: center;
+  border-bottom: 2px solid #e9ecef; /* Línea inferior para separación */
+  padding-bottom: 0.5rem;
+}
+
+.alertas-inventario h5 i {
+  font-size: 1.5rem; /* Ícono más grande */
+  margin-right: 0.75rem;
 }
 
 /* Alertas de inventario */
 .alertas-lista {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem; /* Mayor separación entre alertas */
 }
 
 .alerta-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem;
-  border-radius: 8px;
-  border-left: 4px solid;
+  padding: 1rem; /* Más padding interno */
+  border-radius: 12px; /* Bordes más redondeados */
+  border-left: 3px solid; /* Borde izquierdo más delgado */
+  background-color: #fafafa; /* Fondo más claro */
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.05); /* Sombra suave */
+  transition: all 0.3s ease; /* Transición suave para hover */
 }
 
-.alerta-item.critico {
-  background-color: rgba(220, 53, 69, 0.1);
+.alerta-item:hover {
+  transform: translateY(-3px); /* Elevación al pasar el ratón */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); /* Sombra más profunda */
+}
+
+.alerta-item.badge-danger {
+  background-color: rgba(220, 53, 69, 0.05); /* Fondo más sutil */
   border-left-color: #dc3545;
 }
 
-.alerta-item.alto {
-  background-color: rgba(255, 193, 7, 0.1);
+.alerta-item.badge-warning {
+  background-color: rgba(255, 193, 7, 0.05); /* Fondo más sutil */
   border-left-color: #ffc107;
 }
 
-.alerta-item.medio {
-  background-color: rgba(13, 202, 240, 0.1);
-  border-left-color: #0dcaf0;
+.alerta-nombre {
+  font-size: 1.1rem; /* Más grande para destacar */
+  font-weight: 700; /* Más peso */
+  margin-bottom: 0.5rem; /* Más espacio */
+  color: #212529;
 }
 
-.alerta-info strong {
-  display: block;
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
-}
-
-.alerta-info small {
+.alerta-tipo {
+  font-size: 1rem; /* Más grande */
   color: #6c757d;
-  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  font-weight: 500; /* Peso medio para diferenciar */
+}
+
+.alerta-detalle {
+  font-size: 1rem; /* Más grande */
+  color: #495057;
+  margin-bottom: 0.5rem;
+  font-weight: 400;
 }
 
 .no-datos {
-  padding: 0.75rem;
+  padding: 1rem;
   color: #6c757d;
-  font-size: 0.9rem;
+  font-size: 1rem; /* Más grande */
   text-align: center;
   background-color: #f8f9fa;
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Estilos para badges */
+.badge-danger {
+  background-color: #dc3545; /* Rojo */
+  color: white;
+  padding: 0.5rem 1rem; /* Más grande */
+  border-radius: 12px; /* Más redondeado */
+  font-size: 0.9rem; /* Más grande */
+  font-weight: 600;
+  transition: transform 0.2s ease; /* Animación para hover */
+}
+
+.badge-warning {
+  background-color: #ffc107; /* Amarillo */
+  color: black;
+  padding: 0.5rem 1rem; /* Más grande */
+  border-radius: 12px; /* Más redondeado */
+  font-size: 0.9rem; /* Más grande */
+  font-weight: 600;
+  transition: transform 0.2s ease; /* Animación para hover */
+}
+
+.badge-danger:hover,
+.badge-warning:hover {
+  transform: scale(1.05); /* Crecimiento sutil al pasar el ratón */
 }
 
 /* Información adicional */
@@ -404,6 +453,25 @@ canvas {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+    padding: 0.75rem; /* Menos padding en móviles */
+  }
+  
+  .alerta-nombre {
+    font-size: 1rem; /* Ligeramente más pequeño en móviles */
+  }
+  
+  .alerta-tipo {
+    font-size: 0.9rem;
+  }
+  
+  .alerta-detalle {
+    font-size: 0.9rem;
+  }
+  
+  .badge-danger,
+  .badge-warning {
+    font-size: 0.8rem; /* Más pequeño en móviles */
+    padding: 0.4rem 0.8rem;
   }
   
   .stat-item {

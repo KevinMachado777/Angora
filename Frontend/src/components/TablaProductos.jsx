@@ -376,7 +376,7 @@ const TablaProductos = forwardRef(
       setNuevaCantidad(0);
       setNotasStock("");
       const isManufactured = producto?.materias?.length > 0;
-     setEsProductoFabricado(isManufactured);
+      setEsProductoFabricado(isManufactured);
       let max = 0;
       if (producto?.materias?.length && lotesMateriaPrima?.length) {
         const cantidadesPosibles = producto.materias.map((mat) => {
@@ -498,8 +498,9 @@ const TablaProductos = forwardRef(
         const cantidadAntesFabricacion =
           cantidadInicial - (usedUntilThis - (lu.cantidadUsada ?? 0));
         const cantidadUsada = lu.cantidadUsada ?? 0;
-        const cantidadDespuesFabricacion = cantidadAntesFabricacion - cantidadUsada
-      
+        const cantidadDespuesFabricacion =
+          cantidadAntesFabricacion - cantidadUsada;
+
         const proveedorNombre = lote.idProveedor
           ? (proveedores || []).find((p) => p.idProveedor === lote.idProveedor)
               ?.nombre || "N/A"
@@ -565,7 +566,7 @@ const TablaProductos = forwardRef(
               new Date(a.fechaProduccionRaw) - new Date(b.fechaProduccionRaw)
           ),
         }));
-        
+
       setLotesUsadosProducto(sortedProducciones);
       setCurrentPageLotes(1);
     }, [
@@ -721,7 +722,10 @@ const TablaProductos = forwardRef(
         );
         return;
       }
-      if (esProductoFabricado && (!materiasProducto || materiasProducto.length === 0)) {
+      if (
+        esProductoFabricado &&
+        (!materiasProducto || materiasProducto.length === 0)
+      ) {
         setError(
           "El producto fabricado debe tener al menos 1 materia prima asociada."
         );
@@ -966,9 +970,9 @@ const TablaProductos = forwardRef(
       }
       if (esProductoFabricado) {
         if (maxFabricable !== null && cantidadAAgregar > maxFabricable) {
-        setModalErrorStockInsuficiente(true);
-        return;
-      }
+          setModalErrorStockInsuficiente(true);
+          return;
+        }
       }
       try {
         const headers = authHeaders();
@@ -1712,11 +1716,11 @@ const TablaProductos = forwardRef(
                 Gestionar stock de <strong>{productoStock?.nombre}</strong>
               </h5>
               {maxFabricable !== null && esProductoFabricado && (
-  <div className="alert alert-info">
-    Puedes fabricar hasta <strong>{maxFabricable}</strong>{" "}
-    unidades con el inventario actual.
-  </div>
-)}
+                <div className="alert alert-info">
+                  Puedes fabricar hasta <strong>{maxFabricable}</strong>{" "}
+                  unidades con el inventario actual.
+                </div>
+              )}
               <div className="alert alert-primary">
                 Cantidad actual es <strong>{productoStock?.stock}</strong>{" "}
                 unidades.
@@ -1945,11 +1949,11 @@ const TablaProductos = forwardRef(
               setFilterDate("");
             }}
           >
-            <div style={{ position: "relative" }}>
+            <div className="modal-content-custom">
+              {/* Modal Header */}
               <button
                 type="button"
-                className="btn-close"
-                style={{ position: "absolute", top: "10px", right: "10px" }}
+                className="btn-close-custom"
                 onClick={() => {
                   setModalLotesUsados(false);
                   setProductoLotesSeleccionado(null);
@@ -1957,71 +1961,81 @@ const TablaProductos = forwardRef(
                 }}
                 aria-label="Close"
               ></button>
-              <h2 className="mb-3">Lotes Usados en Producto</h2>
-              <div className="mb-3 d-flex align-items-center">
-                <label className="form-label me-2">
+              <h2 className="modal-title-custom">Lotes Usados en Producto</h2>
+
+              {/* Filter Section */}
+              <div className="filter-section">
+                <label className="form-label filter-label">
                   Filtrar por fecha de producción:
                 </label>
                 <input
                   type="date"
-                  className="form-control me-2"
-                  style={{ width: "auto" }}
+                  className="form-control filter-input"
                   value={filterDate}
                   onChange={(e) => setFilterDate(e.target.value)}
                 />
                 <button
                   type="button"
-                  className="btn btn-outline-secondary"
+                  className="btn btn-outline-secondary filter-btn"
                   onClick={() => setFilterDate("")}
                 >
                   Limpiar Filtro
                 </button>
               </div>
-              {currentProducciones.length > 0 ? (
-                <table className="table table-bordered">
-                  <thead>
-                    <tr>
-                      <th>ID Producción</th>
-                      <th>Lote</th>
-                      <th>Materia Prima</th>
-                      <th>Proveedor</th>
-                      <th>Cantidad Inicial</th>
-                      <th>Cant. Antes</th>
-                      <th>Cant. Usada</th>
-                      <th>Cant. Después</th>
-                      <th>Fecha Ingreso</th>
-                      <th>Fecha Producción</th>
-                      <th>Notas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentProducciones.map((prod) =>
-                      prod.lotes.map((lu, index) => (
-                        <tr key={`${prod.idProduccion}-${lu.id}`}>
-                          {index === 0 && (
-                            <td rowSpan={prod.lotes.length}>
-                              {prod.idProduccion}
-                            </td>
-                          )}
-                          <td>{lu.idLote}</td>
-                          <td>{lu.materiaNombre}</td>
-                          <td>{lu.proveedorNombre}</td>
-                          <td>{lu.cantidadInicial}</td>
-                          <td>{lu.cantidadAntesFabricacion}</td>
-                          <td>{lu.cantidadUsada}</td>
-                          <td>{lu.cantidadDespuesFabricacion}</td>
-                          <td>{lu.fechaIngreso}</td>
-                          <td>{lu.fechaProduccion}</td>
-                          <td>{lu.notas || "N/A"}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="text-center">No hay lotes usados para mostrar.</p>
-              )}
-              <div className="modal-footer mt-4">
+
+              {/* Scrollable Table Container */}
+              <div className="table-container">
+                {currentProducciones.length > 0 ? (
+                  <table className="table table-custom">
+                    <thead>
+                      <tr>
+                        <th>ID Producción</th>
+                        <th>Lote</th>
+                        <th>Materia Prima</th>
+                        <th>Proveedor</th>
+                        <th>Cantidad Inicial</th>
+                        <th>Cant. Antes</th>
+                        <th>Cant. Usada</th>
+                        <th>Cant. Después</th>
+                        <th>Fecha Ingreso</th>
+                        <th>Fecha Producción</th>
+                        <th>Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentProducciones.map((prod) =>
+                        prod.lotes.map((lu, index) => (
+                          <tr
+                            key={`${prod.idProduccion}-${lu.id}`}
+                            className="table-row"
+                          >
+                            {index === 0 && (
+                              <td rowSpan={prod.lotes.length}>
+                                {prod.idProduccion}
+                              </td>
+                            )}
+                            <td>{lu.idLote}</td>
+                            <td>{lu.materiaNombre}</td>
+                            <td>{lu.proveedorNombre}</td>
+                            <td>{lu.cantidadInicial}</td>
+                            <td>{lu.cantidadAntesFabricacion}</td>
+                            <td>{lu.cantidadUsada}</td>
+                            <td>{lu.cantidadDespuesFabricacion}</td>
+                            <td>{lu.fechaIngreso}</td>
+                            <td>{lu.fechaProduccion}</td>
+                            <td>{lu.notas || "N/A"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="no-data">No hay lotes usados para mostrar.</p>
+                )}
+              </div>
+
+              {/* Pagination and Footer */}
+              <div className="modal-footer-custom">
                 <nav>
                   <ul className="pagination justify-content-center">
                     <li
@@ -2030,7 +2044,7 @@ const TablaProductos = forwardRef(
                       }`}
                     >
                       <button
-                        className="page-link"
+                        className="page-link page-link-custom"
                         onClick={() =>
                           setCurrentPageLotes(Math.max(1, currentPageLotes - 1))
                         }
@@ -2049,7 +2063,7 @@ const TablaProductos = forwardRef(
                       }`}
                     >
                       <button
-                        className="page-link"
+                        className="page-link page-link-custom"
                         onClick={() =>
                           setCurrentPageLotes(
                             Math.min(totalPagesLotes, currentPageLotes + 1)
@@ -2062,6 +2076,7 @@ const TablaProductos = forwardRef(
                   </ul>
                 </nav>
                 <BotonAceptar
+                  className="btn btn-primary accept-btn"
                   onClick={() => {
                     setModalLotesUsados(false);
                     setProductoLotesSeleccionado(null);

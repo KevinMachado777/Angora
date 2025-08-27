@@ -550,75 +550,83 @@ const Dashboard = () => {
 
       {/* Sección de alertas y datos adicionales */}
       <div className="info-adicional-grid">
-        <div className="alertas-inventario">
-          <h5>
-            <i className="bi bi-exclamation-triangle text-warning me-2"></i>
-            Alertas de Inventario
-          </h5>
-          <div className="alertas-lista">
-            {currentAlerts.length > 0 ? (
-              currentAlerts.map((alerta, i) => (
-                <div
-                  key={i}
-                  className={`alerta-item ${alerta.nivelAlerta.toLowerCase()}`}
-                >
-                  <div className="alerta-info">
-                    <strong>{alerta.nombre}</strong> ({alerta.tipo})
-                    <small>Stock actual: {alerta.cantidadActual} </small>
-                    {alerta.nivelAlerta === "STOCK_EXCEDIDO" ? (
-                      <small>Stock máximo: {alerta.stockMinimo}</small>
-                    ) : (
-                      <small>Stock mínimo: {alerta.stockMinimo}</small>
-                    )}
-                  </div>
-                  <span
-                    className={`badge badge-${alerta.nivelAlerta.toLowerCase()}`}
-                  >
-                    {alerta.nivelAlerta === "STOCK_EXCEDIDO" ? "Excedido" : alerta.nivelAlerta}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="no-datos">Sin alertas</div>
-            )}
+       <div className="alertas-inventario">
+  <h5>
+    <i className="bi bi-exclamation-triangle text-warning me-2"></i>
+    Alertas de Inventario
+  </h5>
+  <div className="alertas-lista">
+    {currentAlerts.length > 0 ? (
+      currentAlerts.map((alerta, i) => {
+        // Log para depurar los datos recibidos
+        console.log('Alerta recibida:', alerta);
+
+        // Determinar texto y color basado en nivelAlerta del backend
+        const nivelAlertaMostrar = alerta.nivelAlerta === "STOCK_EXCEDIDO" ? "Exceso" : "Escazo";
+        const claseBadge = alerta.nivelAlerta === "STOCK_EXCEDIDO" ? "badge-warning" : "badge-danger";
+
+        return (
+          <div key={i} className={`alerta-item ${claseBadge}`}>
+            <div className="alerta-info">
+              <strong className="alerta-nombre">{alerta.nombre}</strong>
+              <div className="alerta-tipo">({alerta.tipo})</div>
+              <div className="alerta-detalle">Stock actual: {alerta.cantidadActual}</div>
+              {alerta.nivelAlerta === "STOCK_EXCEDIDO" ? (
+                <div className="alerta-detalle">Stock máximo: {alerta.stockMaximo}</div>
+              ) : (
+                <div className="alerta-detalle">Stock mínimo: {alerta.stockMinimo}</div>
+              )}
+              {alerta.nivelAlerta === "STOCK_EXCEDIDO" && alerta.stockMinimo != null && (
+                <div className="alerta-detalle">Stock mínimo: {alerta.stockMinimo}</div>
+              )}
+              {alerta.nivelAlerta !== "STOCK_EXCEDIDO" && alerta.stockMaximo != null && (
+                <div className="alerta-detalle">Stock máximo: {alerta.stockMaximo}</div>
+              )}
+            </div>
+            <span className={`badge ${claseBadge}`}>
+              {nivelAlertaMostrar}
+            </span>
           </div>
-          {/* Pagination controls */}
-          {alertasInventario.length > itemsPerPage && (
-            <nav className="mt-3">
-              <ul className="pagination justify-content-center">
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button
-                    className="page-link"
-                    onClick={() => paginate(currentPage - 1)}
-                  >
-                    Anterior
-                  </button>
-                </li>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <li
-                    key={i}
-                    className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}
-                  >
-                    <button
-                      className="page-link"
-                      onClick={() => paginate(i + 1)}
-                    >
-                      {i + 1}
-                    </button>
-                  </li>
-                ))}
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button
-                    className="page-link"
-                    onClick={() => paginate(currentPage + 1)}
-                  >
-                    Siguiente
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          )}
-        </div>
+        );
+      })
+    ) : (
+      <div className="no-datos">Sin alertas</div>
+    )}
+  </div>
+  {/* Controles de paginación */}
+  {alertasInventario.length > itemsPerPage && (
+    <nav className="mt-3">
+      <ul className="pagination justify-content-center">
+        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+          <button
+            className="page-link"
+            onClick={() => paginate(currentPage - 1)}
+          >
+            Anterior
+          </button>
+        </li>
+        {Array.from({ length: totalPages }, (_, i) => (
+          <li
+            key={i}
+            className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}
+          >
+            <button className="page-link" onClick={() => paginate(i + 1)}>
+              {i + 1}
+            </button>
+          </li>
+        ))}
+        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+          <button
+            className="page-link"
+            onClick={() => paginate(currentPage + 1)}
+          >
+            Siguiente
+          </button>
+        </li>
+      </ul>
+    </nav>
+  )}
+</div>
 
         <div className="info-adicional">
           <h5>Información Adicional</h5>

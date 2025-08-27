@@ -223,7 +223,7 @@ public class DashboardService implements IDashboardService {
         for (Producto p : productos) {
             Float cantidad = p.getStock() != null ? p.getStock().floatValue() : 0f;
             Float stockMin = p.getStockMinimo() != null ? p.getStockMinimo().floatValue() : stockMinimo;
-            Float stockMax = p.getStockMaximo() != null ? p.getStockMaximo().floatValue() : Float.MAX_VALUE;
+            Float stockMax = p.getStockMaximo() != null ? p.getStockMaximo().floatValue() : null; // Cambiado a null en lugar de Float.MAX_VALUE para evitar alertas falsas
 
             if (cantidad <= stockMin) {
                 alertas.add(new AlertaInventarioDTO(
@@ -232,21 +232,23 @@ public class DashboardService implements IDashboardService {
                         "Producto",
                         cantidad,
                         stockMin,
+                        stockMax,  // Pasamos stockMaximo
                         calcularNivelAlerta(cantidad, stockMin)
                 ));
-            } else if (cantidad >= stockMax) {
+            } else if (stockMax != null && cantidad >= stockMax) {  // Verificamos si stockMax existe
                 alertas.add(new AlertaInventarioDTO(
                         String.valueOf(p.getIdProducto()),
                         p.getNombre(),
                         "Producto",
                         cantidad,
-                        stockMax,
+                        stockMin,  // Pasamos stockMinimo real
+                        stockMax,  // Pasamos stockMaximo
                         "STOCK_EXCEDIDO"
                 ));
             }
         }
 
-        // Alertas de materia prima (sin cambios)
+        // Alertas de materia prima (sin cambios, pero agregamos stockMaximo = null)
         List<MateriaPrima> materias = materiaPrimaRepository.findAll();
         for (MateriaPrima m : materias) {
             Float cantidad = m.getCantidad() != null ? m.getCantidad() : 0f;
@@ -257,6 +259,7 @@ public class DashboardService implements IDashboardService {
                         "Materia Prima",
                         cantidad,
                         stockMinimo,
+                        null,  // stockMaximo = null para materias
                         calcularNivelAlerta(cantidad, stockMinimo)
                 ));
             }
