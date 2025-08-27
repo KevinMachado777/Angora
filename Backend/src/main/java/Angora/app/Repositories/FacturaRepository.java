@@ -45,7 +45,7 @@ public interface FacturaRepository extends JpaRepository<Factura, Long> {
     List<Factura> findByIdCliente(@Param("idCliente") Long idCliente);
 
     @Query("SELECT f FROM Factura f LEFT JOIN FETCH f.cliente JOIN FETCH f.cajero WHERE f.estado = :estado")
-    List<Factura> findByEstado(String estado);
+    List<Factura> findByEstado(@Param("estado") String estado);
 
     Long countByFechaBetween(LocalDateTime fechaInicio, LocalDateTime fechaFin);
 
@@ -55,4 +55,17 @@ public interface FacturaRepository extends JpaRepository<Factura, Long> {
 
     @Query("SELECT f FROM Factura f LEFT JOIN FETCH f.cajero WHERE f.estado = ?1")
     List<Factura> findByEstadoWithCajeroLeftJoin(String estado);
+
+    // Metodos añadidos para soportar ReporteService
+    @Query("SELECT f FROM Factura f WHERE (:fechaInicio IS NULL OR f.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR f.fecha <= :fechaFin) AND f.estado = :estado")
+    List<Factura> findByFechaBetweenAndEstado(@Param("fechaInicio") LocalDateTime fechaInicio, @Param("fechaFin") LocalDateTime fechaFin, @Param("estado") String estado);
+
+    @Query("SELECT f FROM Factura f WHERE f.cajero.id = :idCajero AND f.estado = :estado")
+    List<Factura> findByCajeroAndEstado(@Param("idCajero") Long idCajero, @Param("estado") String estado);
+
+    @Query("SELECT f FROM Factura f WHERE f.cajero.id = :idCajero AND (:fechaInicio IS NULL OR f.fecha >= :fechaInicio) AND (:fechaFin IS NULL OR f.fecha <= :fechaFin) AND f.estado = :estado")
+    List<Factura> findByCajeroAndFechaBetweenAndEstado(@Param("idCajero") Long idCajero, LocalDateTime fechaInicio, LocalDateTime fechaFin, @Param("estado") String estado);
+
+    @Query("SELECT f FROM Factura f WHERE f.cliente.idCliente = :idCliente AND f.estado = :estado")
+    List<Factura> findByIdClienteAndEstado(@Param("idCliente") Long idCliente, @Param("estado") String estado);
 }

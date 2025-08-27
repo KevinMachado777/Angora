@@ -8,8 +8,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarAlt, faFileExcel } from '@fortawesome/free-solid-svg-icons';
 import * as XLSX from 'xlsx';
 
-// Registrando componentes de ChartJS
-// IMPORTANT: añadimos Filler para evitar la advertencia "Tried to use the 'fill' option without the 'Filler' plugin enabled"
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler);
 
 const urlBackend = 'http://localhost:8080/angora/api/v1';
@@ -31,25 +29,20 @@ const Reportes = () => {
         utilidad: 0,
     });
 
-    // Refs para cada chart y para el contenedor general de gráficos
     const barRef = useRef(null);
     const pieRef = useRef(null);
     const lineRef = useRef(null);
     const chartsContainerRef = useRef(null);
 
-    // estado del tamaño del contenedor para forzar remount cuando cambia (soluciona problemas con DevTools device toolbar)
     const [chartsContainerSize, setChartsContainerSize] = useState({ width: 0, height: 0 });
 
-    // Normaliza/transforma las distintas respuestas del backend
     const normalizeResponse = (raw, tipoReporte, filtroTipo) => {
         if (!Array.isArray(raw)) return [];
 
         if (tipoReporte === 'inventario') {
-            // backend devuelve ReporteMovimientoDTO: { id, nombre, cantidadPasada, cantidadActual, tipoMovimiento, fechaMovimiento, productoId, materiaPrimaId }
             return raw
                 .map(m => ({
                     id: m.id ?? m.idMovimiento ?? m.id_movimiento,
-                    // El DTO ya expone "nombre" (producto o materia), pero si no está, intentar otros campos
                     nombre: m.nombre ?? m.producto ?? m.materiaPrima ?? m.productoNombre ?? m.materiaPrimaNombre ?? 'Sin Nombre',
                     cantidadPasada: m.cantidadPasada ?? m.cantidad_pasada ?? null,
                     cantidadActual: m.cantidadActual ?? m.cantidad_actual ?? null,
@@ -58,7 +51,6 @@ const Reportes = () => {
                     productoId: m.productoId ?? m.producto_id ?? null,
                     materiaPrimaId: m.materiaPrimaId ?? m.materia_prima_id ?? null,
                 }))
-                // si el usuario aplica filtro (productos/materiaPrima), filtramos aquí por ids
                 .filter(item => {
                     if (filtroTipo === 'productos') return item.productoId !== null && item.productoId !== undefined;
                     if (filtroTipo === 'materiaPrima') return item.materiaPrimaId !== null && item.materiaPrimaId !== undefined;
@@ -68,28 +60,28 @@ const Reportes = () => {
 
         if (tipoReporte === 'finanzas') {
             if (filtroTipo === 'ingresos') {
-                // ReporteIngresosDTO: { id, cliente, metodoPago, fecha, total }
                 return raw.map(r => ({
                     id: r.id ?? r.idFactura ?? null,
                     cliente: r.cliente ?? r.nombreCliente ?? 'Sin cliente',
                     metodoPago: r.metodoPago ?? r.metodoPago ?? '',
                     fecha: r.fecha ?? r.fechaFactura ?? null,
-                    total: r.total ?? 0,
+                    subtotal: Math.round(r.subtotal ?? 0),
+                    ivaPorcentaje: r.ivaPorcentaje != null ? parseFloat(r.ivaPorcentaje) : 0,
+                    abonos: Math.round(r.total ?? 0),
+                    totalFactura: Math.round(r.totalFactura ?? 0),
                 }));
             } else {
-                // egresos -> ReporteEgresosDTO: { id, proveedor, fecha, total }
                 return raw.map(r => ({
                     id: r.id ?? r.idOrden ?? null,
                     proveedor: r.proveedor ?? r.nombreProveedor ?? 'Sin proveedor',
                     fecha: r.fecha ?? r.fechaOrden ?? null,
-                    total: r.total ?? 0,
+                    total: Math.round(r.total ?? 0),
                 }));
             }
         }
 
         if (tipoReporte === 'usuarios') {
             if (filtroTipo === 'personal') {
-                // ReportePersonalDTO: { id, nombre, accion, fecha }
                 return raw.map(r => ({
                     id: r.id ?? r.idUsuario ?? null,
                     nombre: r.nombre ?? 'Sin nombre',
@@ -97,7 +89,6 @@ const Reportes = () => {
                     fecha: r.fecha ?? null,
                 }));
             } else {
-                // clientes -> ReporteClientesDTO: { id, nombre, estado, numeroCompras, ultimoCompra }
                 return raw.map(r => ({
                     id: r.id ?? r.idCliente ?? null,
                     nombre: r.nombre ?? 'Sin nombre',
@@ -108,7 +99,6 @@ const Reportes = () => {
             }
         }
 
-        // fallback: devolver lo que venga (para seguridad)
         return raw;
     };
 
@@ -126,7 +116,7 @@ const Reportes = () => {
                     break;
                 case 'inventario':
                     endpoint = `/reportes/inventario`;
-                    params.tipo = 'movimientos'; // Seguir usando "movimientos" como base
+                    params.tipo = 'movimientos';
                     break;
                 case 'usuarios':
                     endpoint = `/reportes/usuarios`;
@@ -141,11 +131,9 @@ const Reportes = () => {
                 const rawData = response.data || [];
                 console.log('Datos recibidos crudos:', rawData);
 
-                // Normalizar según tipoReporte y filtro
                 const normalized = normalizeResponse(rawData, tipoReporte, filtroTipo);
                 setDatos(normalized);
 
-                // Fetch métricas financieras
                 const financialParams = { ...params };
                 const [ingresosResp, egresosResp] = await Promise.all([
                     api.get(`${urlBackend}/reportes/totalIngresos`, { params: financialParams }),
@@ -159,7 +147,6 @@ const Reportes = () => {
                     utilidad: totalIngresos - totalEgresos,
                 });
 
-                // Fetch métricas de inventario
                 if (tipoReporte === 'inventario') {
                     const inventarioParams = { ...params, tipo: 'movimientos' };
                     const [valorResp, totalProdResp, totalMatResp] = await Promise.all([
@@ -180,7 +167,6 @@ const Reportes = () => {
         fetchData();
     }, [tipoReporte, filtroTipo, fechaInicio, fechaFin]);
 
-    // Cuando los datos cambian, forzamos un resize/update corto para los charts
     useEffect(() => {
         const triggerResize = () => {
             setTimeout(() => {
@@ -205,10 +191,8 @@ const Reportes = () => {
         triggerResize();
     }, [datos, tipoReporte]);
 
-    // Observador de tamaño + listeners para forzar resize cuando cambie el viewport (DevTools device toolbar problem)
     useEffect(() => {
         const resizeCharts = () => {
-            // ligero delay para dejar estabilizar layout
             setTimeout(() => {
                 try {
                     if (barRef.current && typeof barRef.current.resize === 'function') {
@@ -232,14 +216,11 @@ const Reportes = () => {
         let ro;
         if (chartsContainerRef.current && window.ResizeObserver) {
             try {
-                // Observador que además actualiza el estado con el tamaño del contenedor.
                 ro = new ResizeObserver(() => {
-                    // actualizar tamaño del contenedor para forzar remount si cambia
                     try {
                         const el = chartsContainerRef.current;
                         if (el) {
                             const rect = el.getBoundingClientRect();
-                            // redondear para evitar cambios muy pequeños que disparen remounts innecesarios
                             const next = { width: Math.round(rect.width), height: Math.round(rect.height) };
                             setChartsContainerSize(prev => {
                                 if (prev.width === next.width && prev.height === next.height) return prev;
@@ -257,12 +238,10 @@ const Reportes = () => {
             }
         }
 
-        // listeners complementarios (focus/visibility) porque DevTools a veces cambia visibilidad/layout
         window.addEventListener('resize', resizeCharts);
         window.addEventListener('orientationchange', resizeCharts);
         window.addEventListener('focus', resizeCharts);
         document.addEventListener('visibilitychange', resizeCharts);
-        // fallback adicional: escucha cambios en la ventana para devtools toggles extremos
         window.addEventListener('mousemove', resizeCharts);
 
         return () => {
@@ -275,7 +254,7 @@ const Reportes = () => {
             document.removeEventListener('visibilitychange', resizeCharts);
             window.removeEventListener('mousemove', resizeCharts);
         };
-    }, []); // solo al montar
+    }, []);
 
     const limpiarFechas = () => {
         setFechaInicio('');
@@ -290,7 +269,7 @@ const Reportes = () => {
                     : ['Id', 'Materia Prima', 'Cantidad Pasada', 'Movimiento', 'Cantidad Actual', 'Concepto', 'Fecha Movimiento'];
             case 'finanzas':
                 return filtroTipo === 'ingresos'
-                    ? ['Id', 'Cliente', 'Método Pago', 'Fecha', 'Total']
+                    ? ['Id', 'Cliente', 'Método Pago', 'Fecha', 'Subtotal', 'IVA', 'Abonos', 'Total Factura']
                     : ['Id', 'Proveedor', 'Fecha', 'Total'];
             case 'usuarios':
                 return filtroTipo === 'personal'
@@ -343,14 +322,12 @@ const Reportes = () => {
     const renderizarGraficos = () => {
         if (!datos.length) return null;
 
-        // Labels: tratar de obtener un "nombre" visible (nombre, cliente, proveedor, producto, materiaPrima)
         const labels = datos.map(item =>
             item.nombre ?? item.cliente ?? item.proveedor ?? item.producto ?? item.materiaPrima ?? 'Sin Nombre'
         );
 
         const values = datos.map(item => {
-            // prioridad: cantidadActual (movimientos), total (finanzas), cantidad (prod/mat)
-            return item.cantidadActual ?? item.total ?? item.cantidad ?? item.cantidadActual ?? 0;
+            return item.cantidadActual ?? item.abonos ?? item.total ?? item.cantidad ?? 0;
         });
 
         const barData = {
@@ -360,7 +337,7 @@ const Reportes = () => {
                     label: tipoReporte === 'inventario'
                         ? 'Cantidad Actual'
                         : tipoReporte === 'finanzas'
-                            ? 'Total'
+                            ? (filtroTipo === 'ingresos' ? 'Abonos' : 'Total')
                             : 'Acciones',
                     data: values,
                     backgroundColor: 'rgba(0, 80, 120, 0.8)',
@@ -386,8 +363,8 @@ const Reportes = () => {
             labels: datos.map(item => (item.fecha ? item.fecha : item.fechaMovimiento ? item.fechaMovimiento : 'Sin Fecha')),
             datasets: [
                 {
-                    label: filtroTipo === 'ingresos' ? 'Ingresos' : 'Egresos',
-                    data: datos.map(item => item.total ?? 0),
+                    label: filtroTipo === 'ingresos' ? 'Abonos' : 'Egresos',
+                    data: datos.map(item => item.abonos ?? item.total ?? 0),
                     borderColor: 'rgba(0, 120, 180, 1)',
                     backgroundColor: 'rgba(0, 80, 120, 0.5)',
                     fill: true,
@@ -397,7 +374,6 @@ const Reportes = () => {
             ],
         } : null;
 
-        // clave para forzar remount si el contenedor cambia (evita que canvas quede en mal estado tras toggles DevTools)
         const chartKeyBase = `${tipoReporte}-${filtroTipo}-${datos.length}-${chartsContainerSize.width}-${chartsContainerSize.height}`;
 
         return (
@@ -473,7 +449,11 @@ const Reportes = () => {
     const exportarAExcel = () => {
         const worksheet = XLSX.utils.json_to_sheet(datos.map(item => ({
             ...item,
-            ValorTotal: item.cantidadActual ?? item.total ?? item.cantidad ?? 0
+            Subtotal: item.subtotal ?? 0,
+            'IVA (%)': item.ivaPorcentaje ?? 0,
+            Abonos: item.metodoPago === 'Efectivo' ? 'N/A' : (item.abonos ?? 0),
+            'Total Factura': item.totalFactura ?? 0,
+            ValorTotal: item.cantidadActual ?? item.abonos ?? item.total ?? item.cantidad ?? 0,
         })));
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Reporte');
@@ -488,7 +468,7 @@ const Reportes = () => {
                         'Id': 'id',
                         'Producto': 'nombre',
                         'Cantidad Pasada': 'cantidadPasada',
-                        'Movimiento': 'movimiento', // Campo calculado
+                        'Movimiento': 'movimiento',
                         'Cantidad Actual': 'cantidadActual',
                         'Concepto': 'tipoMovimiento',
                         'Fecha Movimiento': 'fechaMovimiento',
@@ -497,7 +477,7 @@ const Reportes = () => {
                         'Id': 'id',
                         'Materia Prima': 'nombre',
                         'Cantidad Pasada': 'cantidadPasada',
-                        'Movimiento': 'movimiento', // Campo calculado
+                        'Movimiento': 'movimiento',
                         'Cantidad Actual': 'cantidadActual',
                         'Concepto': 'tipoMovimiento',
                         'Fecha Movimiento': 'fechaMovimiento',
@@ -509,7 +489,10 @@ const Reportes = () => {
                         'Cliente': 'cliente',
                         'Método Pago': 'metodoPago',
                         'Fecha': 'fecha',
-                        'Total': 'total',
+                        'Subtotal': 'subtotal',
+                        'IVA': 'ivaPorcentaje',
+                        'Abonos': 'abonos',
+                        'Total Factura': 'totalFactura',
                     }
                     : {
                         'Id': 'id',

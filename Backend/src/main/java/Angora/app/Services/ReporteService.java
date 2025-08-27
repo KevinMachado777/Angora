@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ReporteService implements IReporteService {
@@ -24,32 +25,43 @@ public class ReporteService implements IReporteService {
     @Autowired private LoteRepository loteRepository;
     @Autowired(required = false) private ProveedorRepository proveedorRepository;
 
-
-    // Metodo para obtener la lista de ingresos basada en un rango de fechas
-    // Si no se proporcionan fechas, retorna todos los ingresos disponibles
     public List<ReporteIngresosDTO> getIngresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteIngresosDTO> ingresos = new ArrayList<>();
-        List<Factura> facturas = (fechaInicio == null && fechaFin == null)
-                ? facturaRepository.findAll()
-                : facturaRepository.findByFechaBetween(fechaInicio, fechaFin);
+        List<Factura> facturas;
+
+        if (fechaInicio == null && fechaFin == null) {
+            facturas = facturaRepository.findByEstado("CONFIRMADO");
+        } else {
+            facturas = facturaRepository.findByFechaBetween(fechaInicio, fechaFin)
+                    .stream()
+                    .filter(f -> "CONFIRMADO".equals(f.getEstado()))
+                    .collect(Collectors.toList());
+        }
+
+        System.out.println("Facturas encontradas: " + facturas.size() + ", Estado: CONFIRMADO");
 
         for (Factura f : facturas) {
             String metodoPago = (f.getIdCartera() != null) ? "Crédito" : "Efectivo";
             Double totalFactura = f.getTotal() != null ? f.getTotal() : 0.0;
-            Float total = 0f;
+            Float subtotal = totalFactura.floatValue() / 1.15f;
+            Float ivaPorcentaje = 19.0f; // IVA fijo del 19%
+            Float abonos = 0f;
             if (metodoPago.equals("Efectivo")) {
-                total = totalFactura.floatValue();
+                abonos = totalFactura.floatValue();
             } else {
                 Double saldoPendiente = f.getSaldoPendiente() != null ? f.getSaldoPendiente() : 0.0;
                 Float pagado = (float) (totalFactura - saldoPendiente);
-                total = pagado > 0 ? pagado : 0f;
+                abonos = pagado > 0 ? pagado : 0f;
             }
             ingresos.add(new ReporteIngresosDTO(
                     f.getIdFactura(),
                     f.getCliente() != null ? f.getCliente().getNombre() : "Consumidor final",
                     metodoPago,
                     f.getFecha(),
-                    total
+                    abonos,
+                    subtotal,
+                    ivaPorcentaje,
+                    totalFactura.floatValue()
             ));
         }
         return ingresos;
@@ -80,7 +92,7 @@ public class ReporteService implements IReporteService {
             Float total = costoUnitario * cantidad;
 
             egresos.add(new ReporteEgresosDTO(
-                    l.getIdLote(), // Modificado: String en lugar de Long
+                    l.getIdLote(),
                     proveedor,
                     l.getFechaIngreso(),
                     total
@@ -100,8 +112,8 @@ public class ReporteService implements IReporteService {
     @Override
     public Float getTotalIngresos(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<Factura> facturas = (fechaInicio == null && fechaFin == null)
-                ? facturaRepository.findAll()
-                : facturaRepository.findByFechaBetween(fechaInicio, fechaFin);
+                ? facturaRepository.findByEstado("CONFIRMADO")
+                : facturaRepository.findByFechaBetweenAndEstado(fechaInicio, fechaFin, "CONFIRMADO");
 
         return (float) facturas.stream()
                 .mapToDouble(f -> {
@@ -133,7 +145,6 @@ public class ReporteService implements IReporteService {
     }
 
     @Override
-    // Metodo para calcular el margen de utilidad restando egresos de ingresos
     public Float getUtilidadMargin(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         Float ingresos = getTotalIngresos(fechaInicio, fechaFin);
         Float egresos = getTotalEgresos(fechaInicio, fechaFin);
@@ -143,14 +154,12 @@ public class ReporteService implements IReporteService {
     @Override
     public List<ReporteProductoDTO> getProductos() {
         List<ReporteProductoDTO> productos = new ArrayList<>();
-        List<Factura> facturas = facturaRepository.findAll();
+        List<Factura> facturas = facturaRepository.findByEstado("CONFIRMADO");
 
-        // Aggregate sales data per product
         for (Producto p : productoRepository.findAll()) {
             Double precioUnitario = 0.0;
             Integer cantidadVendida = 0;
 
-            // Calculate average price and total quantity sold from facturas
             for (Factura f : facturas) {
                 for (FacturaProducto fp : f.getProductos()) {
                     if (fp.getProducto().getIdProducto().equals(p.getIdProducto())) {
@@ -160,11 +169,10 @@ public class ReporteService implements IReporteService {
                 }
             }
 
-            // Average price if sold
             precioUnitario = cantidadVendida > 0 ? precioUnitario / cantidadVendida : p.getPrecioDetal() != null ? p.getPrecioDetal() : 0.0;
 
             productos.add(new ReporteProductoDTO(
-                    Long.parseLong(p.getIdProducto()), // Assuming idProducto can be parsed to Long for DTO
+                    Long.parseLong(p.getIdProducto()),
                     p.getNombre(),
                     p.getStock() != null ? p.getStock() : 0,
                     precioUnitario
@@ -180,8 +188,7 @@ public class ReporteService implements IReporteService {
             Integer costo = m.getCosto() != null ? m.getCosto() : 0;
             Integer cantidad = m.getCantidad() != null ? Math.round(m.getCantidad()) : 0;
             materias.add(new ReporteMateriaPrimaDTO(
-
-                    m.getId(), // Modificado: String en lugar de Long
+                    m.getId(),
                     m.getNombre(),
                     cantidad,
                     costo.floatValue()
@@ -235,8 +242,8 @@ public class ReporteService implements IReporteService {
                     .toList();
         }
         List<Factura> facturas = (fechaInicio == null && fechaFin == null)
-                ? facturaRepository.findAll()
-                : facturaRepository.findByFechaBetween(fechaInicio, fechaFin);
+                ? facturaRepository.findByEstado("CONFIRMADO")
+                : facturaRepository.findByFechaBetweenAndEstado(fechaInicio, fechaFin, "CONFIRMADO");
 
         return (float) productos.stream()
                 .mapToDouble(p -> {
@@ -261,8 +268,8 @@ public class ReporteService implements IReporteService {
         List<ReportePersonalDTO> personal = new ArrayList<>();
         for (Usuario u : usuarioRepository.findAll()) {
             List<Factura> facturas = (fechaInicio == null && fechaFin == null)
-                    ? facturaRepository.findByCajero(u.getId())
-                    : facturaRepository.findByCajeroAndFechaBetween(u.getId(), fechaInicio, fechaFin);
+                    ? facturaRepository.findByCajeroAndEstado(u.getId(), "CONFIRMADO")
+                    : facturaRepository.findByCajeroAndFechaBetweenAndEstado(u.getId(), fechaInicio, fechaFin, "CONFIRMADO");
             for (Factura f : facturas) {
                 personal.add(new ReportePersonalDTO(
                         u.getId(),
@@ -279,7 +286,7 @@ public class ReporteService implements IReporteService {
     public List<ReporteClientesDTO> getClientes(LocalDateTime fechaInicio, LocalDateTime fechaFin) {
         List<ReporteClientesDTO> clientes = new ArrayList<>();
         for (Cliente c : clienteRepository.findAll()) {
-            List<Factura> facturas = facturaRepository.findByIdCliente(c.getIdCliente());
+            List<Factura> facturas = facturaRepository.findByIdClienteAndEstado(c.getIdCliente(), "CONFIRMADO");
             if (facturas == null) {
                 facturas = new ArrayList<>();
             }
@@ -337,7 +344,7 @@ public class ReporteService implements IReporteService {
                         m.getTipoMovimiento(),
                         m.getFechaMovimiento(),
                         esProducto ? m.getProducto().getId() : null,
-                        esMateria  ? m.getMateriaPrima().getId() : null // Modificado: String en lugar de Long
+                        esMateria ? m.getMateriaPrima().getId() : null
                 ));
             }
         }
