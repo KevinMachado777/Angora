@@ -104,6 +104,8 @@ const Pedidos = () => {
           }
         );
         setInventario(inventarioResponse.data);
+        console.log("Inventario: ", inventarioResponse.data)
+
 
         const pedidosResponse = await axios.get(
           "http://localhost:8080/angora/api/v1/pedidos/pendientes",
@@ -187,20 +189,31 @@ const Pedidos = () => {
     }
 
     for (const producto of productosAConfirmar) {
-      if (producto.tipoPrecio === "mayorista") {
-        const productoInventario = inventario.find(
-          (p) => p.idProducto === producto.id
-        );
-        if (!productoInventario?.precioMayorista) {
-          abrirModal("error", `El producto ${producto.nombre} no tiene precio mayorista disponible`);
-          return;
-        }
-      }
-      if (producto.tipoPrecio === "opcional" && (!producto.precioOpcional || Number(producto.precioOpcional) <= 0)) {
-        abrirModal("error", `Debes ingresar un precio válido para ${producto.nombre}`);
-        return;
-      }
+    // Buscar el producto en inventario siempre
+    const productoInventario = inventario.find(
+      (p) => p.idProducto === producto.id
+    );
+
+    // validar precio mayorista
+    if (producto.tipoPrecio === "mayorista" && !productoInventario.precioMayorista) {
+      abrirModal("error", `El producto ${producto.nombre} no tiene precio mayorista disponible`);
+      return;
     }
+
+    // validar precio opcional
+    if (producto.tipoPrecio === "opcional" && (!producto.precioOpcional || Number(producto.precioOpcional) <= 0)) {
+      abrirModal("error", `Debes ingresar un precio válido para ${producto.nombre}`);
+      return;
+    }
+
+    // validar stock
+    if (productoInventario.stock < producto.cantidad) {
+      abrirModal("advertencia", `No hay stock suficiente de ${producto.nombre}. 
+        Stock disponible: ${productoInventario.stock}, solicitado: ${producto.cantidad}`);
+      return;
+    }
+  }
+    
 
     const actualizarCartera =
       pedidoAConfirmar.saldoPendiente > 0 &&
