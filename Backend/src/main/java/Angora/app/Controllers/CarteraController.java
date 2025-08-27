@@ -39,7 +39,7 @@ public class CarteraController {
 
     // Obtiene la cartera de un cliente por su ID
     @GetMapping(value = "/{idCliente}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Cartera> obtenerPorIdCliente(@PathVariable Long idCliente) {
+    public ResponseEntity<Cartera> obtenerPorIdCliente(@PathVariable(name = "idCliente") Long idCliente) {
         Cartera cartera = carteraService.obtenerPorIdClienteConFacturas(idCliente);
         if (cartera == null) {
             Cartera emptyCartera = new Cartera();
@@ -58,7 +58,7 @@ public class CarteraController {
 
     // Obtiene todas las carteras, opcionalmente filtradas por estado
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Cartera>> obtenerCarteras(@RequestParam(required = false) Boolean estado) {
+    public ResponseEntity<List<Cartera>> obtenerCarteras(@RequestParam(required = false, name = "estado") Boolean estado) {
         List<Cartera> carteras;
         if (estado != null && estado) {
             carteras = carteraService.obtenerCarterasActivas();
@@ -74,7 +74,7 @@ public class CarteraController {
 
     // Procesa un abono para una factura de un cliente
     @PostMapping(value = "/{idCliente}/abonos", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Cartera> procesarAbono(@PathVariable Long idCliente, @RequestBody Map<String, Object> body) {
+    public ResponseEntity<Cartera> procesarAbono(@PathVariable(name = "idCliente") Long idCliente, @RequestBody Map<String, Object> body) {
         Integer cantidad = ((Number) body.get("cantidad")).intValue();
         String fecha = (String) body.get("fecha");
         Long idFactura = body.get("idFactura") != null ? ((Number) body.get("idFactura")).longValue() : null;
@@ -90,7 +90,7 @@ public class CarteraController {
 
     // Activa o desactiva la cartera de un cliente
     @PutMapping(value = "/{idCliente}/estado", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Cartera> actualizarEstadoCartera(@PathVariable Long idCliente,
+    public ResponseEntity<Cartera> actualizarEstadoCartera(@PathVariable(name = "idCliente") Long idCliente,
                                                            @RequestBody Map<String, Boolean> body) {
         Boolean estado = body.get("estado");
         Cartera cartera = carteraService.actualizarEstadoCartera(idCliente, estado);
@@ -113,7 +113,7 @@ public class CarteraController {
 
     // Metodo para listar las facturas con todos sus detalles
     @GetMapping("/facturas/{id}")
-    public ResponseEntity<FacturaPendienteDTO> obtenerFacturaPorId(@PathVariable Long id) {
+    public ResponseEntity<FacturaPendienteDTO> obtenerFacturaPorId(@PathVariable(name = "id") Long id) {
         try {
             Optional<Factura> optionalFactura = facturaRepository.findById(id);
             if (!optionalFactura.isPresent()) {
@@ -182,7 +182,7 @@ public class CarteraController {
 
     // Metodo para obtener el historial de abonos de un cliente
     @GetMapping(value = "/{idCliente}/historial")
-    public ResponseEntity<List<HistorialAbono>> obtenerHistorialAbonos(@PathVariable Long idCliente) {
+    public ResponseEntity<List<HistorialAbono>> obtenerHistorialAbonos(@PathVariable(name = "idCliente") Long idCliente) {
         try {
             List<HistorialAbono> historial = carteraService.obtenerHistorialAbonos(idCliente);
             return ResponseEntity.ok(historial);

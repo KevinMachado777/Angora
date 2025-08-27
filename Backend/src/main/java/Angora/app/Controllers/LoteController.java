@@ -29,7 +29,7 @@ public class LoteController {
 
     // Metodo para obtener un lote por id
     @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable String id) {
+    public ResponseEntity<?> getById(@PathVariable(name = "id") String id) {
         return new ResponseEntity<>(loteService.findById(id), HttpStatus.OK);
     }
 
@@ -58,7 +58,7 @@ public class LoteController {
 
     // Metodo para actualizar un lote
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable String id, @RequestBody LoteDTO loteDto) { // Modificado: Long a String
+    public ResponseEntity<?> update(@PathVariable(name = "id") String id, @RequestBody LoteDTO loteDto) { // Modificado: Long a String
         if (!loteRepository.existsById(id)) {
             throw new RuntimeException("Lote no encontrado");
         }
@@ -67,7 +67,7 @@ public class LoteController {
 
     // Metodo para borrar un lote
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable String id) { // Modificado: Long a String
+    public ResponseEntity<?> delete(@PathVariable(name = "id") String id) { // Modificado: Long a String
         if (!loteRepository.existsById(id)) {
             throw new RuntimeException("Lote no encontrado");
         }

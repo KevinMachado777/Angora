@@ -63,7 +63,7 @@ public class ProductoService {
             product.setStockMinimo(producto.getStockMinimo());
             product.setStockMaximo(producto.getStockMaximo());
             product.setIva(producto.getIva());
-            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
+            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
 
             // Manejar categoria nullable
             if (producto.getIdCategoria() != null) {
@@ -105,8 +105,7 @@ public class ProductoService {
         productoDto.setStockMinimo(producto.getStockMinimo());
         productoDto.setStockMaximo(producto.getStockMaximo());
         productoDto.setIva(producto.getIva());
-
-        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
+        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
 
         if (producto.getIdCategoria() != null) {
             CategoriaIdDTO categoriaIdDto = new CategoriaIdDTO();
@@ -138,6 +137,18 @@ public class ProductoService {
     @Transactional
     public ProductoDTO crearProductoDesdeDTO(ProductoDTO productoDTO) {
         // Validaciones
+        if (productoDTO.getIdProducto() == null || !productoDTO.getIdProducto().matches("^[a-zA-Z0-9-_]+$")) {
+            throw new RuntimeException("El ID del producto debe contener solo letras, números, guiones o guiones bajos.");
+        }
+        if (productoRepository.existsById(productoDTO.getIdProducto())) {
+            throw new RuntimeException("Ya existe un producto con el ID: " + productoDTO.getIdProducto());
+        }
+        if (productoDTO.getNombre() == null || productoDTO.getNombre().trim().isEmpty() || productoDTO.getNombre().length() < 3) {
+            throw new RuntimeException("El nombre debe tener al menos 3 caracteres.");
+        }
+        if (!productoDTO.getNombre().matches("^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ0-9\\s-_]+$")) {
+            throw new RuntimeException("El nombre solo puede contener letras, números, espacios, guiones o guiones bajos.");
+        }
         if (productoDTO.getPrecioDetal() == null || productoDTO.getPrecioDetal() <= 0) {
             throw new RuntimeException("El precio detal debe ser mayor que 0");
         }
@@ -150,6 +161,10 @@ public class ProductoService {
         if (productoDTO.getStockMaximo() != null && productoDTO.getStockMaximo() < 0) {
             throw new RuntimeException("El stock máximo no puede ser negativo");
         }
+        if (productoDTO.getIva() == null) {
+            throw new RuntimeException("Debes especificar si el producto tiene IVA (true/false).");
+        }
+
 
         Categoria categoria = null;
         if (productoDTO.getIdCategoria() != null) {
@@ -166,7 +181,7 @@ public class ProductoService {
                 .nombre(productoDTO.getNombre())
                 .precioDetal(productoDTO.getPrecioDetal())
                 .precioMayorista(productoDTO.getPrecioMayorista())
-                .costo(productoDTO.getCosto())
+                .costo(productoDTO.getCosto() != null ? productoDTO.getCosto() : 0)
                 .stock(productoDTO.getStock() != null ? productoDTO.getStock() : 0)
                 .stockMinimo(productoDTO.getStockMinimo())
                 .stockMaximo(productoDTO.getStockMaximo())
@@ -181,6 +196,9 @@ public class ProductoService {
                 ? productoDTO.getMaterias().stream().map(dto -> {
             if (!materiaRepository.existsById(dto.getIdMateria())) {
                 throw new RuntimeException("Materia con ID " + dto.getIdMateria() + " no encontrada");
+            }
+            if (dto.getCantidad() <= 0) {
+                throw new RuntimeException("La cantidad de materia prima debe ser mayor que 0");
             }
             MateriaProducto mp = new MateriaProducto();
             mp.setIdMateria(dto.getIdMateria());
@@ -199,31 +217,30 @@ public class ProductoService {
     }
 
     // Actualizar un producto desde DTO
-
     @Transactional
     public ProductoDTO actualizarProductoDesdeDTO(ProductoDTO productoDTO) {
         Producto producto = productoRepository.findById(productoDTO.getIdProducto())
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoDTO.getIdProducto()));
 
         // Validaciones
+        if (!productoDTO.getIdProducto().matches("^[a-zA-Z0-9-_]+$")) {
+            throw new RuntimeException("El ID del producto debe contener solo letras, números, guiones o guiones bajos.");
+        }
+        if (productoDTO.getNombre() == null || productoDTO.getNombre().trim().isEmpty() || productoDTO.getNombre().length() < 3) {
+            throw new RuntimeException("El nombre debe tener al menos 3 caracteres.");
+        }
+        if (!productoDTO.getNombre().matches("^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ0-9\\s-_]+$")) {
+            throw new RuntimeException("El nombre solo puede contener letras, números, espacios, guiones o guiones bajos.");
+        }
         if (productoDTO.getPrecioDetal() == null || productoDTO.getPrecioDetal() <= 0) {
             throw new RuntimeException("El precio detal debe ser mayor que 0");
-        }
-        if (productoDTO.getPrecioMayorista() != null && productoDTO.getPrecioMayorista() <= 0) {
-            throw new RuntimeException("El precio mayorista debe ser mayor que 0");
-        }
-        if (productoDTO.getStockMinimo() != null && productoDTO.getStockMinimo() < 0) {
-            throw new RuntimeException("El stock mínimo no puede ser negativo");
-        }
-        if (productoDTO.getStockMaximo() != null && productoDTO.getStockMaximo() < 0) {
-            throw new RuntimeException("El stock máximo no puede ser negativo");
         }
 
         // Actualizar campos simples
         producto.setNombre(productoDTO.getNombre());
         producto.setPrecioDetal(productoDTO.getPrecioDetal());
         producto.setPrecioMayorista(productoDTO.getPrecioMayorista());
-        producto.setCosto(productoDTO.getCosto());
+        producto.setCosto(productoDTO.getCosto() != null ? productoDTO.getCosto() : 0);
         producto.setStock(productoDTO.getStock());
         producto.setStockMinimo(productoDTO.getStockMinimo());
         producto.setStockMaximo(productoDTO.getStockMaximo());
@@ -254,6 +271,9 @@ public class ProductoService {
             if (!materiaRepository.existsById(dto.getIdMateria())) {
                 throw new RuntimeException("Materia con ID " + dto.getIdMateria() + " no encontrada");
             }
+            if (dto.getCantidad() <= 0) {
+                throw new RuntimeException("La cantidad de materia prima debe ser mayor que 0");
+            }
             MateriaProducto mp = new MateriaProducto();
             mp.setIdMateria(dto.getIdMateria());
             mp.setCantidad(dto.getCantidad());
@@ -266,9 +286,13 @@ public class ProductoService {
         productoRepository.save(producto);
         return productoDTO;
     }
+
     // Metodo para guardar un producto
     @Transactional
     public Producto save(Producto producto) {
+        if (producto.getIdProducto() == null || !producto.getIdProducto().matches("^[a-zA-Z0-9-_]+$")) {
+            throw new RuntimeException("El ID del producto debe contener solo letras, números, guiones o guiones bajos.");
+        }
         if (producto.getIdCategoria() != null && !categoriaRepository.existsById(producto.getIdCategoria().getIdCategoria())) {
             throw new RuntimeException("Categoría no encontrada");
         }
@@ -287,7 +311,7 @@ public class ProductoService {
 
     // Disminuir stock por pérdida
     @Transactional
-    public Producto disminuirStockPorPerdida(String idProducto, int cantidadADisminuir) {
+    public Producto disminuirStockPorPerdida(String idProducto, int cantidadADisminuir, String notas) {
         Producto producto = productoRepository.findById(idProducto)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + idProducto));
 
@@ -323,7 +347,7 @@ public class ProductoService {
 
     // Actualizar stock
     @Transactional
-    public Producto updateStock(String idProducto, int nuevaCantidad) {
+    public Producto updateStock(String idProducto, int nuevaCantidad, String nota) {
         Producto producto = productoRepository.findById(idProducto)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + idProducto));
 
@@ -348,11 +372,12 @@ public class ProductoService {
             Produccion produccion = new Produccion();
             produccion.setIdProducto(idProducto);
             produccion.setFecha(fechaActual);
+            produccion.setNotas(nota);
             Produccion savedProduccion = produccionRepository.save(produccion);
             Long idProduccion = savedProduccion.getIdProduccion();
 
             for (MateriaProducto mp : producto.getMaterias()) {
-                String idMateriaAumentar = mp.getIdMateria(); // Usar nombre único para evitar conflicto
+                String idMateriaAumentar = mp.getIdMateria();
                 MateriaPrima materia = materiaRepository.findById(idMateriaAumentar)
                         .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateriaAumentar));
                 Float anteriorMateria = materia.getCantidad() != null ? materia.getCantidad() : 0f;
@@ -373,12 +398,19 @@ public class ProductoService {
 
                     // Registrar ProduccionLote y LoteUsado
                     produccionLoteRepository.save(new ProduccionLote(idProduccion, lote.getIdLote(), usar));
-                    LoteUsado loteUsado = new LoteUsado(null, lote.getIdLote(), idProducto, usar, fechaActual, idProduccion);
+                    LoteUsado loteUsado = new LoteUsado(
+                            idProducto,
+                            lote.getIdLote(),
+                            usar,
+                            fechaActual,
+                            idProduccion,
+                            lote.getCantidad() // Guardar la cantidad inicial del lote
+                    );
                     loteUsadoRepository.save(loteUsado);
 
                     restante -= usar;
                 }
-                // después de consumir lotes, recalcular cantidad disponible actual de la materia
+                // Recalcular cantidad disponible actual de la materia
                 Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateriaAumentar);
                 if (actualMateria == null) actualMateria = 0f;
                 materia.setCantidad(actualMateria);
@@ -418,8 +450,7 @@ public class ProductoService {
                     }
                 }
 
-
-                // después de devolver lotes, recalcular materia y registrar movimiento de materia (entrada)
+                // Recalcular materia y registrar movimiento de materia (entrada)
                 MateriaPrima materia = materiaRepository.findById(idMateriaDevolver)
                         .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateriaDevolver));
                 Float anteriorMateria = materia.getCantidad() != null ? materia.getCantidad() : 0f;
@@ -456,6 +487,7 @@ public class ProductoService {
         Float totalDisponible = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
         return totalDisponible != null && totalDisponible >= cantidadNecesaria;
     }
+
     // Metodo que elimina un producto
     @Transactional
     public void delete(String id) {
@@ -465,7 +497,7 @@ public class ProductoService {
 
     // Disminuir stock
     public void disminuirStock(Producto producto, int cantidadComprada) {
-        updateStock(producto.getIdProducto(), producto.getStock() - cantidadComprada);
+        updateStock(producto.getIdProducto(), producto.getStock() - cantidadComprada, null);
     }
 
     // Recalcular costo y precios de productos
@@ -513,14 +545,14 @@ public class ProductoService {
                     nuevoPrecioMayoristaCalc = nuevoCostoRedondeado * markupMayorista;
                 }
             } else {
-                nuevoPrecioDetalCalc = nuevoCostoRedondeado * 1.15; // 15% por defecto
+                nuevoPrecioDetalCalc = nuevoCostoRedondeado * (1 + (producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15) / 100.0);
                 if (oldPrecioMayorista > 0.0) {
                     nuevoPrecioMayoristaCalc = nuevoCostoRedondeado * 1.10; // 10% por defecto para mayorista
                 }
             }
 
             int nuevoPrecioDetalRedondeado = roundTo50(nuevoPrecioDetalCalc);
-            Double nuevoPrecioMayoristaRedondeado = Double.valueOf(nuevoPrecioMayoristaCalc != null ? roundTo50(nuevoPrecioMayoristaCalc) : null);
+            Double nuevoPrecioMayoristaRedondeado = nuevoPrecioMayoristaCalc != null ? (double) roundTo50(nuevoPrecioMayoristaCalc) : null;
 
             // Persistir cambios
             boolean changed = false;
@@ -533,7 +565,7 @@ public class ProductoService {
                 changed = true;
             }
             if (producto.getPrecioMayorista() != nuevoPrecioMayoristaRedondeado) {
-                producto.setPrecioMayorista(nuevoPrecioMayoristaRedondeado != null ? (double) nuevoPrecioMayoristaRedondeado : null);
+                producto.setPrecioMayorista(nuevoPrecioMayoristaRedondeado);
                 changed = true;
             }
 

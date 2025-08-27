@@ -387,7 +387,7 @@ public class DataInitializer implements CommandLineRunner {
         int cantidadProducida = producto.getStock() != null ? producto.getStock() : 0;
 
         // Crear una producción inicial para las unidades
-        Produccion produccion = new Produccion(null, producto.getIdProducto(), LocalDateTime.now());
+        Produccion produccion = new Produccion(null, producto.getIdProducto(), LocalDateTime.now(), "");
         produccion = produccionRepository.save(produccion);
 
         // Intentamos usar lotes L1 y L3 si existen; si no, buscamos dos lotes disponibles
