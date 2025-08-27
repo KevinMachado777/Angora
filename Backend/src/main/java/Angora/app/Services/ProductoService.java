@@ -48,7 +48,7 @@ public class ProductoService {
     @Autowired
     private MovimientoInventarioService movimientoInventarioService;
 
-    // Buscar todos los productos (sin cambios)
+    // Buscar todos los productos
     public List<ProductoDTO> findAll() {
         var productos = productoRepository.findAll();
         List<ProductoDTO> productosDtos = new ArrayList<>();
@@ -56,12 +56,14 @@ public class ProductoService {
             ProductoDTO product = new ProductoDTO();
             product.setIdProducto(producto.getIdProducto());
             product.setNombre(producto.getNombre());
-            product.setPrecio(producto.getPrecio());
+            product.setPrecioDetal(producto.getPrecioDetal());
+            product.setPrecioMayorista(producto.getPrecioMayorista());
             product.setCosto(producto.getCosto());
             product.setStock(producto.getStock());
+            product.setStockMinimo(producto.getStockMinimo());
+            product.setStockMaximo(producto.getStockMaximo());
             product.setIva(producto.getIva());
-            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
-
+            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
 
             // Manejar categoria nullable
             if (producto.getIdCategoria() != null) {
@@ -89,19 +91,21 @@ public class ProductoService {
     }
 
     // Buscar un producto por su ID
-    public ProductoDTO findById(Long id) {
+    public ProductoDTO findById(String id) {
         Producto producto = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + id));
 
         ProductoDTO productoDto = new ProductoDTO();
         productoDto.setIdProducto(producto.getIdProducto());
         productoDto.setNombre(producto.getNombre());
-        productoDto.setPrecio(producto.getPrecio());
+        productoDto.setPrecioDetal(producto.getPrecioDetal());
+        productoDto.setPrecioMayorista(producto.getPrecioMayorista());
         productoDto.setCosto(producto.getCosto());
         productoDto.setStock(producto.getStock());
+        productoDto.setStockMinimo(producto.getStockMinimo());
+        productoDto.setStockMaximo(producto.getStockMaximo());
         productoDto.setIva(producto.getIva());
-        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15); // NUEVO
-
+        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
 
         if (producto.getIdCategoria() != null) {
             CategoriaIdDTO categoriaIdDto = new CategoriaIdDTO();
@@ -129,12 +133,25 @@ public class ProductoService {
         return productoRepository.findAll();
     }
 
-    // Crear un producto recibiendo los datos en dto (sin cambios)
+    // Crear un producto recibiendo los datos en DTO
     @Transactional
     public ProductoDTO crearProductoDesdeDTO(ProductoDTO productoDTO) {
+        // Validaciones
+        if (productoDTO.getPrecioDetal() == null || productoDTO.getPrecioDetal() <= 0) {
+            throw new RuntimeException("El precio detal debe ser mayor que 0");
+        }
+        if (productoDTO.getPrecioMayorista() != null && productoDTO.getPrecioMayorista() <= 0) {
+            throw new RuntimeException("El precio mayorista debe ser mayor que 0");
+        }
+        if (productoDTO.getStockMinimo() != null && productoDTO.getStockMinimo() < 0) {
+            throw new RuntimeException("El stock mínimo no puede ser negativo");
+        }
+        if (productoDTO.getStockMaximo() != null && productoDTO.getStockMaximo() < 0) {
+            throw new RuntimeException("El stock máximo no puede ser negativo");
+        }
+
         Categoria categoria = null;
         if (productoDTO.getIdCategoria() != null) {
-            // buscar la categoria si el DTO la trae
             categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
                     .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
         }
@@ -143,19 +160,24 @@ public class ProductoService {
         Integer porcentaje = productoDTO.getPorcentajeGanancia() != null ? productoDTO.getPorcentajeGanancia() : 15;
         if (porcentaje < 15) porcentaje = 15;
 
-
         Producto producto = Producto.builder()
+                .idProducto(productoDTO.getIdProducto())
                 .nombre(productoDTO.getNombre())
-                .precio(productoDTO.getPrecio())
+                .precioDetal(productoDTO.getPrecioDetal())
+                .precioMayorista(productoDTO.getPrecioMayorista())
                 .costo(productoDTO.getCosto())
                 .stock(productoDTO.getStock() != null ? productoDTO.getStock() : 0)
+                .stockMinimo(productoDTO.getStockMinimo())
+                .stockMaximo(productoDTO.getStockMaximo())
                 .iva(productoDTO.getIva())
                 .porcentajeGanancia(porcentaje)
-                .idCategoria(categoria) // puede ser null
+                .idCategoria(categoria)
                 .build();
         producto = productoRepository.save(producto);
+
         Producto finalProducto = producto;
-        List<MateriaProducto> materias = productoDTO.getMaterias().stream().map(dto -> {
+        List<MateriaProducto> materias = productoDTO.getMaterias() != null
+                ? productoDTO.getMaterias().stream().map(dto -> {
             if (!materiaRepository.existsById(dto.getIdMateria())) {
                 throw new RuntimeException("Materia con ID " + dto.getIdMateria() + " no encontrada");
             }
@@ -164,26 +186,45 @@ public class ProductoService {
             mp.setCantidad(dto.getCantidad());
             mp.setProducto(finalProducto);
             return mp;
-        }).collect(Collectors.toList());
+        }).collect(Collectors.toList())
+                : new ArrayList<>();
         producto.setMaterias(materias);
         productoRepository.save(producto);
-        Producto ultimoProducto = productoRepository.findTopByOrderByIdProductoDesc();
-        productoDTO.setIdProducto(ultimoProducto.getIdProducto());
+
+        // Set the generated ID back to DTO
+        productoDTO.setIdProducto(producto.getIdProducto());
 
         return productoDTO;
     }
 
-
+    // Actualizar un producto desde DTO
     @Transactional
     public ProductoDTO actualizarProductoDesdeDTO(ProductoDTO productoDTO) {
         Producto producto = productoRepository.findById(productoDTO.getIdProducto())
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado con ID: " + productoDTO.getIdProducto()));
+
+        // Validaciones
+        if (productoDTO.getPrecioDetal() == null || productoDTO.getPrecioDetal() <= 0) {
+            throw new RuntimeException("El precio detal debe ser mayor que 0");
+        }
+        if (productoDTO.getPrecioMayorista() != null && productoDTO.getPrecioMayorista() <= 0) {
+            throw new RuntimeException("El precio mayorista debe ser mayor que 0");
+        }
+        if (productoDTO.getStockMinimo() != null && productoDTO.getStockMinimo() < 0) {
+            throw new RuntimeException("El stock mínimo no puede ser negativo");
+        }
+        if (productoDTO.getStockMaximo() != null && productoDTO.getStockMaximo() < 0) {
+            throw new RuntimeException("El stock máximo no puede ser negativo");
+        }
 
         // Actualizar campos simples
         producto.setNombre(productoDTO.getNombre());
-        producto.setPrecio(productoDTO.getPrecio());
+        producto.setPrecioDetal(productoDTO.getPrecioDetal());
+        producto.setPrecioMayorista(productoDTO.getPrecioMayorista());
         producto.setCosto(productoDTO.getCosto());
         producto.setStock(productoDTO.getStock());
+        producto.setStockMinimo(productoDTO.getStockMinimo());
+        producto.setStockMaximo(productoDTO.getStockMaximo());
         producto.setIva(productoDTO.getIva());
 
         // Actualizar porcentajeGanancia
@@ -191,7 +232,7 @@ public class ProductoService {
         if (porcentaje < 15) porcentaje = 15;
         producto.setPorcentajeGanancia(porcentaje);
 
-        // Manejar categoría (puede ser null)
+        // Manejar categoría
         if (productoDTO.getIdCategoria() != null && productoDTO.getIdCategoria().getIdCategoria() != null) {
             Categoria categoria = categoriaRepository.findById(productoDTO.getIdCategoria().getIdCategoria())
                     .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
@@ -200,34 +241,31 @@ public class ProductoService {
             producto.setIdCategoria(null);
         }
 
-        // Asegurarse de que la colección exista
+        // Actualizar materias primas
         if (producto.getMaterias() == null) {
             producto.setMaterias(new ArrayList<>());
         }
-
-        // Limpiar la colección gestionada y volver a poblarla
         producto.getMaterias().clear();
 
-        List<MateriaProducto> nuevasMaterias = new ArrayList<>();
-        if (productoDTO.getMaterias() != null) {
-            for (var dto : productoDTO.getMaterias()) {
-                if (!materiaRepository.existsById(dto.getIdMateria())) {
-                    throw new RuntimeException("Materia con ID " + dto.getIdMateria() + " no encontrada");
-                }
-                MateriaProducto mp = new MateriaProducto();
-                mp.setIdMateria(dto.getIdMateria());
-                mp.setCantidad(dto.getCantidad());
-                mp.setProducto(producto); // referencia al entity gestionado
-                nuevasMaterias.add(mp);
+        List<MateriaProducto> nuevasMaterias = productoDTO.getMaterias() != null
+                ? productoDTO.getMaterias().stream().map(dto -> {
+            if (!materiaRepository.existsById(dto.getIdMateria())) {
+                throw new RuntimeException("Materia con ID " + dto.getIdMateria() + " no encontrada");
             }
-        }
-
+            MateriaProducto mp = new MateriaProducto();
+            mp.setIdMateria(dto.getIdMateria());
+            mp.setCantidad(dto.getCantidad());
+            mp.setProducto(producto);
+            return mp;
+        }).collect(Collectors.toList())
+                : new ArrayList<>();
         producto.getMaterias().addAll(nuevasMaterias);
+
         productoRepository.save(producto);
         return productoDTO;
     }
 
-    // Metodo para guardar un producto (sin cambios)
+    // Guardar un producto
     @Transactional
     public Producto save(Producto producto) {
         if (producto.getIdCategoria() != null && !categoriaRepository.existsById(producto.getIdCategoria().getIdCategoria())) {
@@ -238,14 +276,17 @@ public class ProductoService {
                 if (!materiaRepository.existsById(mp.getIdMateria())) {
                     throw new RuntimeException("Materia con ID " + mp.getIdMateria() + " no encontrada");
                 }
+                if (mp.getCantidad() <= 0) {
+                    throw new RuntimeException("La cantidad de materia prima debe ser mayor que 0");
+                }
             }
         }
         return productoRepository.save(producto);
     }
 
-    // Metodo específico para disminuir stock por pérdida
+    // Disminuir stock por pérdida
     @Transactional
-    public Producto disminuirStockPorPerdida(Long idProducto, int cantidadADisminuir) {
+    public Producto disminuirStockPorPerdida(String idProducto, int cantidadADisminuir) {
         Producto producto = productoRepository.findById(idProducto)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + idProducto));
 
@@ -268,7 +309,7 @@ public class ProductoService {
         movimiento.setCantidadAnterior((float) stockActual);
         movimiento.setCantidadCambio((float) cantidadADisminuir);
         movimiento.setCantidadActual((float) nuevoStock);
-        movimiento.setTipoMovimiento("salida"); // salida por pérdida
+        movimiento.setTipoMovimiento("salida");
         movimiento.setFechaMovimiento(fechaActual);
         movimientoRepository.save(movimiento);
 
@@ -281,7 +322,7 @@ public class ProductoService {
 
     // Actualizar stock
     @Transactional
-    public Producto updateStock(Long idProducto, int nuevaCantidad) {
+    public Producto updateStock(String idProducto, int nuevaCantidad) {
         Producto producto = productoRepository.findById(idProducto)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + idProducto));
 
@@ -289,7 +330,7 @@ public class ProductoService {
         int diferencia = nuevaCantidad - stockActual;
         LocalDateTime fechaActual = LocalDateTime.now();
 
-        // Si hay cambio, registrar movimiento de producto (entrada/ salida) Y set cantidadActual
+        // Registrar movimiento si hay cambio
         if (diferencia != 0) {
             Movimiento movimiento = new Movimiento();
             movimiento.setProducto(producto);
@@ -309,8 +350,6 @@ public class ProductoService {
             Produccion savedProduccion = produccionRepository.save(produccion);
             Long idProduccion = savedProduccion.getIdProduccion();
 
-            // Antes de consumir lotes: guardar snapshot de cantidades de cada materia implicada
-            // Para cada materia del producto: consumir lotes (FIFO) y después generar movimiento de materia
             for (MateriaProducto mp : producto.getMaterias()) {
                 Long idMateria = mp.getIdMateria();
                 MateriaPrima materia = materiaRepository.findById(idMateria)
@@ -331,28 +370,23 @@ public class ProductoService {
                     lote.setCantidadDisponible(lote.getCantidadDisponible() - usar);
                     loteRepository.save(lote);
 
-                    // traza
+                    // Registrar ProduccionLote y LoteUsado
                     produccionLoteRepository.save(new ProduccionLote(idProduccion, lote.getIdLote(), usar));
-
-                    // LoteUsado con idProduccion
                     LoteUsado loteUsado = new LoteUsado(null, lote.getIdLote(), idProducto, usar, fechaActual, idProduccion);
                     loteUsadoRepository.save(loteUsado);
 
                     restante -= usar;
                 }
 
-                // después de consumir lotes, recalcular cantidad disponible actual de la materia
+                // Actualizar cantidad de materia prima
                 Float actualMateria = loteRepository.sumCantidadDisponibleByIdMateria(idMateria);
                 if (actualMateria == null) actualMateria = 0f;
-
-                // actualizar entidad materia en BD
                 materia.setCantidad(actualMateria);
                 materiaRepository.save(materia);
 
-                // registrar movimiento de materia (salida por uso en producción)
+                // Registrar movimiento de materia
                 movimientoInventarioService.crearMovimientoMateria(materia, anteriorMateria, actualMateria, "salida");
             }
-
         } else if (diferencia < 0) {
             // Reducir stock (devolución)
             int cantidadDevolver = Math.abs(diferencia);
@@ -375,13 +409,15 @@ public class ProductoService {
                         prodLote.setCantidadUsadaDelLote(prodLote.getCantidadUsadaDelLote() - devolver);
                         if (prodLote.getCantidadUsadaDelLote() > 0) {
                             produccionLoteRepository.save(prodLote);
+                        } else {
+                            produccionLoteRepository.delete(prodLote);
                         }
                         loteRepository.save(lote);
                         restante -= devolver;
                     }
                 }
 
-                // después de devolver lotes, recalcular materia y registrar movimiento de materia (entrada)
+                // Actualizar cantidad de materia prima
                 Long idMateria = mp.getIdMateria();
                 MateriaPrima materia = materiaRepository.findById(idMateria)
                         .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateria));
@@ -398,7 +434,7 @@ public class ProductoService {
         producto.setStock(nuevaCantidad);
         productoRepository.save(producto);
 
-        // Actualiza cantidades de materias relacionadas
+        // Actualizar cantidades de materias relacionadas
         updateMateriaCantidadForAll(producto.getMaterias().stream().map(MateriaProducto::getIdMateria).collect(Collectors.toSet()));
 
         return producto;
@@ -420,30 +456,25 @@ public class ProductoService {
         return totalDisponible != null && totalDisponible >= cantidadNecesaria;
     }
 
-    // Metodo que elimina un producto (sin cambios, pero con nota)
+    // Eliminar un producto
     @Transactional
-    public void delete(Long id) {
+    public void delete(String id) {
         materiaProductoRepository.deleteByProducto_IdProducto(id);
         productoRepository.deleteById(id);
     }
 
-    // Ajustado para usar updateStock
+    // Disminuir stock
     public void disminuirStock(Producto producto, int cantidadComprada) {
         updateStock(producto.getIdProducto(), producto.getStock() - cantidadComprada);
     }
 
-    // Metodo que Recalcula costo y precio de todos los productos que usan la materia
+    // Recalcular costo y precios de productos
     @Transactional
     public void recalculateProductsCostByMateria(MateriaPrima materia) {
-        // Costo unitario de la materia actualizada
         double costoUnitarioMateria = materia.getCosto() != null ? materia.getCosto().doubleValue() : 0.0;
-
-        // Obtener todas las relaciones materia-producto que usan esta materia
         List<MateriaProducto> relaciones = materiaProductoRepository.findByIdMateria(materia.getIdMateria());
 
-        // Un producto sólo tiene una entrada por materia, así que iteramos relaciones
         for (MateriaProducto rel : relaciones) {
-            // Asegurar tener el producto cargado
             Producto producto = rel.getProducto() != null && rel.getProducto().getIdProducto() != null
                     ? productoRepository.findById(rel.getProducto().getIdProducto()).orElse(null)
                     : null;
@@ -451,7 +482,7 @@ public class ProductoService {
                 continue;
             }
 
-            // Recalcular costo del producto sumando por cada materia del producto
+            // Recalcular costo
             double nuevoCostoRaw = 0.0;
             List<MateriaProducto> materiasDelProducto = producto.getMaterias() != null ? producto.getMaterias() : new ArrayList<>();
             for (MateriaProducto mp : materiasDelProducto) {
@@ -467,26 +498,42 @@ public class ProductoService {
 
             int nuevoCostoRedondeado = roundTo50(nuevoCostoRaw);
 
-            // Calcular nuevo precio preservando markup histórico
-            double oldCosto = producto.getCosto() != null ? producto.getCosto() : 0.0;
-            double oldPrecio = producto.getPrecio() != null ? producto.getPrecio() : 0.0;
-            double nuevoPrecioCalc;
-            if (oldCosto > 0.0) {
-                double markup = oldPrecio / oldCosto;
-                nuevoPrecioCalc = nuevoCostoRedondeado * markup;
-            } else {
-                nuevoPrecioCalc = nuevoCostoRedondeado * 1.15; // 15% por defecto
-            }
-            int nuevoPrecioRedondeado = roundTo50(nuevoPrecioCalc);
+            // Calcular nuevos precios preservando markup
+            Integer oldCosto = producto.getCosto() != null ? producto.getCosto() : 0;
+            Double oldPrecioDetal = producto.getPrecioDetal() != null ? producto.getPrecioDetal() : 0.0;
+            Double oldPrecioMayorista = producto.getPrecioMayorista() != null ? producto.getPrecioMayorista() : 0.0;
+            double nuevoPrecioDetalCalc;
+            Double nuevoPrecioMayoristaCalc = null;
 
-            // Persistir sólo si hay cambio
+            if (oldCosto > 0) {
+                double markupDetal = oldPrecioDetal / oldCosto;
+                nuevoPrecioDetalCalc = nuevoCostoRedondeado * markupDetal;
+                if (oldPrecioMayorista > 0.0) {
+                    double markupMayorista = oldPrecioMayorista / oldCosto;
+                    nuevoPrecioMayoristaCalc = nuevoCostoRedondeado * markupMayorista;
+                }
+            } else {
+                nuevoPrecioDetalCalc = nuevoCostoRedondeado * 1.15; // 15% por defecto
+                if (oldPrecioMayorista > 0.0) {
+                    nuevoPrecioMayoristaCalc = nuevoCostoRedondeado * 1.10; // 10% por defecto para mayorista
+                }
+            }
+
+            int nuevoPrecioDetalRedondeado = roundTo50(nuevoPrecioDetalCalc);
+            Double nuevoPrecioMayoristaRedondeado = Double.valueOf(nuevoPrecioMayoristaCalc != null ? roundTo50(nuevoPrecioMayoristaCalc) : null);
+
+            // Persistir cambios
             boolean changed = false;
             if (producto.getCosto() == null || producto.getCosto().intValue() != nuevoCostoRedondeado) {
                 producto.setCosto(nuevoCostoRedondeado);
                 changed = true;
             }
-            if (producto.getPrecio() == null || producto.getPrecio().intValue() != nuevoPrecioRedondeado) {
-                producto.setPrecio(nuevoPrecioRedondeado);
+            if (producto.getPrecioDetal() == null || producto.getPrecioDetal().intValue() != nuevoPrecioDetalRedondeado) {
+                producto.setPrecioDetal((double) nuevoPrecioDetalRedondeado);
+                changed = true;
+            }
+            if (producto.getPrecioMayorista() != nuevoPrecioMayoristaRedondeado) {
+                producto.setPrecioMayorista(nuevoPrecioMayoristaRedondeado != null ? (double) nuevoPrecioMayoristaRedondeado : null);
                 changed = true;
             }
 

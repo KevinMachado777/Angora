@@ -22,7 +22,7 @@ public class LoteUsado {
     private Long idLote;
 
     @Column(name = "id_producto", nullable = false)
-    private Long idProducto;
+    private String idProducto;
 
     @Column(name = "cantidad_usada", nullable = false)
     private Float cantidadUsada; // cuánta cantidad de este lote se usó en ese producto
@@ -34,7 +34,7 @@ public class LoteUsado {
     private Long idProduccion;
 
     // Nuevo constructor para uso en ProductoService
-    public LoteUsado(Long idProducto, Long idLote, Float cantidadUsada, LocalDateTime fechaProduccion,  Long idProduccion) {
+    public LoteUsado(String idProducto, Long idLote, Float cantidadUsada, LocalDateTime fechaProduccion,  Long idProduccion) {
         this.idProducto = idProducto;
         this.idLote = idLote;
         this.cantidadUsada = cantidadUsada;

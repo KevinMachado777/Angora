@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface MateriaProductoRepository extends JpaRepository<MateriaProducto, Long> {
     // Para eliminar relaciones al eliminar un producto
-    void deleteByProducto_IdProducto(Long idProducto);
+    void deleteByProducto_IdProducto(String idProducto);
 
     // Devuelve todas las relaciones materia-producto para una materia dada
     List<MateriaProducto> findByIdMateria(Long idMateria);

@@ -64,7 +64,7 @@ public class DataInitializer implements CommandLineRunner {
     private ProveedorService proveedorService;
 
     // guardamos el id del producto creado aquí si se crea en esta ejecución
-    private Long productoInicialId = null;
+    private String productoInicialId = null;
 
     @Override
     @Transactional
@@ -270,9 +270,11 @@ public class DataInitializer implements CommandLineRunner {
 
         System.out.println("Creando DTO del producto...");
         ProductoDTO dto = new ProductoDTO();
+        dto.setIdProducto("101");
         dto.setNombre("Detergente en polvo");
         dto.setCosto(6000);
-        dto.setPrecio(8500);
+        dto.setPrecioDetal(8500d);
+        dto.setPrecioMayorista(8000d);
         dto.setStock(3);
         dto.setIva(true);
 

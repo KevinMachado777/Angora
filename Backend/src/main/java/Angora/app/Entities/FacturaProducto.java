@@ -28,8 +28,8 @@ public class FacturaProducto {
     private Integer cantidad;
 
     @Column(name = "precio_unitario")
-    private Integer precioUnitario; // Precio al momento de la venta
+    private Double precioUnitario; // Precio al momento de la venta
 
     @Column(name = "subtotal")
-    private Integer subtotal; // cantidad * precioUnitario
+    private Double subtotal; // cantidad * precioUnitario
 }

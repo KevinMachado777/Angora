@@ -408,7 +408,7 @@ public class DashboardService implements IDashboardService {
                     .map(fp -> {
                         FacturaPendienteDTO.ProductoDTO productoDTO = new FacturaPendienteDTO.ProductoDTO();
                         if (fp.getProducto() != null) {
-                            productoDTO.setId(fp.getProducto().getId());
+                            productoDTO.setId(fp.getProducto().getIdProducto());
                             productoDTO.setNombre(fp.getProducto().getNombre());
                             // Asumo que FacturaProducto tiene cantidad y precio
                             productoDTO.setCantidad(fp.getCantidad());

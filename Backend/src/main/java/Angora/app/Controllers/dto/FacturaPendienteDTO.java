@@ -11,9 +11,9 @@ public class FacturaPendienteDTO {
     private LocalDateTime fecha;
     private ClienteDTO cliente;
     private List<ProductoDTO> productos;
-    private Integer subtotal;
-    private Integer total;
-    private Integer saldoPendiente;
+    private Double subtotal;
+    private Double total;
+    private Double saldoPendiente;
     private String estado;
     private CarteraDTO idCartera;
     private UsuarioDTO cajero;
@@ -70,27 +70,27 @@ public class FacturaPendienteDTO {
         this.productos = productos;
     }
 
-    public Integer getSubtotal() {
+    public Double getSubtotal() {
         return subtotal;
     }
 
-    public void setSubtotal(Integer subtotal) {
+    public void setSubtotal(Double subtotal) {
         this.subtotal = subtotal;
     }
 
-    public Integer getTotal() {
+    public Double getTotal() {
         return total;
     }
 
-    public void setTotal(Integer total) {
+    public void setTotal(Double total) {
         this.total = total;
     }
 
-    public Integer getSaldoPendiente() {
+    public Double getSaldoPendiente() {
         return saldoPendiente;
     }
 
-    public void setSaldoPendiente(Integer saldoPendiente) {
+    public void setSaldoPendiente(Double saldoPendiente) {
         this.saldoPendiente = saldoPendiente;
     }
 
@@ -158,17 +158,17 @@ public class FacturaPendienteDTO {
     }
 
     public static class ProductoDTO {
-        private Long id;
+        private String id;
         private String nombre;
         private Integer cantidad;
-        private Integer precio;
+        private Double precio;
         private Boolean iva; // Added to support IVA calculation
 
-        public Long getId() {
+        public String getId() {
             return id;
         }
 
-        public void setId(Long id) {
+        public void setId(String id) {
             this.id = id;
         }
 
@@ -188,11 +188,11 @@ public class FacturaPendienteDTO {
             this.cantidad = cantidad;
         }
 
-        public Integer getPrecio() {
+        public Double getPrecio() {
             return precio;
         }
 
-        public void setPrecio(Integer precio) {
+        public void setPrecio(Double precio) {
             this.precio = precio;
         }
 

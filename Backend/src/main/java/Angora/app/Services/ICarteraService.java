@@ -1,6 +1,7 @@
 package Angora.app.Services;
 
 import Angora.app.Entities.Cartera;
+import Angora.app.Entities.HistorialAbono;
 
 import java.util.List;
 
@@ -13,10 +14,11 @@ public interface ICarteraService {
 
     // Procesa un abono para una cartera
     Cartera procesarAbono(Long idCliente, Integer cantidad, String fecha, Long idFactura);
-
     // Actualizar el estado de una cartera
     Cartera actualizarEstadoCartera(Long idCliente, Boolean estado);
 
     // Obtiene las facturas por un cliente
     Cartera obtenerPorIdClienteConFacturas(Long idCliente);
+
+    List<HistorialAbono> obtenerHistorialAbonos(Long idCliente);
 }

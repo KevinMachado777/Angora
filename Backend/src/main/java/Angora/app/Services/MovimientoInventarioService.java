@@ -32,7 +32,7 @@ public class MovimientoInventarioService {
 
      // Descontar stock por venta y registra movimiento de producto (salida)
     @Transactional
-    public void descontarPorVenta(Long idProducto, Integer cantidad) {
+    public void descontarPorVenta(String idProducto, Integer cantidad) {
         if (idProducto == null || cantidad == null) {
             throw new RuntimeException("idProducto o cantidad inválidos");
         }
@@ -65,7 +65,7 @@ public class MovimientoInventarioService {
 
      // Ajustar stock manualmente (por producción manual, ajustes, etc).
     @Transactional
-    public void ajustarStockProducto(Long idProducto, Integer cantidadAjuste, String motivo) {
+    public void ajustarStockProducto(String idProducto, Integer cantidadAjuste, String motivo) {
         if (idProducto == null || cantidadAjuste == null) {
             throw new RuntimeException("idProducto o cantidadAjuste inválidos");
         }

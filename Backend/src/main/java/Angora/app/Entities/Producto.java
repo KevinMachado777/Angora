@@ -20,14 +20,15 @@ import java.util.List;
 public class Producto implements Inventariable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_producto")
-    private Long idProducto;
+    private String idProducto;
 
     private Integer costo;
 
     @Column(name = "precio_detal")
-    private Integer precio;
+    private Double precioDetal;
+
+    private Double precioMayorista;
 
     private Boolean iva;
 
@@ -38,6 +39,8 @@ public class Producto implements Inventariable {
 
     private String nombre;
     private Integer stock;
+    private Integer stockMinimo;
+    private Integer stockMaximo;
 
     @Column(name = "porcentaje_ganancia")
     @Builder.Default
@@ -49,16 +52,11 @@ public class Producto implements Inventariable {
 
     @Override
     public Long getId() {
-        return idProducto;
+        return 0L;
     }
 
     @Override
     public Integer getCantidad() {
         return stock;
-    }
-
-    @Override
-    public String toString() {
-        return "Producto{id=" + idProducto + ", nombre='" + nombre + "'}";
     }
 }
