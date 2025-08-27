@@ -26,7 +26,10 @@ ChartJS.register(
 import Modal from "../components/Modal";
 
 const Dashboard = () => {
-  // Función para obtener fecha de hoy en formato local correcto
+  // Pagination states for alerts
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5); // Number of alerts per page
+
   const [modalMensaje, setModalMensaje] = useState({
     tipo: "",
     mensaje: "",
@@ -56,6 +59,7 @@ const Dashboard = () => {
     error: "Error",
     advertencia: "Advertencia",
   };
+
   const obtenerFechaHoyLocal = () => {
     const hoy = new Date();
     const year = hoy.getFullYear();
@@ -92,10 +96,8 @@ const Dashboard = () => {
   const validarFecha = (fecha) => {
     const fechaObj = new Date(fecha);
     const hoy = new Date();
-
     fechaObj.setHours(0, 0, 0, 0);
     hoy.setHours(0, 0, 0, 0);
-
     return fechaObj <= hoy;
   };
 
@@ -184,7 +186,7 @@ const Dashboard = () => {
     setEnviandoManual(true);
     try {
       await dashboardService.enviarDashboardManual();
-      abrirModal("exito", "Dashboard envíado ");
+      abrirModal("exito", "Dashboard enviado ");
     } catch (error) {
       console.error("Error enviando dashboard:", error);
       abrirModal("error", "Error al enviar el Dashboard");
@@ -302,6 +304,18 @@ const Dashboard = () => {
           .map((t) => (t.ingresos || 0) - (t.egresos || 0)),
       },
     ];
+  };
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAlerts = alertasInventario.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(alertasInventario.length / itemsPerPage);
+
+  const paginate = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    }
   };
 
   if (loading) {
@@ -536,34 +550,83 @@ const Dashboard = () => {
 
       {/* Sección de alertas y datos adicionales */}
       <div className="info-adicional-grid">
-        <div className="alertas-inventario">
-          <h5>
-            <i className="bi bi-exclamation-triangle text-warning me-2"></i>
-            Alertas de Inventario
-          </h5>
-          <div className="alertas-lista">
-            {alertasInventario.length > 0 ? (
-              alertasInventario.slice(0, 5).map((alerta, i) => (
-                <div
-                  key={i}
-                  className={`alerta-item ${alerta.nivelAlerta.toLowerCase()}`}
-                >
-                  <div className="alerta-info">
-                    <strong>{alerta.nombre}</strong> ({alerta.tipo})
-                    <small>Stock actual: {alerta.cantidadActual}</small>
-                  </div>
-                  <span
-                    className={`badge badge-${alerta.nivelAlerta.toLowerCase()}`}
-                  >
-                    {alerta.nivelAlerta}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="no-datos">Sin alertas</div>
-            )}
+       <div className="alertas-inventario">
+  <h5>
+    <i className="bi bi-exclamation-triangle text-warning me-2"></i>
+    Alertas de Inventario
+  </h5>
+  <div className="alertas-lista">
+    {currentAlerts.length > 0 ? (
+      currentAlerts.map((alerta, i) => {
+        // Log para depurar los datos recibidos
+        console.log('Alerta recibida:', alerta);
+
+        // Determinar texto y color basado en nivelAlerta del backend
+        const nivelAlertaMostrar = alerta.nivelAlerta === "STOCK_EXCEDIDO" ? "Exceso" : "Escazo";
+        const claseBadge = alerta.nivelAlerta === "STOCK_EXCEDIDO" ? "badge-warning" : "badge-danger";
+
+        return (
+          <div key={i} className={`alerta-item ${claseBadge}`}>
+            <div className="alerta-info">
+              <strong className="alerta-nombre">{alerta.nombre}</strong>
+              <div className="alerta-tipo">({alerta.tipo})</div>
+              <div className="alerta-detalle">Stock actual: {alerta.cantidadActual}</div>
+              {alerta.nivelAlerta === "STOCK_EXCEDIDO" ? (
+                <div className="alerta-detalle">Stock máximo: {alerta.stockMaximo}</div>
+              ) : (
+                <div className="alerta-detalle">Stock mínimo: {alerta.stockMinimo}</div>
+              )}
+              {alerta.nivelAlerta === "STOCK_EXCEDIDO" && alerta.stockMinimo != null && (
+                <div className="alerta-detalle">Stock mínimo: {alerta.stockMinimo}</div>
+              )}
+              {alerta.nivelAlerta !== "STOCK_EXCEDIDO" && alerta.stockMaximo != null && (
+                <div className="alerta-detalle">Stock máximo: {alerta.stockMaximo}</div>
+              )}
+            </div>
+            <span className={`badge ${claseBadge}`}>
+              {nivelAlertaMostrar}
+            </span>
           </div>
-        </div>
+        );
+      })
+    ) : (
+      <div className="no-datos">Sin alertas</div>
+    )}
+  </div>
+  {/* Controles de paginación */}
+  {alertasInventario.length > itemsPerPage && (
+    <nav className="mt-3">
+      <ul className="pagination justify-content-center">
+        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+          <button
+            className="page-link"
+            onClick={() => paginate(currentPage - 1)}
+          >
+            Anterior
+          </button>
+        </li>
+        {Array.from({ length: totalPages }, (_, i) => (
+          <li
+            key={i}
+            className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}
+          >
+            <button className="page-link" onClick={() => paginate(i + 1)}>
+              {i + 1}
+            </button>
+          </li>
+        ))}
+        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+          <button
+            className="page-link"
+            onClick={() => paginate(currentPage + 1)}
+          >
+            Siguiente
+          </button>
+        </li>
+      </ul>
+    </nav>
+  )}
+</div>
 
         <div className="info-adicional">
           <h5>Información Adicional</h5>

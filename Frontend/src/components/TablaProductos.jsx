@@ -31,7 +31,7 @@ const TablaProductos = forwardRef(
     const [materiasProducto, setMateriasProducto] = useState([]);
     const [modalMateriaAbierta, setModalMateriaAbierta] = useState(false);
     const [materiaNueva, setMateriaNueva] = useState({
-      idMateria: 0,
+      idMateria: "",
       cantidad: 0,
     });
     const [modoEdicionMateria, setModoEdicionMateria] = useState(false);
@@ -42,11 +42,13 @@ const TablaProductos = forwardRef(
     const [nuevaCantidad, setNuevaCantidad] = useState(0);
     const [disminuirChecked, setDisminuirChecked] = useState(false);
     const [cantidadDisminuir, setCantidadDisminuir] = useState(0);
+    const [notasStock, setNotasStock] = useState(""); // New state for notes
     const [modalConfirmDecrease, setModalConfirmDecrease] = useState(false);
     const [lotesUsadosEnProductos, setLotesUsadosEnProductos] = useState([]);
     const [producciones, setProducciones] = useState([]);
     const [produccionesLotes, setProduccionesLotes] = useState([]);
     const [costoTotal, setCostoTotal] = useState(0);
+    const [esProductoFabricado, setEsProductoFabricado] = useState(true);
     const [formularioTemp, setFormularioTemp] = useState({
       idProducto: "",
       porcentajeGanancia: 15,
@@ -57,6 +59,7 @@ const TablaProductos = forwardRef(
       precioMayorista: null,
       stockMinimo: null,
       stockMaximo: null,
+      costo: 0,
     });
     const [precioDetalInput, setPrecioDetalInput] = useState(0);
     const [precioMayoristaInput, setPrecioMayoristaInput] = useState("");
@@ -134,7 +137,6 @@ const TablaProductos = forwardRef(
 
         // Cargar productos
         const productosRes = await api.get("/inventarioProducto", { headers });
-        console.log(productosRes.data);
         setRegistros(productosRes.data || []);
 
         // Cargar inventario materia
@@ -213,6 +215,10 @@ const TablaProductos = forwardRef(
 
     // Recalculo en tiempo real para el costo
     useEffect(() => {
+      if (!esProductoFabricado) {
+        setCostoTotal(formularioTemp.costo);
+        return;
+      }
       const nuevoCostoRaw = (materiasProducto || []).reduce((acc, mp) => {
         const idM = mp.idMateria;
         let costoUnit = 0;
@@ -231,7 +237,7 @@ const TablaProductos = forwardRef(
         return acc + costoUnit * (mp.cantidad || 0);
       }, 0);
 
-      const nuevoCostoRedondeado = Math.round(nuevoCostoRaw); // Integer for costo
+      const nuevoCostoRedondeado = Math.round(nuevoCostoRaw);
       setCostoTotal(nuevoCostoRedondeado);
       if (nuevoCostoRaw > 0) {
         if (!precioDetalModificadoManually) {
@@ -252,6 +258,8 @@ const TablaProductos = forwardRef(
       lotesMateriaPrima,
       precioDetalModificadoManually,
       formularioTemp.porcentajeGanancia,
+      esProductoFabricado,
+      formularioTemp.costo,
     ]);
 
     // Recalcular precioDetal cuando cambia porcentaje
@@ -273,10 +281,12 @@ const TablaProductos = forwardRef(
 
     // Exponer abrirModalAgregar a padre
     useImperativeHandle(ref, () => ({
-      abrirModalAgregar: () => {
+      abrirModalAgregar: async () => {
+        await cargarDatosFromBackend();
         setProductoSeleccionado(null);
         setMateriasProducto([]);
         setCostoTotal(0);
+        setEsProductoFabricado(true);
         setFormularioTemp({
           idProducto: "",
           porcentajeGanancia: 15,
@@ -287,6 +297,7 @@ const TablaProductos = forwardRef(
           precioMayorista: null,
           stockMinimo: null,
           stockMaximo: null,
+          costo: 0,
         });
         setPrecioDetalInput(0);
         setPrecioMayoristaInput("");
@@ -318,10 +329,12 @@ const TablaProductos = forwardRef(
     };
 
     // Abrir modal editar producto
-    const abrirModalEditar = (producto) => {
+    const abrirModalEditar = async (producto) => {
+      await cargarDatosFromBackend();
       setProductoSeleccionado(producto);
       setMateriasProducto(producto.materias || []);
       setCostoTotal(producto.costo || 0);
+      setEsProductoFabricado(producto.materias && producto.materias.length > 0);
       const precioDetalVal = Number(producto.precioDetal || 0);
       const precioMayoristaVal =
         producto.precioMayorista != null
@@ -346,6 +359,7 @@ const TablaProductos = forwardRef(
           producto.stockMinimo != null ? Number(producto.stockMinimo) : null,
         stockMaximo:
           producto.stockMaximo != null ? Number(producto.stockMaximo) : null,
+        costo: producto.costo || 0,
       });
       setPrecioDetalInput(precioDetalVal);
       setPrecioMayoristaInput(precioMayoristaVal);
@@ -354,37 +368,49 @@ const TablaProductos = forwardRef(
     };
 
     // Abrir modal stock
-const abrirModalStock = (producto) => {
-  setProductoStock(producto);
-  setDisminuirChecked(false);
-  setCantidadDisminuir(0);
-  setNuevaCantidad(0);
-  let max = 0;
-  if (producto?.materias?.length && lotesMateriaPrima?.length) {
-    const cantidadesPosibles = producto.materias.map((mat) => {
-      const lotes = (lotesMateriaPrima || [])
-        .filter(
-          (lote) =>
-            lote.idMateria === mat.idMateria &&
-            (lote.cantidadDisponible ?? lote.cantidad ?? 0) > 0
-        )
-        .sort((a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso));
-      let totalDisponible = 0;
-      for (const lote of lotes) {
-        totalDisponible += Number(lote.cantidadDisponible ?? lote.cantidad ?? 0);
+    const abrirModalStock = async (producto) => {
+      await cargarDatosFromBackend();
+      setProductoStock(producto);
+      setDisminuirChecked(false);
+      setCantidadDisminuir(0);
+      setNuevaCantidad(0);
+      setNotasStock("");
+      const isManufactured = producto?.materias?.length > 0;
+      setEsProductoFabricado(isManufactured);
+      let max = 0;
+      if (producto?.materias?.length && lotesMateriaPrima?.length) {
+        const cantidadesPosibles = producto.materias.map((mat) => {
+          const lotes = (lotesMateriaPrima || [])
+            .filter(
+              (lote) =>
+                lote.idMateria === mat.idMateria &&
+                (lote.cantidadDisponible ?? lote.cantidad ?? 0) > 0
+            )
+            .sort(
+              (a, b) => new Date(a.fechaIngreso) - new Date(b.fechaIngreso)
+            );
+          let totalDisponible = 0;
+          for (const lote of lotes) {
+            totalDisponible += Number(
+              lote.cantidadDisponible ?? lote.cantidad ?? 0
+            );
+          }
+          return totalDisponible > 0
+            ? Math.floor(totalDisponible / Number(mat.cantidad || 1))
+            : 0;
+        });
+        max = Math.min(...cantidadesPosibles);
       }
-      return totalDisponible > 0 ? Math.floor(totalDisponible / Number(mat.cantidad || 1)) : 0;
-    });
-    max = Math.min(...cantidadesPosibles);
-  }
-  setMaxFabricable(max);
-  setModalStock(true);
-};
+      setMaxFabricable(max);
+      setModalStock(true);
+    };
 
     // Abrir modal lotes usados
-    const abrirModalLotesUsados = (producto) => {
+    const abrirModalLotesUsados = async (producto) => {
+      await cargarDatosFromBackend();
       setProductoLotesSeleccionado(producto);
       setCurrentPageLotes(1);
+      setFilterDate(""); // Reset filter date
       setModalLotesUsados(true);
     };
 
@@ -446,7 +472,6 @@ const abrirModalStock = (producto) => {
       return "N/A";
     };
 
-    // Reconstruye lotesUsadosProducto
     useEffect(() => {
       if (!modalLotesUsados || !productoLotesSeleccionado) {
         setLotesUsadosProducto([]);
@@ -473,15 +498,19 @@ const abrirModalStock = (producto) => {
         const cantidadAntesFabricacion =
           cantidadInicial - (usedUntilThis - (lu.cantidadUsada ?? 0));
         const cantidadUsada = lu.cantidadUsada ?? 0;
-        const cantidadDespuesFabricacion = Math.max(
-          0,
-          cantidadAntesFabricacion - cantidadUsada
-        );
+        const cantidadDespuesFabricacion =
+          cantidadAntesFabricacion - cantidadUsada;
+
         const proveedorNombre = lote.idProveedor
           ? (proveedores || []).find((p) => p.idProveedor === lote.idProveedor)
               ?.nombre || "N/A"
           : "Manual";
         const idProduccionResolved = resolveIdProduccionForLu(lu);
+        // Obtener notas desde la entidad produccion usando idProduccion
+        const produccion = (producciones || []).find(
+          (p) => String(p.idProduccion) === String(idProduccionResolved)
+        );
+        const notas = produccion?.notas ? String(produccion.notas) : "N/A";
         return {
           id: lu.id,
           idLote: lu.idLote,
@@ -500,6 +529,7 @@ const abrirModalStock = (producto) => {
           fechaProduccionRaw,
           idProduccion: idProduccionResolved,
           cantidadDisponibleActual: lote?.cantidadDisponible ?? 0,
+          notas, // Usar notas de la entidad produccion
         };
       });
       const filtered = mapped.filter((lu) => {
@@ -513,11 +543,31 @@ const abrirModalStock = (producto) => {
         const localDate = `${y}-${m}-${day}`;
         return localDate === filterDate;
       });
-      const sorted = filtered.sort(
-        (a, b) =>
-          new Date(a.fechaProduccionRaw) - new Date(b.fechaProduccionRaw)
-      );
-      setLotesUsadosProducto(sorted);
+      // Group by idProduccion
+      const groupedByProduccion = filtered.reduce((acc, lu) => {
+        const prodId = lu.idProduccion;
+        if (!acc[prodId]) {
+          acc[prodId] = [];
+        }
+        acc[prodId].push(lu);
+        return acc;
+      }, {});
+      // Convert to array and sort by idProduccion
+      const sortedProducciones = Object.keys(groupedByProduccion)
+        .sort((a, b) => {
+          if (a === "N/A") return 1;
+          if (b === "N/A") return -1;
+          return Number(a) - Number(b);
+        })
+        .map((prodId) => ({
+          idProduccion: prodId,
+          lotes: groupedByProduccion[prodId].sort(
+            (a, b) =>
+              new Date(a.fechaProduccionRaw) - new Date(b.fechaProduccionRaw)
+          ),
+        }));
+
+      setLotesUsadosProducto(sortedProducciones);
       setCurrentPageLotes(1);
     }, [
       modalLotesUsados,
@@ -672,6 +722,15 @@ const abrirModalStock = (producto) => {
         );
         return;
       }
+      if (
+        esProductoFabricado &&
+        (!materiasProducto || materiasProducto.length === 0)
+      ) {
+        setError(
+          "El producto fabricado debe tener al menos 1 materia prima asociada."
+        );
+        return;
+      }
       if (!productoSeleccionado && !formularioTemp.idProducto.trim()) {
         setError("El ID del producto no puede estar vacío.");
         return;
@@ -703,39 +762,25 @@ const abrirModalStock = (producto) => {
         setError("Debes seleccionar si el producto tiene IVA (Sí/No).");
         return;
       }
-      if (!materiasProducto || materiasProducto.length === 0) {
-        setError("El producto debe tener al menos 1 materia prima asociada.");
+      if (
+        esProductoFabricado &&
+        (!materiasProducto || materiasProducto.length === 0)
+      ) {
+        setError(
+          "El producto fabricado debe tener al menos 1 materia prima asociada."
+        );
         return;
       }
       if (formularioTemp.precioDetal <= 0) {
         setError("El precio detal debe ser mayor que 0.");
         return;
       }
-      if (
-        formularioTemp.precioMayorista != null &&
-        formularioTemp.precioMayorista <= 0
-      ) {
-        setError("El precio mayorista debe ser mayor que 0 si se especifica.");
-        return;
-      }
-      if (
-        formularioTemp.stockMinimo != null &&
-        formularioTemp.stockMinimo < 0
-      ) {
-        setError("El stock mínimo no puede ser negativo.");
-        return;
-      }
-      if (
-        formularioTemp.stockMaximo != null &&
-        formularioTemp.stockMaximo < 0
-      ) {
-        setError("El stock máximo no puede ser negativo.");
-        return;
-      }
-      const costoRedondeado = Math.round(Number(costoTotal || 0)); // Integer
+      const costoRedondeado = esProductoFabricado
+        ? Math.round(Number(costoTotal || 0))
+        : Math.round(Number(formularioTemp.costo || 0));
       const precioDetalRedondeado = Number(
         Number(formularioTemp.precioDetal || 0).toFixed(2)
-      ); // Double
+      );
       const precioMayorista =
         formularioTemp.precioMayorista != null
           ? Number(Number(formularioTemp.precioMayorista).toFixed(2))
@@ -746,7 +791,7 @@ const abrirModalStock = (producto) => {
       );
       try {
         const headers = authHeaders();
-        const idProducto = formularioTemp.idProducto.trim(); // Ensure no extra spaces
+        const idProducto = formularioTemp.idProducto.trim();
         if (!idProducto || !/^[a-zA-Z0-9-_]+$/.test(idProducto)) {
           setError(
             "El ID del producto debe contener solo letras, números, guiones o guiones bajos."
@@ -762,10 +807,12 @@ const abrirModalStock = (producto) => {
           stock: Number(productoSeleccionado?.stock || 0),
           iva: Boolean(formularioTemp.iva),
           porcentajeGanancia: porcentajeUsado,
-          materias: materiasProducto.map((m) => ({
-            idMateria: Number(m.idMateria),
-            cantidad: Math.floor(Number(m.cantidad)),
-          })),
+          materias: esProductoFabricado
+            ? materiasProducto.map((m) => ({
+                idMateria: m.idMateria,
+                cantidad: Number(m.cantidad),
+              }))
+            : [],
           idCategoria: formularioTemp.idCategoria
             ? { idCategoria: Number(formularioTemp.idCategoria) }
             : null,
@@ -779,12 +826,10 @@ const abrirModalStock = (producto) => {
               : null,
         };
         if (productoSeleccionado) {
-          // Ensure URL path ID matches payload idProducto for PUT
           if (idProducto !== productoSeleccionado.idProducto) {
             setError("El ID del producto no puede cambiar durante la edición.");
             return;
           }
-          console.log("Envio: ", payload.data)
           await api.put(`/inventarioProducto/${idProducto}`, payload, {
             headers,
           });
@@ -796,6 +841,7 @@ const abrirModalStock = (producto) => {
         setProductoSeleccionado(null);
         setMateriasProducto([]);
         setCostoTotal(0);
+        setEsProductoFabricado(true);
         setFormularioTemp({
           idProducto: "",
           porcentajeGanancia: 15,
@@ -806,6 +852,7 @@ const abrirModalStock = (producto) => {
           precioMayorista: null,
           stockMinimo: null,
           stockMaximo: null,
+          costo: 0,
         });
         setPrecioDetalInput(0);
         setPrecioMayoristaInput("");
@@ -815,39 +862,14 @@ const abrirModalStock = (producto) => {
       }
     };
 
-    // Update idProducto input in the modal form
-    <div className="mb-3">
-      <label className="form-label">ID Producto</label>
-      <input
-        type="text"
-        className="form-control"
-        value={formularioTemp.idProducto || ""}
-        required={!productoSeleccionado}
-        disabled={!!productoSeleccionado}
-        onChange={(e) => {
-          const value = e.target.value.replace(/[^a-zA-Z0-9-_]/g, "").trim(); // Allow letters, numbers, hyphens, underscores, remove spaces
-          setFormularioTemp((prev) => ({ ...prev, idProducto: value }));
-        }}
-      />
-      {productoSeleccionado && (
-        <small className="form-text text-muted">
-          El ID no puede modificarse al editar un producto.
-        </small>
-      )}
-    </div>;
-
     // Agregar o editar materia al producto
     const agregarMateriaAlProducto = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const idMateria = Number(materiaNueva.idMateria);
-      const cantidad = Math.floor(Number(materiaNueva.cantidad)); // Integer
-      if (idMateria <= 0) {
-        setModalAdvertenciaIdInvalido(true);
-        return;
-      }
-      if (cantidad <= 0) {
-        setError("La cantidad debe ser un entero mayor que 0");
+      const idMateria = materiaNueva.idMateria;
+      const cantidad = Number(materiaNueva.cantidad);
+      if (cantidad < 0.0000001) {
+        setError("La cantidad debe ser mayor o igual a 0.0000001.");
         return;
       }
       const materia = (registrosMateria || []).find(
@@ -871,7 +893,7 @@ const abrirModalStock = (producto) => {
       setMateriasProducto(nuevasMaterias);
       setModoEdicionMateria(false);
       setIndiceEdicionMateria(null);
-      setMateriaNueva({ idMateria: 0, cantidad: 0 });
+      setMateriaNueva({ idMateria: "", cantidad: 0 });
       setModalMateriaAbierta(false);
     };
 
@@ -884,7 +906,7 @@ const abrirModalStock = (producto) => {
         setModalConfirmDecrease(false);
         return;
       }
-      const disminuir = Math.floor(Number(cantidadDisminuir)); // Integer
+      const disminuir = Math.floor(Number(cantidadDisminuir));
       if (disminuir <= 0) {
         setError("Cantidad inválida a disminuir.");
         setModalConfirmDecrease(false);
@@ -900,7 +922,7 @@ const abrirModalStock = (producto) => {
         const headers = authHeaders();
         await api.put(
           `/inventarioProducto/${productoStock.idProducto}/disminuir-stock`,
-          { cantidadADisminuir: disminuir },
+          { cantidadADisminuir: disminuir, notas: notasStock || null },
           { headers }
         );
         await cargarDatosFromBackend();
@@ -908,63 +930,71 @@ const abrirModalStock = (producto) => {
         setModalStock(false);
         setCantidadDisminuir(0);
         setDisminuirChecked(false);
+        setNotasStock("");
       } catch (err) {
         handleApiError(err, "disminuir stock");
       }
     };
 
     const actualizarStock = async (e) => {
-  e.preventDefault();
-  if (!token) {
-    setError(
-      "No se encontró un token de autenticación. Por favor, inicia sesión."
-    );
-    return;
-  }
-  if (disminuirChecked) {
-    const disminuir = Math.floor(Number(cantidadDisminuir));
-    if (disminuir <= 0) {
-      setError("La cantidad a disminuir debe ser un entero mayor que 0.");
-      return;
-    }
-    if (!productoStock) {
-      setError("Producto inválido.");
-      return;
-    }
-    if (disminuir > Number(productoStock.stock || 0)) {
-      setError(
-        "La cantidad a disminuir no puede ser mayor al stock actual."
-      );
-      return;
-    }
-    setModalConfirmDecrease(true);
-    return;
-  }
-  const cantidadAAgregar = Math.floor(Number(nuevaCantidad));
-  if (cantidadAAgregar <= 0) {
-    setError("La cantidad a agregar debe ser un entero mayor que 0");
-    return;
-  }
-  if (maxFabricable !== null && cantidadAAgregar > maxFabricable) {
-    setModalErrorStockInsuficiente(true);
-    return;
-  }
-  try {
-    const headers = authHeaders();
-    const currentStock = Number(productoStock.stock || 0);
-    const nuevaCantidadTotal = currentStock + cantidadAAgregar;
-    await api.put(
-      `/inventarioProducto/${productoStock.idProducto}/stock`,
-      { nuevaCantidad: nuevaCantidadTotal },
-      { headers }
-    );
-    await cargarDatosFromBackend();
-    setModalStock(false);
-    setNuevaCantidad(0);
-  } catch (err) {
-    handleApiError(err, "actualización de stock");
-  }
-};
+      e.preventDefault();
+      if (!token) {
+        setError(
+          "No se encontró un token de autenticación. Por favor, inicia sesión."
+        );
+        return;
+      }
+      if (disminuirChecked) {
+        const disminuir = Math.floor(Number(cantidadDisminuir));
+        if (disminuir <= 0) {
+          setError("La cantidad a disminuir debe ser un entero mayor que 0.");
+          return;
+        }
+        if (!productoStock) {
+          setError("Producto inválido.");
+          return;
+        }
+        if (disminuir > Number(productoStock.stock || 0)) {
+          setError(
+            "La cantidad a disminuir no puede ser mayor al stock actual."
+          );
+          return;
+        }
+        setModalConfirmDecrease(true);
+        return;
+      }
+      const cantidadAAgregar = Math.floor(Number(nuevaCantidad));
+      if (cantidadAAgregar <= 0) {
+        setError("La cantidad a agregar debe ser un entero mayor que 0");
+        return;
+      }
+      if (esProductoFabricado) {
+        if (maxFabricable !== null && cantidadAAgregar > maxFabricable) {
+          setModalErrorStockInsuficiente(true);
+          return;
+        }
+      }
+      try {
+        const headers = authHeaders();
+        const currentStock = Number(productoStock.stock || 0);
+        const nuevaCantidadTotal = currentStock + cantidadAAgregar;
+        const payload = {
+          nuevaCantidad: nuevaCantidadTotal,
+          notas: cantidadAAgregar > 0 ? notasStock || null : null,
+        };
+        await api.put(
+          `/inventarioProducto/${productoStock.idProducto}/stock`,
+          payload,
+          { headers }
+        );
+        await cargarDatosFromBackend();
+        setModalStock(false);
+        setNuevaCantidad(0);
+        setNotasStock("");
+      } catch (err) {
+        handleApiError(err, "actualización de stock");
+      }
+    };
 
     // Paginador con ellipsis
     const renderPageButtons = (totalPages, currentPage, setPageFn) => {
@@ -1017,11 +1047,11 @@ const abrirModalStock = (producto) => {
     const totalPagesCategorias = Math.ceil(
       categorias.length / itemsPerPageCategorias
     );
-    const indexOfLastLote = currentPageLotes * itemsPerPageLotes;
-    const indexOfFirstLote = indexOfLastLote - itemsPerPageLotes;
-    const currentLotes = lotesUsadosProducto.slice(
-      indexOfFirstLote,
-      indexOfLastLote
+    const indexOfLastProduccion = currentPageLotes * itemsPerPageLotes;
+    const indexOfFirstProduccion = indexOfLastProduccion - itemsPerPageLotes;
+    const currentProducciones = lotesUsadosProducto.slice(
+      indexOfFirstProduccion,
+      indexOfLastProduccion
     );
     const totalPagesLotes = Math.ceil(
       lotesUsadosProducto.length / itemsPerPageLotes
@@ -1041,7 +1071,7 @@ const abrirModalStock = (producto) => {
               <th>Costo</th>
               <th>Precio Detal</th>
               <th>Precio Mayorista</th>
-              <th>Stock</th>
+              <th>Stock actual</th>
               <th>Stock Mínimo</th>
               <th>Stock Máximo</th>
               <th>Categoría</th>
@@ -1084,8 +1114,6 @@ const abrirModalStock = (producto) => {
                   >
                     Lotes Usados
                   </button>
-                  
-                  
                 </td>
               </tr>
             ))}
@@ -1224,12 +1252,15 @@ const abrirModalStock = (producto) => {
                   value={formularioTemp.idProducto || ""}
                   required={!productoSeleccionado}
                   disabled={!!productoSeleccionado}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value
+                      .replace(/[^a-zA-Z0-9-_]/g, "")
+                      .trim();
                     setFormularioTemp((prev) => ({
                       ...prev,
-                      idProducto: e.target.value,
-                    }))
-                  }
+                      idProducto: value,
+                    }));
+                  }}
                 />
                 {productoSeleccionado && (
                   <small className="form-text text-muted">
@@ -1253,16 +1284,80 @@ const abrirModalStock = (producto) => {
                 </small>
               </div>
               <div className="mb-3">
+                <label className="form-label">Tipo de Producto</label>
+                <div>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="tipoProducto"
+                      id="productoFabricado"
+                      checked={esProductoFabricado}
+                      onChange={() => setEsProductoFabricado(true)}
+                      disabled={
+                        productoSeleccionado &&
+                        productoSeleccionado.materias?.length > 0
+                      }
+                    />
+                    <label
+                      className="form-check-label"
+                      htmlFor="productoFabricado"
+                    >
+                      Producto Fabricado
+                    </label>
+                  </div>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="tipoProducto"
+                      id="productoTerminado"
+                      checked={!esProductoFabricado}
+                      onChange={() => setEsProductoFabricado(false)}
+                      disabled={
+                        productoSeleccionado &&
+                        productoSeleccionado.materias?.length > 0
+                      }
+                    />
+                    <label
+                      className="form-check-label"
+                      htmlFor="productoTerminado"
+                    >
+                      Producto Terminado
+                    </label>
+                  </div>
+                </div>
+                {productoSeleccionado &&
+                  productoSeleccionado.materias?.length > 0 && (
+                    <small className="form-text text-muted">
+                      No se puede cambiar a producto terminado si ya tiene
+                      materias primas asociadas.
+                    </small>
+                  )}
+              </div>
+              <div className="mb-3">
                 <label className="form-label">Costo Unitario (COP)</label>
                 <input
                   type="number"
                   className="form-control"
-                  value={costoTotal}
-                  disabled
+                  value={
+                    esProductoFabricado ? costoTotal : formularioTemp.costo
+                  }
+                  min="0"
+                  step="0.01"
+                  disabled={esProductoFabricado}
+                  onChange={(e) => {
+                    const value = Number(e.target.value) || 0;
+                    setFormularioTemp((prev) => ({ ...prev, costo: value }));
+                    if (!esProductoFabricado) {
+                      setCostoTotal(value);
+                    }
+                  }}
                 />
                 <small className="form-text text-muted">
-                  El costo se calcula automáticamente según las materias primas
-                  asociadas.
+                  {esProductoFabricado
+                    ? "El costo se calcula automáticamente según las materias primas asociadas."
+                    : "Ingresa el costo del producto terminado."}
                 </small>
               </div>
               <div className="mb-3">
@@ -1320,8 +1415,6 @@ const abrirModalStock = (producto) => {
                   type="number"
                   className="form-control"
                   value={precioMayoristaInput}
-                  min="0.01"
-                  step="0.01"
                   placeholder="Opcional"
                   onChange={(e) => {
                     const value =
@@ -1452,17 +1545,11 @@ const abrirModalStock = (producto) => {
                         onChange={() =>
                           setFormularioTemp((p) => ({ ...p, iva: false }))
                         }
-                        disabled={productoSeleccionado?.iva === true}
                       />
                       <label className="form-check-label" htmlFor="ivaNoEdit">
                         No
                       </label>
                     </div>
-                    {productoSeleccionado?.iva === true && (
-                      <div className="form-text text-muted">
-                        El IVA ya está activado y no puede desactivarse.
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1486,72 +1573,76 @@ const abrirModalStock = (producto) => {
                   ))}
                 </select>
               </div>
-              <h6 className="text-center">Materias Primas</h6>
-              <table className="table table-sm table-bordered">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Cantidad</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {materiasProducto.map((m, i) => {
-                    const materia = (registrosMateria || []).find(
-                      (rm) => rm.idMateria === m.idMateria
-                    );
-                    return (
-                      <tr key={i}>
-                        <td>{m.idMateria}</td>
-                        <td>{materia ? materia.nombre : "N/A"}</td>
-                        <td>{m.cantidad}</td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-outline-primary me-1"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setModoEdicionMateria(true);
-                              setIndiceEdicionMateria(i);
-                              setMateriaNueva({
-                                idMateria: m.idMateria,
-                                cantidad: m.cantidad,
-                              });
-                              setModalMateriaAbierta(true);
-                            }}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              const copia = [...materiasProducto];
-                              copia.splice(i, 1);
-                              setMateriasProducto(copia);
-                            }}
-                          >
-                            Eliminar
-                          </button>
-                        </td>
+              {esProductoFabricado && (
+                <>
+                  <h6 className="text-center">Materias Primas</h6>
+                  <table className="table table-sm table-bordered">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Cantidad</th>
+                        <th>Acciones</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <button
-                type="button"
-                className="btn btn-success mt-2"
-                onClick={() => {
-                  setModoEdicionMateria(false);
-                  setMateriaNueva({ idMateria: 0, cantidad: 0 });
-                  setModalMateriaAbierta(true);
-                }}
-              >
-                Agregar Materia Prima
-              </button>
+                    </thead>
+                    <tbody>
+                      {materiasProducto.map((m, i) => {
+                        const materia = (registrosMateria || []).find(
+                          (rm) => rm.idMateria === m.idMateria
+                        );
+                        return (
+                          <tr key={i}>
+                            <td>{m.idMateria}</td>
+                            <td>{materia ? materia.nombre : "N/A"}</td>
+                            <td>{m.cantidad}</td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-outline-primary me-1"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setModoEdicionMateria(true);
+                                  setIndiceEdicionMateria(i);
+                                  setMateriaNueva({
+                                    idMateria: m.idMateria,
+                                    cantidad: m.cantidad,
+                                  });
+                                  setModalMateriaAbierta(true);
+                                }}
+                              >
+                                Editar
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const copia = [...materiasProducto];
+                                  copia.splice(i, 1);
+                                  setMateriasProducto(copia);
+                                }}
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <button
+                    type="button"
+                    className="btn btn-success mt-2"
+                    onClick={() => {
+                      setModoEdicionMateria(false);
+                      setMateriaNueva({ idMateria: "", cantidad: 0 });
+                      setModalMateriaAbierta(true);
+                    }}
+                  >
+                    Agregar Materia Prima
+                  </button>
+                </>
+              )}
               <div className="d-flex justify-content-end mt-3">
                 <BotonCancelar onClick={() => setModalAbierta(false)} />
                 <BotonGuardar type="submit" />
@@ -1577,7 +1668,7 @@ const abrirModalStock = (producto) => {
                   onChange={(e) =>
                     setMateriaNueva({
                       ...materiaNueva,
-                      idMateria: Number(e.target.value) || 0,
+                      idMateria: e.target.value || "",
                     })
                   }
                   required
@@ -1594,21 +1685,21 @@ const abrirModalStock = (producto) => {
               <div className="mb-3">
                 <label className="form-label">Cantidad Requerida</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   className="form-control"
                   value={materiaNueva.cantidad || ""}
-                  min="1"
-                  step="1"
                   required
-                  onChange={(e) =>
-                    setMateriaNueva({
-                      ...materiaNueva,
-                      cantidad:
-                        e.target.value === ""
-                          ? 0
-                          : Math.floor(Number(e.target.value)),
-                    })
-                  }
+                  pattern="^\d+(\.\d{1,6})?$"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^\d*\.?\d{0,6}$/.test(value)) {
+                      setMateriaNueva({
+                        ...materiaNueva,
+                        cantidad: value,
+                      });
+                    }
+                  }}
                 />
               </div>
               <div className="d-flex justify-content-end">
@@ -1624,7 +1715,7 @@ const abrirModalStock = (producto) => {
               <h5 className="text-center">
                 Gestionar stock de <strong>{productoStock?.nombre}</strong>
               </h5>
-              {maxFabricable !== null && (
+              {maxFabricable !== null && esProductoFabricado && (
                 <div className="alert alert-info">
                   Puedes fabricar hasta <strong>{maxFabricable}</strong>{" "}
                   unidades con el inventario actual.
@@ -1633,12 +1724,6 @@ const abrirModalStock = (producto) => {
               <div className="alert alert-primary">
                 Cantidad actual es <strong>{productoStock?.stock}</strong>{" "}
                 unidades.
-                {productoStock?.stockMinimo != null && (
-                  <span> (Mínimo: {productoStock.stockMinimo})</span>
-                )}
-                {productoStock?.stockMaximo != null && (
-                  <span>, Máximo: {productoStock.stockMaximo}</span>
-                )}
               </div>
               <div className="mb-3">
                 <label className="form-label">Nueva cantidad total</label>
@@ -1669,6 +1754,7 @@ const abrirModalStock = (producto) => {
                     setDisminuirChecked(e.target.checked);
                     if (e.target.checked) {
                       setNuevaCantidad(0);
+                      setNotasStock("");
                     } else {
                       setCantidadDisminuir(0);
                     }
@@ -1702,12 +1788,30 @@ const abrirModalStock = (producto) => {
                   <strong>reducir</strong> el stock.
                 </div>
               </div>
+              {((!disminuirChecked && nuevaCantidad > 0) ||
+                (disminuirChecked && cantidadDisminuir > 0)) && (
+                <div className="mb-3">
+                  <label className="form-label">Notas (opcional)</label>
+                  <textarea
+                    className="form-control"
+                    value={notasStock}
+                    onChange={(e) => setNotasStock(e.target.value)}
+                    placeholder="Ingresa notas sobre el cambio de stock"
+                    rows="3"
+                  />
+                  <div className="form-text">
+                    Notas opcionales para registrar detalles del cambio de
+                    stock.
+                  </div>
+                </div>
+              )}
               <div className="d-flex justify-content-end">
                 <BotonCancelar
                   onClick={() => {
                     setModalStock(false);
                     setDisminuirChecked(false);
                     setCantidadDisminuir(0);
+                    setNotasStock("");
                   }}
                 />
                 <BotonGuardar type="submit" />
@@ -1728,6 +1832,12 @@ const abrirModalStock = (producto) => {
               <strong>{cantidadDisminuir}</strong> unidades de{" "}
               <strong>{productoStock?.nombre}</strong>? Esta acción afectará el
               stock.
+              {notasStock && (
+                <>
+                  <br />
+                  <strong>Notas:</strong> {notasStock}
+                </>
+              )}
             </p>
             <div className="d-flex justify-content-end">
               <BotonCancelar onClick={() => setModalConfirmDecrease(false)} />
@@ -1836,67 +1946,96 @@ const abrirModalStock = (producto) => {
             onClose={() => {
               setModalLotesUsados(false);
               setProductoLotesSeleccionado(null);
+              setFilterDate("");
             }}
           >
-            <div style={{ position: "relative" }}>
+            <div className="modal-content-custom">
+              {/* Modal Header */}
               <button
                 type="button"
-                className="btn-close"
-                style={{ position: "absolute", top: "10px", right: "10px" }}
+                className="btn-close-custom"
                 onClick={() => {
                   setModalLotesUsados(false);
                   setProductoLotesSeleccionado(null);
+                  setFilterDate("");
                 }}
                 aria-label="Close"
               ></button>
-              <h2 className="mb-3">Lotes Usados en Producto</h2>
-              <div className="mb-3">
-                <label className="form-label">
+              <h2 className="modal-title-custom">Lotes Usados en Producto</h2>
+
+              {/* Filter Section */}
+              <div className="filter-section">
+                <label className="form-label filter-label">
                   Filtrar por fecha de producción:
                 </label>
                 <input
                   type="date"
-                  className="form-control"
+                  className="form-control filter-input"
                   value={filterDate}
                   onChange={(e) => setFilterDate(e.target.value)}
                 />
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary filter-btn"
+                  onClick={() => setFilterDate("")}
+                >
+                  Limpiar Filtro
+                </button>
               </div>
-              <div className="row g-3">
-                {currentLotes.map((lu) => (
-                  <div key={lu.id} className="col-md-12">
-                    <div className="card shadow-sm h-100">
-                      <div className="card-body">
-                        <h5 className="card-title">Lote #{lu.idLote}</h5>
-                        <p className="card-text">
-                          <strong>Materia Prima:</strong> {lu.materiaNombre}
-                          <br />
-                          <strong>Cantidad Inicial:</strong>{" "}
-                          {lu.cantidadInicial} unidades
-                          <br />
-                          <strong>Cantidad antes de fabricación:</strong>{" "}
-                          {lu.cantidadAntesFabricacion} unidades
-                          <br />
-                          <strong>Cantidad Usada:</strong> {lu.cantidadUsada}{" "}
-                          unidades
-                          <br />
-                          <strong>Cantidad después de fabricación:</strong>{" "}
-                          {lu.cantidadDespuesFabricacion} unidades
-                          <br />
-                          <strong>ID Producción:</strong> {lu.idProduccion}
-                          <br />
-                          <strong>Fecha Ingreso:</strong> {lu.fechaIngreso}
-                          <br />
-                          <strong>Fecha Producción:</strong>{" "}
-                          {lu.fechaProduccion}
-                          <br />
-                          <strong>Proveedor:</strong> {lu.proveedorNombre}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+
+              {/* Scrollable Table Container */}
+              <div className="table-container">
+                {currentProducciones.length > 0 ? (
+                  <table className="table table-custom">
+                    <thead>
+                      <tr>
+                        <th>ID Producción</th>
+                        <th>Lote</th>
+                        <th>Materia Prima</th>
+                        <th>Proveedor</th>
+                        <th>Cantidad Inicial</th>
+                        <th>Cant. Antes</th>
+                        <th>Cant. Usada</th>
+                        <th>Cant. Después</th>
+                        <th>Fecha Ingreso</th>
+                        <th>Fecha Producción</th>
+                        <th>Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentProducciones.map((prod) =>
+                        prod.lotes.map((lu, index) => (
+                          <tr
+                            key={`${prod.idProduccion}-${lu.id}`}
+                            className="table-row"
+                          >
+                            {index === 0 && (
+                              <td rowSpan={prod.lotes.length}>
+                                {prod.idProduccion}
+                              </td>
+                            )}
+                            <td>{lu.idLote}</td>
+                            <td>{lu.materiaNombre}</td>
+                            <td>{lu.proveedorNombre}</td>
+                            <td>{lu.cantidadInicial}</td>
+                            <td>{lu.cantidadAntesFabricacion}</td>
+                            <td>{lu.cantidadUsada}</td>
+                            <td>{lu.cantidadDespuesFabricacion}</td>
+                            <td>{lu.fechaIngreso}</td>
+                            <td>{lu.fechaProduccion}</td>
+                            <td>{lu.notas || "N/A"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="no-data">No hay lotes usados para mostrar.</p>
+                )}
               </div>
-              <div className="modal-footer mt-4">
+
+              {/* Pagination and Footer */}
+              <div className="modal-footer-custom">
                 <nav>
                   <ul className="pagination justify-content-center">
                     <li
@@ -1905,7 +2044,7 @@ const abrirModalStock = (producto) => {
                       }`}
                     >
                       <button
-                        className="page-link"
+                        className="page-link page-link-custom"
                         onClick={() =>
                           setCurrentPageLotes(Math.max(1, currentPageLotes - 1))
                         }
@@ -1924,7 +2063,7 @@ const abrirModalStock = (producto) => {
                       }`}
                     >
                       <button
-                        className="page-link"
+                        className="page-link page-link-custom"
                         onClick={() =>
                           setCurrentPageLotes(
                             Math.min(totalPagesLotes, currentPageLotes + 1)
@@ -1937,9 +2076,11 @@ const abrirModalStock = (producto) => {
                   </ul>
                 </nav>
                 <BotonAceptar
+                  className="btn btn-primary accept-btn"
                   onClick={() => {
                     setModalLotesUsados(false);
                     setProductoLotesSeleccionado(null);
+                    setFilterDate("");
                   }}
                 />
               </div>

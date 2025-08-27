@@ -13,5 +13,6 @@ public class AlertaInventarioDTO {
     private String tipo; // "Producto" o "Materia Prima"
     private Float cantidadActual;
     private Float stockMinimo;
+    private Float stockMaximo;
     private String nivelAlerta;
 }

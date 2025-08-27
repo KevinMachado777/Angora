@@ -89,7 +89,7 @@ public class ClienteController {
 
     // Actualiza un cliente existente
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Cliente> actualizarCliente(@PathVariable Long id, @RequestBody Cliente cliente) {
+    public ResponseEntity<Cliente> actualizarCliente(@PathVariable(name = "id") Long id, @RequestBody Cliente cliente) {
         // Valida que el cliente exista
         if (!clienteRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
@@ -107,7 +107,7 @@ public class ClienteController {
 
     // Desactiva un cliente si no tiene deudas
     @PutMapping(value = "/{id}/desactivar", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, String>> desactivarCliente(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> desactivarCliente(@PathVariable(name = "id") Long id) {
         Map<String, String> response = new HashMap<>();
         Optional<Cliente> cliente = clienteRepository.findByIdClienteAndActivo(id, true);
         if (!cliente.isPresent()) {
@@ -135,7 +135,7 @@ public class ClienteController {
 
     // Reactiva un cliente inactivo
     @PutMapping(value = "/{id}/activar", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, String>> activarCliente(@PathVariable Long id) {
+    public ResponseEntity<Map<String, String>> activarCliente(@PathVariable(name = "id") Long id) {
         Map<String, String> response = new HashMap<>();
         // Busca el cliente inactivo
         Optional<Cliente> cliente = clienteRepository.findByIdClienteAndActivo(id, false);
