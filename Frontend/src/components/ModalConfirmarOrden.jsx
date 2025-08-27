@@ -8,17 +8,16 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
   const [lotesIds, setLotesIds] = useState({});
   const [costosUnitarios, setCostosUnitarios] = useState({});
   const [errores, setErrores] = useState({});
-  const [modalError, setModalError] = useState({ 
-    visible: false, 
-    mensaje: "", 
-    inputFocus: null 
+  const [modalError, setModalError] = useState({
+    visible: false,
+    mensaje: "",
+    inputFocus: null
   });
   const [modalConfirmacion, setModalConfirmacion] = useState(false);
   const [totalOrden, setTotalOrden] = useState(0);
-  
-  // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
-  const itemsPorPagina = 4; 
+  const [bloquearConfirmacion, setBloquearConfirmacion] = useState(false); // Nueva bandera
+  const itemsPorPagina = 4;
   const [modalMensaje, setModalMensaje] = useState({
     tipo: "",
     mensaje: "",
@@ -32,7 +31,6 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
     }, 3000);
   };
 
-  // Calcular total de la orden
   useEffect(() => {
     if (orden && orden.ordenMateriaPrimas) {
       const total = orden.ordenMateriaPrimas.reduce((acc, item) => {
@@ -47,10 +45,9 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
 
   useEffect(() => {
     if (isOpen && orden) {
-      // Inicializar los inputs de lotes y costos
       const idsIniciales = {};
       const costosIniciales = {};
-      
+
       if (orden.ordenMateriaPrimas && Array.isArray(orden.ordenMateriaPrimas)) {
         orden.ordenMateriaPrimas.forEach(item => {
           const idMateria = item.materiaPrima?.idMateria || item.idMateria;
@@ -60,10 +57,9 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
           }
         });
 
-        // Cargar costos del último lote para cada materia prima
         const cargarCostos = async () => {
           const costosActualizados = { ...costosIniciales };
-          
+
           for (const item of orden.ordenMateriaPrimas) {
             const idMateria = item.materiaPrima?.idMateria || item.idMateria;
             try {
@@ -75,32 +71,34 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
               console.log(`No se encontró lote previo para materia ${idMateria}, usando costo 0`);
             }
           }
-          
+
           setCostosUnitarios(costosActualizados);
         };
 
         cargarCostos();
       }
-      
+
       setLotesIds(idsIniciales);
       setErrores({});
       setModalError({ visible: false, mensaje: "", inputFocus: null });
       setPaginaActual(1);
+      setModalConfirmacion(false); // Asegurar que el modal de confirmación esté cerrado
+      setBloquearConfirmacion(false); // Reiniciar la bandera
     }
   }, [isOpen, orden]);
 
   const validarLotesUnicos = () => {
     const valoresLotes = Object.values(lotesIds).filter(id => id.trim() !== "");
     const valoresUnicos = [...new Set(valoresLotes)];
-    
+
     if (valoresLotes.length !== valoresUnicos.length) {
       const duplicados = valoresLotes.filter((item, index) => valoresLotes.indexOf(item) !== index);
       const loteRepetido = duplicados[0];
-      
-      const materiaConError = Object.keys(lotesIds).find(key => 
+
+      const materiaConError = Object.keys(lotesIds).find(key =>
         lotesIds[key] === loteRepetido
       );
-      
+
       setModalError({
         visible: true,
         mensaje: `El ID de lote "${loteRepetido}" está repetido. Por favor, ingresa un ID único para cada materia prima.`,
@@ -116,7 +114,7 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
       ...prev,
       [idMateria]: valor
     }));
-    
+
     if (errores[idMateria]) {
       setErrores(prev => {
         const newErrores = { ...prev };
@@ -133,8 +131,13 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
     }));
   };
 
-  const handleConfirmar = async () => {
-    // Validar que todos los campos estén llenos
+  const handleConfirmar = async (e) => {
+    if (!e || !e.isTrusted) return; // Asegura que sea un evento de usuario real
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Validaciones básicas
     const camposVacios = Object.keys(lotesIds).filter(key => !lotesIds[key].trim());
     if (camposVacios.length > 0) {
       const nuevosErrores = {};
@@ -146,8 +149,7 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
       return;
     }
 
-    // Validar que no haya costos en 0 o negativos
-    const costosInvalidos = Object.keys(costosUnitarios).filter(key => 
+    const costosInvalidos = Object.keys(costosUnitarios).filter(key =>
       !costosUnitarios[key] || costosUnitarios[key] <= 0
     );
     if (costosInvalidos.length > 0) {
@@ -155,12 +157,10 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
       return;
     }
 
-    // Validar que no haya lotes repetidos
     if (!validarLotesUnicos()) {
       return;
     }
 
-    // Validar que los IDs de lote no existan ya en el sistema
     try {
       const idsLotes = Object.values(lotesIds).filter(id => id.trim() !== "");
       for (const idLote of idsLotes) {
@@ -190,13 +190,14 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
       return;
     }
 
-    // Mostrar modal de confirmación
     setModalConfirmacion(true);
   };
 
-  const confirmarOrden = async () => {
+  const confirmarOrden = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("confirmarOrden ejecutado para orden:", orden?.idOrden);
     try {
-      // Crear el objeto de confirmación con los lotes y sus costos
       const confirmacionData = {
         lotesIds: lotesIds,
         lotes: orden.ordenMateriaPrimas.map(item => {
@@ -214,9 +215,8 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
         totalOrden: totalOrden
       };
 
-      onConfirmar(orden.idOrden, confirmacionData);
+      await onConfirmar(orden.idOrden, confirmacionData);
       setModalConfirmacion(false);
-      
     } catch (error) {
       console.error("Error al confirmar orden:", error);
       abrirModal("error", `Error al confirmar orden: ${error.message}`);
@@ -226,7 +226,7 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
   const cerrarModalError = () => {
     const inputFocus = modalError.inputFocus;
     setModalError({ visible: false, mensaje: "", inputFocus: null });
-    
+
     if (inputFocus) {
       setTimeout(() => {
         const input = document.getElementById(`lote-${inputFocus}`);
@@ -246,18 +246,24 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
     return item.materiaPrima?.idMateria || item.idMateria;
   };
 
-  // Lógica de paginación
+  const cambiarPagina = (nuevaPagina, event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (nuevaPagina < 1 || nuevaPagina > totalPaginas) return;
+
+    setPaginaActual(nuevaPagina);
+  };
+
   const items = orden?.ordenMateriaPrimas || [];
   const totalPaginas = Math.ceil(items.length / itemsPorPagina);
   const indiceInicio = (paginaActual - 1) * itemsPorPagina;
   const indiceFin = indiceInicio + itemsPorPagina;
   const itemsPaginaActual = items.slice(indiceInicio, indiceFin);
 
-  const cambiarPagina = (nuevaPagina) => {
-    setPaginaActual(nuevaPagina);
-  };
-
-  if (!orden) return null;
+  if (!isOpen || !orden) return null;
 
   return (
     <>
@@ -266,10 +272,10 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
           <div className="encabezado-modal">
             <h3 style={{ margin: '0 0 10px 0', fontSize: '1.1rem' }}>Confirmar Orden #{orden?.idOrden}</h3>
           </div>
-          
-          <div className="mb-2" style={{ 
-            backgroundColor: '#f8f9fa', 
-            padding: '8px 10px', 
+
+          <div className="mb-2" style={{
+            backgroundColor: '#f8f9fa',
+            padding: '8px 10px',
             borderRadius: '5px',
             border: '1px solid #dee2e6'
           }}>
@@ -284,13 +290,12 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
               </span>
             </div>
           </div>
-          
+
           <div className="grupo-formulario">
             <h5 style={{ margin: '0 0 10px 0', fontSize: '0.95rem' }}>Datos de los lotes:</h5>
-            
-            {/* Tabla ultra-compacta para 5 registros */}
+
             <div>
-              <table className="table table-sm table-bordered" style={{ 
+              <table className="table table-sm table-bordered" style={{
                 fontSize: '0.8rem',
                 marginBottom: '0'
               }}>
@@ -307,9 +312,9 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                   {itemsPaginaActual.map((item, index) => {
                     const idMateria = obtenerIdMateria(item);
                     const nombreMateria = obtenerNombreMateria(item);
-                    
+
                     if (!idMateria) return null;
-                    
+
                     return (
                       <tr key={`${idMateria}-${index}`} style={{ height: '42px' }}>
                         <td style={{ padding: '4px 6px', verticalAlign: 'middle' }}>
@@ -318,9 +323,9 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                             <div style={{ fontSize: '0.65rem', color: '#6c757d', marginTop: '2px' }}>ID: {idMateria}</div>
                           </div>
                         </td>
-                        <td style={{ 
-                          padding: '4px 6px', 
-                          verticalAlign: 'middle', 
+                        <td style={{
+                          padding: '4px 6px',
+                          verticalAlign: 'middle',
                           textAlign: 'center',
                           fontWeight: 'bold',
                           fontSize: '0.8rem'
@@ -335,7 +340,7 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                             placeholder="ID único"
                             value={lotesIds[idMateria] || ""}
                             onChange={(e) => handleLoteIdChange(idMateria, e.target.value)}
-                            style={{ 
+                            style={{
                               fontSize: '0.75rem',
                               height: '26px',
                               padding: '2px 4px'
@@ -356,16 +361,16 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                             min="0"
                             value={costosUnitarios[idMateria] || ""}
                             onChange={(e) => handleCostoChange(idMateria, e.target.value)}
-                            style={{ 
+                            style={{
                               fontSize: '0.75rem',
                               height: '26px',
                               padding: '2px 4px'
                             }}
                           />
                         </td>
-                        <td style={{ 
+                        <td style={{
                           padding: '4px 6px',
-                          verticalAlign: 'middle', 
+                          verticalAlign: 'middle',
                           textAlign: 'right',
                           fontWeight: 'bold',
                           color: '#28a745',
@@ -379,26 +384,27 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
                 </tbody>
               </table>
             </div>
-            
-            {/* Controles de paginación más compactos */}
+
             {totalPaginas > 1 && (
               <div className="d-flex justify-content-center align-items-center mt-3">
                 <button
+                  type="button"
                   className="btn btn-outline-primary btn-sm me-2"
-                  onClick={() => cambiarPagina(paginaActual - 1)}
+                  onClick={(e) => cambiarPagina(paginaActual - 1, e)}
                   disabled={paginaActual === 1}
                   style={{ fontSize: '0.8rem', padding: '4px 8px' }}
                 >
                   ‹ Ant
                 </button>
-                
+
                 <span className="mx-2" style={{ fontSize: '0.85rem' }}>
                   {paginaActual} de {totalPaginas}
                 </span>
-                
+
                 <button
+                  type="button"
                   className="btn btn-outline-primary btn-sm ms-2"
-                  onClick={() => cambiarPagina(paginaActual + 1)}
+                  onClick={(e) => cambiarPagina(paginaActual + 1, e)}
                   disabled={paginaActual === totalPaginas}
                   style={{ fontSize: '0.8rem', padding: '4px 8px' }}
                 >
@@ -415,11 +421,13 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
         </div>
       </Modal>
 
-      {/* Modal de confirmación */}
       {modalConfirmacion && (
         <Modal
           isOpen={modalConfirmacion}
-          onClose={() => setModalConfirmacion(false)}
+          onClose={() => {
+            console.log("Cerrando modal de confirmación");
+            setModalConfirmacion(false);
+          }}
         >
           <div className="encabezado-modal">
             <h3>Confirmar Orden</h3>
@@ -430,13 +438,15 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
             <p className="text-muted">Esta acción creará los lotes en el inventario y no se puede deshacer.</p>
           </div>
           <div className="pie-modal">
-            <BotonCancelar onClick={() => setModalConfirmacion(false)} />
+            <BotonCancelar onClick={() => {
+              console.log("Botón Cancelar clicado en modal de confirmación");
+              setModalConfirmacion(false);
+            }} />
             <BotonAceptar onClick={confirmarOrden} />
           </div>
         </Modal>
       )}
 
-      {/* Modal de error para lotes duplicados o existentes */}
       <Modal isOpen={modalError.visible} onClose={cerrarModalError}>
         <div className="modal-content text-center">
           <div className="alert alert-danger">
@@ -448,7 +458,6 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
         </div>
       </Modal>
 
-      {/* Modal de mensajes generales */}
       <Modal
         isOpen={modalMensaje.visible}
         onClose={() => setModalMensaje({ ...modalMensaje, visible: false })}
@@ -459,16 +468,16 @@ const ModalConfirmarOrden = ({ isOpen, onClose, orden, onConfirmar }) => {
               modalMensaje.tipo === "exito"
                 ? "bi bi-check-circle-fill text-success display-4 mb-2"
                 : modalMensaje.tipo === "error"
-                ? "bi bi-x-circle-fill text-danger display-4 mb-2"
-                : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
+                  ? "bi bi-x-circle-fill text-danger display-4 mb-2"
+                  : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
             }
           ></i>
           <h3>
             {modalMensaje.tipo === "exito"
               ? "¡Éxito!"
               : modalMensaje.tipo === "error"
-              ? "Error"
-              : "Advertencia"}
+                ? "Error"
+                : "Advertencia"}
           </h3>
           <p>{modalMensaje.mensaje}</p>
         </div>

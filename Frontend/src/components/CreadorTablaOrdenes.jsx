@@ -9,7 +9,7 @@ export const CreadorTablaOrdenes = ({ cabeceros = [], registros = [], onEditar, 
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
 
-  // SOLUCIÓN: Resetear paginación cuando cambien los registros
+  // Resetear paginación cuando cambien los registros
   useEffect(() => {
     setCurrentPage(1);
   }, [registros]);
@@ -43,7 +43,17 @@ export const CreadorTablaOrdenes = ({ cabeceros = [], registros = [], onEditar, 
       }
       return (
         <li key={p} className={`page-item ${currentPage === p ? "active" : ""}`}>
-          <button className="page-link" onClick={() => setPageFn(p)}>{p}</button>
+          <button 
+            type="button" // Agrega esto
+            className="page-link" 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setCurrentPage(p);
+            }}
+          >
+            {p}
+          </button>
         </li>
       );
     });
@@ -106,12 +116,16 @@ export const CreadorTablaOrdenes = ({ cabeceros = [], registros = [], onEditar, 
 
       {/* Paginación */}
       {totalPages > 1 && (
-        <nav>
+        <nav aria-label="Paginación" onClick={e => e.stopPropagation()}>
           <ul className="pagination justify-content-center">
             <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
               <button 
                 className="page-link" 
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentPage(Math.max(1, currentPage - 1));
+                }}
                 disabled={currentPage === 1}
               >
                 Anterior
@@ -121,7 +135,11 @@ export const CreadorTablaOrdenes = ({ cabeceros = [], registros = [], onEditar, 
             <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
               <button 
                 className="page-link" 
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentPage(Math.min(totalPages, currentPage + 1));
+                }}
                 disabled={currentPage === totalPages}
               >
                 Siguiente

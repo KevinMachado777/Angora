@@ -33,7 +33,9 @@ const Proveedores = () => {
     visible: false,
   });
 
+  // Modifica la función abrirModal para que solo se llame cuando realmente queremos mostrar el mensaje
   const abrirModal = (tipo, mensaje) => {
+    if (!mensaje) return; // Si no hay mensaje, no mostramos nada
     setModalMensaje({ tipo, mensaje, visible: true });
     setTimeout(() => {
       setModalMensaje({ tipo: "", mensaje: "", visible: false });
@@ -227,64 +229,38 @@ const Proveedores = () => {
     }
   };
 
+  // Modifica la función guardarOrden
   const guardarOrden = async (nuevaOrden) => {
     try {
-      console.log("nuevaOrden recibida en guardarOrden:", nuevaOrden);
-
       const ordenData = {
         idOrden: nuevaOrden.idOrden || undefined,
         proveedor: { idProveedor: parseInt(nuevaOrden.id) },
-        ordenMateriaPrimas: nuevaOrden.items.map((item) => {
-          console.log("Item antes de mapear:", item);
-
-          // CORRECCIÓN: No convertir idMateria a entero, mantener como string
-          if (!item.idMateria || item.idMateria.trim() === "") {
-            throw new Error(
-              `ID de Materia Prima inválido para el ítem: ${JSON.stringify(item)}`
-            );
-          }
-
-          const ordenMateriaPrimaObj = {
-            materiaPrima: { idMateria: item.idMateria }, // Mantener como string
-            cantidad: parseFloat(item.cantidad),
-            costoUnitario: item.costoUnitario || 0 // Agregar costoUnitario
-          };
-
-          if (item.id) {
-            ordenMateriaPrimaObj.id = item.id;
-          }
-
-          return ordenMateriaPrimaObj;
-        }),
+        ordenMateriaPrimas: nuevaOrden.items.map((item) => ({
+          materiaPrima: { idMateria: item.idMateria },
+          cantidad: parseFloat(item.cantidad),
+          costoUnitario: item.costoUnitario || 0,
+          id: item.id || undefined
+        })),
         notas: nuevaOrden.notas || null,
         estado: editando?.estado ?? false,
         fecha: editando?.fecha ?? new Date().toISOString(),
         total: nuevaOrden.total || 0,
       };
 
-      console.log("Datos de la Orden a enviar al backend:", ordenData);
-
       if (ordenData.idOrden) {
-        console.log("Enviando PUT:", ordenData);
         await api.put(`${urlOrdenes}`, ordenData);
       } else {
-        console.log("Enviando POST:", ordenData);
         await api.post(urlOrdenes, ordenData);
       }
 
       await cargarOrdenesPendientes();
       setModalAbierta(false);
+      // Solo mostramos el mensaje aquí, después de que todo fue exitoso
       abrirModal("exito", "Orden guardada correctamente.");
+
     } catch (error) {
-      console.error(
-        "Error al guardar orden:",
-        error.response?.status,
-        error.response?.data
-      );
-      abrirModal(
-        "error",
-        `Error al guardar orden: ${error.response?.data?.message || error.message}`
-      );
+      console.error("Error al guardar orden:", error);
+      abrirModal("error", "Error al guardar la orden.");
     }
   };
 

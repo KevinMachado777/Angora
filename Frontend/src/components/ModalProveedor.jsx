@@ -220,10 +220,17 @@ const ModalProveedor = ({
   }, [isOpen, datosIniciales, tipo, token]);
 
   useEffect(() => {
-    if (!modalMensaje.visible && modalMensaje.tipo === "exito") {
-      onClose();
+    // Cerramos el modal padre SOLO cuando mostramos un mensaje de 'exito'
+    // y dejamos un timeout para permitir ver el mensaje.
+    let timer;
+    if (modalMensaje.visible && modalMensaje.tipo === "exito") {
+      timer = setTimeout(() => {
+        onClose();
+      }, 1500); // 1.5s para que se vea el mensaje
     }
+    return () => clearTimeout(timer);
   }, [modalMensaje.visible, modalMensaje.tipo, onClose]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -664,6 +671,10 @@ const ModalProveedor = ({
                 }))}
                 onEditar={editarProducto}
                 onEliminar={eliminarItem}
+                onPageChange={(newPage) => {
+                  // Prevenir cualquier efecto secundario
+                  console.log("Cambiando a página:", newPage);
+                }}
               />
 
               <div className="grupo-formulario">
@@ -746,7 +757,7 @@ const ModalProveedor = ({
                 setProductoEditando(null);
               }}
             />
-            <BotonAceptar onClick={guardarProductoEditado} />
+            <BotonAceptar type="button" onClick={guardarProductoEditado} />
           </div>
         </Modal>
       )}
