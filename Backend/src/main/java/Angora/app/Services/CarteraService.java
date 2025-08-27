@@ -107,7 +107,7 @@ public class CarteraService implements ICarteraService {
         historial.setMontoAbono((float) (cantidad.doubleValue() - cantidadRestante));
         historial.setSaldoAnterior(saldoAnteriorInicial.floatValue());
         historial.setSaldoNuevo(facturaInicial.getSaldoPendiente().floatValue());
-        historial.setFechaAbono(fecha != null ? LocalDateTime.parse(fecha, DATE_TIME_FORMATTER) : LocalDateTime.now());
+        historial.setFechaAbono(LocalDateTime.now());
         historial.setDescripcion("Abono aplicado a factura #" + facturaInicial.getIdFactura());
         historialAbonoRepository.save(historial);
 
