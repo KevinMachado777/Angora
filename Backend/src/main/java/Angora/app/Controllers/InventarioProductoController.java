@@ -75,7 +75,7 @@ public class InventarioProductoController {
 
     // Actualizar el stock de un producto (aumentar o reducir)
     @PutMapping("/{id}/stock")
-    public ResponseEntity<?> updateStock(@PathVariable String id, @RequestBody NuevaCantidadDTO nuevaCantidadDTO) {
+    public ResponseEntity<?> updateStock(@PathVariable(name = "id") String id, @RequestBody NuevaCantidadDTO nuevaCantidadDTO) {
         try {
             Producto producto = productoService.updateStock(id, nuevaCantidadDTO.getNuevaCantidad());
             return new ResponseEntity<>(producto, HttpStatus.OK);
