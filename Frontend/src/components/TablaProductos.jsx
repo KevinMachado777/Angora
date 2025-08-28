@@ -52,7 +52,7 @@ const TablaProductos = forwardRef(
     const [esProductoFabricado, setEsProductoFabricado] = useState(true);
     const [formularioTemp, setFormularioTemp] = useState({
       idProducto: "",
-      porcentajeGanancia: 15,
+      porcentajeGanancia: 1,
       nombre: "",
       idCategoria: "",
       iva: null,
@@ -242,10 +242,7 @@ const TablaProductos = forwardRef(
       setCostoTotal(nuevoCostoRedondeado);
       if (nuevoCostoRaw > 0) {
         if (!precioDetalModificadoManually) {
-          const porcentajeUsado = Math.max(
-            15,
-            Math.floor(Number(formularioTemp.porcentajeGanancia) || 15)
-          );
+          const porcentajeUsado = Math.max(1, Math.min(100, Math.floor(Number(formularioTemp.porcentajeGanancia) || 1)));
           const precioCalc = Number(
             (nuevoCostoRedondeado * (1 + porcentajeUsado / 100)).toFixed(2)
           );
@@ -267,10 +264,11 @@ const TablaProductos = forwardRef(
     useEffect(() => {
       if (precioDetalModificadoManually) return;
       const costo = Number(costoTotal || 0);
-      const porcentaje = Math.max(
-        15,
-        Math.floor(Number(formularioTemp.porcentajeGanancia) || 15)
-      );
+
+      // Manejar el caso cuando porcentajeGanancia está vacío temporalmente
+      const porcentaje = formularioTemp.porcentajeGanancia === '' ? 1 :
+        Math.max(1, Math.min(100, Math.floor(Number(formularioTemp.porcentajeGanancia) || 1)));
+
       const nuevoPrecio = Number((costo * (1 + porcentaje / 100)).toFixed(2));
       setPrecioDetalInput(nuevoPrecio);
       setFormularioTemp((prev) => ({ ...prev, precioDetal: nuevoPrecio }));
@@ -290,7 +288,7 @@ const TablaProductos = forwardRef(
         setEsProductoFabricado(true);
         setFormularioTemp({
           idProducto: "",
-          porcentajeGanancia: 15,
+          porcentajeGanancia: 1,
           nombre: "",
           idCategoria: "",
           iva: null,
@@ -341,10 +339,8 @@ const TablaProductos = forwardRef(
         producto.precioMayorista != null
           ? Number(producto.precioMayorista)
           : "";
-      const porcentajeFinal = Math.max(
-        15,
-        Math.floor(Number(producto.porcentajeGanancia) || 15)
-      );
+      const porcentajeFinal = Math.max(1, Math.min(100, Math.floor(Number(producto.porcentajeGanancia) || 1)));
+
       setFormularioTemp({
         idProducto: producto.idProducto,
         nombre: producto.nombre,
@@ -474,109 +470,113 @@ const TablaProductos = forwardRef(
     };
 
     useEffect(() => {
-  if (!modalLotesUsados || !productoLotesSeleccionado) {
-    setLotesUsadosProducto([]);
-    return;
-  }
-  const lotesUsadosParaProducto = (lotesUsadosEnProductos || []).filter(
-    (lu) => lu.idProducto === productoLotesSeleccionado.idProducto
-  );
-  const mapped = lotesUsadosParaProducto.map((lu) => {
-    const lote =
-      (lotesMateriaPrima || []).find((l) => l.idLote === lu.idLote) || {};
-    const fechaProduccionRaw = lu.fechaProduccion;
-    const fechaIngresoRaw = lote.fechaIngreso;
-    const fechaProduccion = formatDateTime(fechaProduccionRaw);
-    const fechaIngreso = formatDateTime(fechaIngresoRaw);
-    const cantidadInicial = lote.cantidad ?? 0; // Cantidad inicial registrada en Lote
-    const cantidadDisponibleActual = lote.cantidadDisponible ?? 0; // Estado actual
-    const cantidadUsada = lu.cantidadUsada ?? 0; // Usada en esta producción
+      if (!modalLotesUsados || !productoLotesSeleccionado) {
+        setLotesUsadosProducto([]);
+        return;
+      }
+      const lotesUsadosParaProducto = (lotesUsadosEnProductos || []).filter(
+        (lu) => lu.idProducto === productoLotesSeleccionado.idProducto
+      );
+      const mapped = lotesUsadosParaProducto.map((lu) => {
+        const lote =
+          (lotesMateriaPrima || []).find((l) => l.idLote === lu.idLote) || {};
+        const fechaProduccionRaw = lu.fechaProduccion;
+        const fechaIngresoRaw = lote.fechaIngreso;
+        const fechaProduccion = formatDateTime(fechaProduccionRaw);
+        const fechaIngreso = formatDateTime(fechaIngresoRaw);
+        const cantidadInicial = lote.cantidad ?? 0;
+        const usedUntilThis = lotesUsadosEnProductos
+          .filter(
+            (x) =>
+              x.idLote === lu.idLote &&
+              new Date(x.fechaProduccion) <= new Date(fechaProduccionRaw)
+          )
+          .reduce((s, x) => s + (x.cantidadUsada ?? 0), 0);
+        const cantidadAntesFabricacion =
+          cantidadInicial - (usedUntilThis - (lu.cantidadUsada ?? 0));
+        const cantidadUsada = lu.cantidadUsada ?? 0;
+        const cantidadDespuesFabricacion =
+          cantidadAntesFabricacion - cantidadUsada;
 
-    // Calcular Cant. Antes: cantidad disponible después de la producción anterior
-    const usosPrevios = (lotesUsadosEnProductos || [])
-      .filter((u) => u.idLote === lu.idLote && u.fechaProduccion < fechaProduccionRaw)
-      .sort((a, b) => new Date(a.fechaProduccion) - new Date(b.fechaProduccion));
-    const usoAcumuladoPrevios = usosPrevios.reduce((acc, u) => acc + (u.cantidadUsada ?? 0), 0);
-    const cantidadAntesFabricacion = cantidadInicial - usoAcumuladoPrevios; // Estado después de la producción anterior
+        const proveedorNombre = lote.idProveedor
+          ? (proveedores || []).find((p) => p.idProveedor === lote.idProveedor)
+            ?.nombre || "N/A"
+          : "Manual";
+        const idProduccionResolved = resolveIdProduccionForLu(lu);
+        // Obtener notas desde la entidad produccion usando idProduccion
+        const produccion = (producciones || []).find(
+          (p) => String(p.idProduccion) === String(idProduccionResolved)
+        );
+        const notas = produccion?.notas ? String(produccion.notas) : "N/A";
+        return {
+          id: lu.id,
+          idLote: lu.idLote,
+          materiaNombre:
+            (registrosMateria || []).find(
+              (m) => m.idMateria === lote?.idMateria
+            )?.nombre || "N/A",
+          proveedorNombre,
+          cantidadInicial,
+          cantidadAntesFabricacion,
+          cantidadUsada,
+          cantidadDespuesFabricacion,
+          fechaIngreso,
+          fechaProduccion,
+          fechaIngresoRaw,
+          fechaProduccionRaw,
+          idProduccion: idProduccionResolved,
+          cantidadDisponibleActual: lote?.cantidadDisponible ?? 0,
+          notas, // Usar notas de la entidad produccion
+        };
+      });
+      const filtered = mapped.filter((lu) => {
+        if (!filterDate) return true;
+        if (!lu.fechaProduccionRaw) return false;
+        const d = new Date(lu.fechaProduccionRaw);
+        if (isNaN(d.getTime())) return false;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const localDate = `${y}-${m}-${day}`;
+        return localDate === filterDate;
+      });
+      // Group by idProduccion
+      const groupedByProduccion = filtered.reduce((acc, lu) => {
+        const prodId = lu.idProduccion;
+        if (!acc[prodId]) {
+          acc[prodId] = [];
+        }
+        acc[prodId].push(lu);
+        return acc;
+      }, {});
+      // Convert to array and sort by idProduccion
+      const sortedProducciones = Object.keys(groupedByProduccion)
+        .sort((a, b) => {
+          if (a === "N/A") return 1;
+          if (b === "N/A") return -1;
+          return Number(a) - Number(b);
+        })
+        .map((prodId) => ({
+          idProduccion: prodId,
+          lotes: groupedByProduccion[prodId].sort(
+            (a, b) =>
+              new Date(a.fechaProduccionRaw) - new Date(b.fechaProduccionRaw)
+          ),
+        }));
 
-    const cantidadDespuesFabricacion = cantidadAntesFabricacion - cantidadUsada; // Estado después de esta producción
-
-    const proveedorNombre = lote.idProveedor
-      ? (proveedores || []).find((p) => p.idProveedor === lote.idProveedor)
-          ?.nombre || "N/A"
-      : "Manual";
-    const idProduccionResolved = resolveIdProduccionForLu(lu);
-    const produccion = (producciones || []).find(
-      (p) => String(p.idProduccion) === String(idProduccionResolved)
-    );
-    const notas = produccion?.notas ? String(produccion.notas) : "N/A";
-    return {
-      id: lu.id,
-      idLote: lu.idLote,
-      materiaNombre:
-        (registrosMateria || []).find(
-          (m) => m.idMateria === lote?.idMateria
-        )?.nombre || "N/A",
-      proveedorNombre,
-      cantidadInicial,
-      cantidadAntesFabricacion,
-      cantidadUsada,
-      cantidadDespuesFabricacion,
-      fechaIngreso,
-      fechaProduccion,
-      fechaIngresoRaw,
-      fechaProduccionRaw,
-      idProduccion: idProduccionResolved,
-      cantidadDisponibleActual,
-      notas,
-    };
-  });
-  const filtered = mapped.filter((lu) => {
-    if (!filterDate) return true;
-    if (!lu.fechaProduccionRaw) return false;
-    const d = new Date(lu.fechaProduccionRaw);
-    if (isNaN(d.getTime())) return false;
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const localDate = `${y}-${m}-${day}`;
-    return localDate === filterDate;
-  });
-  const groupedByProduccion = filtered.reduce((acc, lu) => {
-    const prodId = lu.idProduccion;
-    if (!acc[prodId]) {
-      acc[prodId] = [];
-    }
-    acc[prodId].push(lu);
-    return acc;
-  }, {});
-  const sortedProducciones = Object.keys(groupedByProduccion)
-    .sort((a, b) => {
-      if (a === "N/A") return 1;
-      if (b === "N/A") return -1;
-      return Number(a) - Number(b);
-    })
-    .map((prodId) => ({
-      idProduccion: prodId,
-      lotes: groupedByProduccion[prodId].sort(
-        (a, b) =>
-          new Date(a.fechaProduccionRaw) - new Date(b.fechaProduccionRaw)
-      ),
-    }));
-
-  setLotesUsadosProducto(sortedProducciones);
-  setCurrentPageLotes(1);
-}, [
-  modalLotesUsados,
-  productoLotesSeleccionado,
-  filterDate,
-  lotesUsadosEnProductos,
-  lotesMateriaPrima,
-  produccionesLotes,
-  registrosMateria,
-  proveedores,
-  producciones,
-]);
+      setLotesUsadosProducto(sortedProducciones);
+      setCurrentPageLotes(1);
+    }, [
+      modalLotesUsados,
+      productoLotesSeleccionado,
+      filterDate,
+      lotesUsadosEnProductos,
+      lotesMateriaPrima,
+      produccionesLotes,
+      registrosMateria,
+      proveedores,
+      producciones,
+    ]);
 
     // Abrir modal categoria
     const abrirModalCategoria = (categoria = null) => {
@@ -686,8 +686,8 @@ const TablaProductos = forwardRef(
                 stock: Number(p.stock) || 0,
                 iva: p.iva ?? false,
                 porcentajeGanancia: Math.max(
-                  15,
-                  Math.floor(Number(p.porcentajeGanancia) || 15)
+                  1,
+                  Math.floor(Number(p.porcentajeGanancia) || 1)
                 ),
                 idCategoria: null,
                 materias: p.materias ?? [],
@@ -783,8 +783,8 @@ const TablaProductos = forwardRef(
           ? Number(Number(formularioTemp.precioMayorista).toFixed(2))
           : null;
       const porcentajeUsado = Math.max(
-        15,
-        Math.floor(Number(formularioTemp.porcentajeGanancia) || 15)
+        1,
+        Math.floor(Number(formularioTemp.porcentajeGanancia) || 1)
       );
       try {
         const headers = authHeaders();
@@ -806,9 +806,9 @@ const TablaProductos = forwardRef(
           porcentajeGanancia: porcentajeUsado,
           materias: esProductoFabricado
             ? materiasProducto.map((m) => ({
-                idMateria: m.idMateria,
-                cantidad: Number(m.cantidad),
-              }))
+              idMateria: m.idMateria,
+              cantidad: Number(m.cantidad),
+            }))
             : [],
           idCategoria: formularioTemp.idCategoria
             ? { idCategoria: Number(formularioTemp.idCategoria) }
@@ -841,7 +841,7 @@ const TablaProductos = forwardRef(
         setEsProductoFabricado(true);
         setFormularioTemp({
           idProducto: "",
-          porcentajeGanancia: 15,
+          porcentajeGanancia: 1,
           nombre: "",
           idCategoria: "",
           iva: null,
@@ -1130,9 +1130,8 @@ const TablaProductos = forwardRef(
             </li>
             {renderPageButtons(totalPages, currentPage, setCurrentPage)}
             <li
-              className={`page-item ${
-                currentPage === totalPages ? "disabled" : ""
-              }`}
+              className={`page-item ${currentPage === totalPages ? "disabled" : ""
+                }`}
             >
               <button
                 className="page-link"
@@ -1192,9 +1191,8 @@ const TablaProductos = forwardRef(
           <nav>
             <ul className="pagination justify-content-center">
               <li
-                className={`page-item ${
-                  currentPageCategorias === 1 ? "disabled" : ""
-                }`}
+                className={`page-item ${currentPageCategorias === 1 ? "disabled" : ""
+                  }`}
               >
                 <button
                   className="page-link"
@@ -1213,11 +1211,10 @@ const TablaProductos = forwardRef(
                 setCurrentPageCategorias
               )}
               <li
-                className={`page-item ${
-                  currentPageCategorias === totalPagesCategorias
-                    ? "disabled"
-                    : ""
-                }`}
+                className={`page-item ${currentPageCategorias === totalPagesCategorias
+                  ? "disabled"
+                  : ""
+                  }`}
               >
                 <button
                   className="page-link"
@@ -1357,21 +1354,64 @@ const TablaProductos = forwardRef(
               <div className="mb-3">
                 <label className="form-label">Porcentaje de Ganancia (%)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   className="form-control"
                   value={formularioTemp.porcentajeGanancia}
-                  min="15"
-                  step="1"
+                  maxLength="3"
                   required
                   onChange={(e) => {
-                    const porcentajeRaw = Number(e.target.value) || 15;
-                    const porcentaje = Math.max(15, Math.floor(porcentajeRaw));
+                    const valor = e.target.value;
+
+                    // Solo permite dígitos y máximo 3 caracteres
+                    if (!/^\d{0,3}$/.test(valor)) {
+                      return; // No actualiza si no cumple el patrón
+                    }
+
+                    // Si está vacío, permitir temporalmente para que el usuario pueda escribir
+                    if (valor === '') {
+                      setFormularioTemp((prev) => ({
+                        ...prev,
+                        porcentajeGanancia: '',
+                      }));
+                      return;
+                    }
+
+                    const numeroValor = parseInt(valor, 10);
+
+                    // Validar rango 1-100
+                    if (numeroValor < 1 || numeroValor > 100) {
+                      return; // No actualiza si está fuera del rango
+                    }
+
                     setFormularioTemp((prev) => ({
                       ...prev,
-                      porcentajeGanancia: porcentaje,
+                      porcentajeGanancia: numeroValor,
                     }));
                   }}
+                  onBlur={(e) => {
+                    // Al perder el foco, asegurar que hay un valor válido
+                    const valor = e.target.value;
+                    if (valor === '' || parseInt(valor, 10) < 1) {
+                      setFormularioTemp((prev) => ({
+                        ...prev,
+                        porcentajeGanancia: 1,
+                      }));
+                    }
+                  }}
+                  placeholder="1-100"
                 />
+                <small className="form-text text-muted">
+                  Ingresa un valor entre 1% y 100%. Ajusta para calcular el precio detal automáticamente.
+                </small>
+                {/* Indicador visual opcional para mostrar si el valor está fuera de rango */}
+                {(formularioTemp.porcentajeGanancia === '' ||
+                  formularioTemp.porcentajeGanancia < 1 ||
+                  formularioTemp.porcentajeGanancia > 100) && (
+                    <div className="invalid-feedback" style={{ display: 'block', fontSize: '0.875rem', color: '#dc3545' }}>
+                      El porcentaje debe estar entre 1 y 100
+                    </div>
+                  )}
               </div>
               <div className="mb-3">
                 <label className="form-label">Precio Detal (COP)</label>
@@ -1779,21 +1819,21 @@ const TablaProductos = forwardRef(
               </div>
               {((!disminuirChecked && nuevaCantidad > 0) ||
                 (disminuirChecked && cantidadDisminuir > 0)) && (
-                <div className="mb-3">
-                  <label className="form-label">Notas (opcional)</label>
-                  <textarea
-                    className="form-control"
-                    value={notasStock}
-                    onChange={(e) => setNotasStock(e.target.value)}
-                    placeholder="Ingresa notas sobre el cambio de stock"
-                    rows="3"
-                  />
-                  <div className="form-text">
-                    Notas opcionales para registrar detalles del cambio de
-                    stock.
+                  <div className="mb-3">
+                    <label className="form-label">Notas (opcional)</label>
+                    <textarea
+                      className="form-control"
+                      value={notasStock}
+                      onChange={(e) => setNotasStock(e.target.value)}
+                      placeholder="Ingresa notas sobre el cambio de stock"
+                      rows="3"
+                    />
+                    <div className="form-text">
+                      Notas opcionales para registrar detalles del cambio de
+                      stock.
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               <div className="d-flex justify-content-end">
                 <BotonCancelar
                   onClick={() => {
@@ -1975,47 +2015,52 @@ const TablaProductos = forwardRef(
               {/* Scrollable Table Container */}
               <div className="table-container">
                 {currentProducciones.length > 0 ? (
-  <table className="table table-custom">
-    <thead>
-      <tr>
-        <th>ID Producción</th>
-        <th>Lote</th>
-        <th>Materia Prima</th>
-        <th>Proveedor</th>
-        <th>Cantidad Inicial</th>
-        <th>Cant. Antes</th>
-        <th>Cant. Usada</th>
-        <th>Cant. Después</th>
-        <th>Fecha Ingreso</th>
-        <th>Fecha Producción</th>
-        <th>Notas</th>
-      </tr>
-    </thead>
-    <tbody>
-      {currentProducciones.map((prod) =>
-        prod.lotes.map((lu, index) => (
-          <tr key={`${prod.idProduccion}-${lu.id}`} className="table-row">
-            {index === 0 && (
-              <td rowSpan={prod.lotes.length}>{prod.idProduccion}</td>
-            )}
-            <td>{lu.idLote}</td>
-            <td>{lu.materiaNombre}</td>
-            <td>{lu.proveedorNombre}</td>
-            <td>{lu.cantidadInicial}</td>
-            <td>{lu.cantidadAntesFabricacion}</td> {/* Corregido */}
-            <td>{lu.cantidadUsada}</td>
-            <td>{lu.cantidadDespuesFabricacion}</td> {/* Corregido */}
-            <td>{lu.fechaIngreso}</td>
-            <td>{lu.fechaProduccion}</td>
-            <td>{lu.notas || "N/A"}</td>
-          </tr>
-        ))
-      )}
-    </tbody>
-  </table>
-) : (
-  <p className="no-data">No hay lotes usados para mostrar.</p>
-)}
+                  <table className="table table-custom">
+                    <thead>
+                      <tr>
+                        <th>ID Producción</th>
+                        <th>Lote</th>
+                        <th>Materia Prima</th>
+                        <th>Proveedor</th>
+                        <th>Cantidad Inicial</th>
+                        <th>Cant. Antes</th>
+                        <th>Cant. Usada</th>
+                        <th>Cant. Después</th>
+                        <th>Fecha Ingreso</th>
+                        <th>Fecha Producción</th>
+                        <th>Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentProducciones.map((prod) =>
+                        prod.lotes.map((lu, index) => (
+                          <tr
+                            key={`${prod.idProduccion}-${lu.id}`}
+                            className="table-row"
+                          >
+                            {index === 0 && (
+                              <td rowSpan={prod.lotes.length}>
+                                {prod.idProduccion}
+                              </td>
+                            )}
+                            <td>{lu.idLote}</td>
+                            <td>{lu.materiaNombre}</td>
+                            <td>{lu.proveedorNombre}</td>
+                            <td>{lu.cantidadInicial}</td>
+                            <td>{lu.cantidadAntesFabricacion}</td>
+                            <td>{lu.cantidadUsada}</td>
+                            <td>{lu.cantidadDespuesFabricacion}</td>
+                            <td>{lu.fechaIngreso}</td>
+                            <td>{lu.fechaProduccion}</td>
+                            <td>{lu.notas || "N/A"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="no-data">No hay lotes usados para mostrar.</p>
+                )}
               </div>
 
               {/* Pagination and Footer */}
@@ -2023,9 +2068,8 @@ const TablaProductos = forwardRef(
                 <nav>
                   <ul className="pagination justify-content-center">
                     <li
-                      className={`page-item ${
-                        currentPageLotes === 1 ? "disabled" : ""
-                      }`}
+                      className={`page-item ${currentPageLotes === 1 ? "disabled" : ""
+                        }`}
                     >
                       <button
                         className="page-link page-link-custom"
@@ -2042,9 +2086,8 @@ const TablaProductos = forwardRef(
                       setCurrentPageLotes
                     )}
                     <li
-                      className={`page-item ${
-                        currentPageLotes === totalPagesLotes ? "disabled" : ""
-                      }`}
+                      className={`page-item ${currentPageLotes === totalPagesLotes ? "disabled" : ""
+                        }`}
                     >
                       <button
                         className="page-link page-link-custom"

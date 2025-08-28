@@ -5,16 +5,13 @@ import Angora.app.Controllers.dto.OrdenConfirmacionDTO;
 import Angora.app.Entities.Lote;
 import Angora.app.Entities.MateriaPrima;
 import Angora.app.Entities.Orden;
-import Angora.app.Entities.OrdenMateriaPrima; // Importar la nueva entidad
-import Angora.app.Repositories.LoteRepository;
-import Angora.app.Repositories.MateriaPrimaRepository;
-import Angora.app.Repositories.OrdenRepository;
-import Angora.app.Repositories.OrdenMateriaPrimaRepository; // Importar el nuevo repositorio
+import Angora.app.Entities.OrdenMateriaPrima;
+import Angora.app.Entities.Movimiento; // Añadir import para Movimiento
+import Angora.app.Repositories.*;
 import Angora.app.Services.Email.EnviarCorreo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -40,6 +37,9 @@ public class OrdenService implements IOrdenService {
 
     @Autowired
     private LoteRepository loteRepository;
+
+    @Autowired
+    private MovimientoRepository movimientoRepository;
 
     @Autowired
     private EnviarCorreo enviarCorreo;
@@ -138,8 +138,6 @@ public class OrdenService implements IOrdenService {
         }
     }
 
-    // Reemplaza el método confirmarOrden en OrdenService.java:
-
     @Transactional
     public void confirmarOrden(Long idOrden, OrdenConfirmacionDTO ordenConfirmacion) {
         Optional<Orden> ordenOpt = ordenRepository.findById(idOrden);
@@ -179,6 +177,11 @@ public class OrdenService implements IOrdenService {
                     throw new RuntimeException("El ID de lote '" + loteDTO.getIdLote() + "' ya existe");
                 }
 
+                // Obtener la materia prima para registrar el movimiento
+                MateriaPrima materia = materiaPrimaRepository.findById(loteDTO.getIdMateria())
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + loteDTO.getIdMateria()));
+                Float cantidadAnterior = materia.getCantidad() != null ? materia.getCantidad() : 0f;
+
                 Lote nuevoLote = new Lote();
                 nuevoLote.setIdLote(loteDTO.getIdLote());
                 nuevoLote.setIdMateria(loteDTO.getIdMateria());
@@ -190,6 +193,30 @@ public class OrdenService implements IOrdenService {
                 nuevoLote.setIdOrden(idOrden);
 
                 lotes.add(nuevoLote);
+
+                // Guardar el lote individualmente para asegurar que esté persistido antes del movimiento
+                loteRepository.save(nuevoLote);
+
+                // Actualizar el inventario de la materia prima
+                materiaPrimaService.recomputeMateriaTotalsAndCosto(loteDTO.getIdMateria());
+
+                // Obtener la cantidad actualizada de la materia prima
+                MateriaPrima updatedMateria = materiaPrimaRepository.findById(loteDTO.getIdMateria())
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + loteDTO.getIdMateria()));
+                Float cantidadActual = updatedMateria.getCantidad() != null ? updatedMateria.getCantidad() : 0f;
+                Float delta = cantidadActual - cantidadAnterior;
+
+                // Registrar movimiento en la tabla Movimiento
+                if (delta != 0f) {
+                    Movimiento movimiento = new Movimiento();
+                    movimiento.setMateriaPrima(updatedMateria);
+                    movimiento.setCantidadAnterior(cantidadAnterior);
+                    movimiento.setCantidadActual(cantidadActual);
+                    movimiento.setCantidadCambio(Math.abs(delta));
+                    movimiento.setTipoMovimiento(delta > 0 ? "entrada" : "salida");
+                    movimiento.setFechaMovimiento(LocalDateTime.now());
+                    movimientoRepository.save(movimiento);
+                }
             }
         } else {
             // Formato anterior: usar lotesIds (mantener para retrocompatibilidad)
@@ -206,6 +233,11 @@ public class OrdenService implements IOrdenService {
                     throw new RuntimeException("El ID de lote '" + idLote + "' ya existe");
                 }
 
+                // Obtener la materia prima para registrar el movimiento
+                MateriaPrima materia = materiaPrimaRepository.findById(idMateria)
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateria));
+                Float cantidadAnterior = materia.getCantidad() != null ? materia.getCantidad() : 0f;
+
                 Lote nuevoLote = new Lote();
                 nuevoLote.setIdLote(idLote);
                 nuevoLote.setIdMateria(idMateria);
@@ -217,15 +249,31 @@ public class OrdenService implements IOrdenService {
                 nuevoLote.setIdOrden(idOrden);
 
                 lotes.add(nuevoLote);
+
+                // Guardar el lote individualmente para asegurar que esté persistido antes del movimiento
+                loteRepository.save(nuevoLote);
+
+                // Actualizar el inventario de la materia prima
+                materiaPrimaService.recomputeMateriaTotalsAndCosto(idMateria);
+
+                // Obtener la cantidad actualizada de la materia prima
+                MateriaPrima updatedMateria = materiaPrimaRepository.findById(idMateria)
+                        .orElseThrow(() -> new RuntimeException("Materia prima no encontrada: " + idMateria));
+                Float cantidadActual = updatedMateria.getCantidad() != null ? updatedMateria.getCantidad() : 0f;
+                Float delta = cantidadActual - cantidadAnterior;
+
+                // Registrar movimiento en la tabla Movimiento
+                if (delta != 0f) {
+                    Movimiento movimiento = new Movimiento();
+                    movimiento.setMateriaPrima(updatedMateria);
+                    movimiento.setCantidadAnterior(cantidadAnterior);
+                    movimiento.setCantidadActual(cantidadActual);
+                    movimiento.setCantidadCambio(Math.abs(delta));
+                    movimiento.setTipoMovimiento(delta > 0 ? "entrada" : "salida");
+                    movimiento.setFechaMovimiento(LocalDateTime.now());
+                    movimientoRepository.save(movimiento);
+                }
             }
-        }
-
-        // Guardar todos los lotes
-        loteRepository.saveAll(lotes);
-
-        // Actualizar el inventario de materias primas
-        for (Lote lote : lotes) {
-            materiaPrimaService.recomputeMateriaTotalsAndCosto(lote.getIdMateria());
         }
 
         // Actualizar el total de la orden si se proporciona
