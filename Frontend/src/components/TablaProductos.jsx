@@ -51,7 +51,7 @@ const TablaProductos = forwardRef(
     const [esProductoFabricado, setEsProductoFabricado] = useState(true);
     const [formularioTemp, setFormularioTemp] = useState({
       idProducto: "",
-      porcentajeGanancia: 15,
+      porcentajeGanancia: 1,
       nombre: "",
       idCategoria: "",
       iva: null,
@@ -241,10 +241,7 @@ const TablaProductos = forwardRef(
       setCostoTotal(nuevoCostoRedondeado);
       if (nuevoCostoRaw > 0) {
         if (!precioDetalModificadoManually) {
-          const porcentajeUsado = Math.max(
-            15,
-            Math.floor(Number(formularioTemp.porcentajeGanancia) || 15)
-          );
+          const porcentajeUsado = Math.max(1, Math.min(100, Math.floor(Number(formularioTemp.porcentajeGanancia) || 1)));
           const precioCalc = Number(
             (nuevoCostoRedondeado * (1 + porcentajeUsado / 100)).toFixed(2)
           );
@@ -266,10 +263,7 @@ const TablaProductos = forwardRef(
     useEffect(() => {
       if (precioDetalModificadoManually) return;
       const costo = Number(costoTotal || 0);
-      const porcentaje = Math.max(
-        15,
-        Math.floor(Number(formularioTemp.porcentajeGanancia) || 15)
-      );
+      const porcentaje = Math.max(1, Math.floor(Number(formularioTemp.porcentajeGanancia) || 1));
       const nuevoPrecio = Number((costo * (1 + porcentaje / 100)).toFixed(2));
       setPrecioDetalInput(nuevoPrecio);
       setFormularioTemp((prev) => ({ ...prev, precioDetal: nuevoPrecio }));
@@ -289,7 +283,7 @@ const TablaProductos = forwardRef(
         setEsProductoFabricado(true);
         setFormularioTemp({
           idProducto: "",
-          porcentajeGanancia: 15,
+          porcentajeGanancia: 1,
           nombre: "",
           idCategoria: "",
           iva: null,
@@ -340,10 +334,8 @@ const TablaProductos = forwardRef(
         producto.precioMayorista != null
           ? Number(producto.precioMayorista)
           : "";
-      const porcentajeFinal = Math.max(
-        15,
-        Math.floor(Number(producto.porcentajeGanancia) || 15)
-      );
+      const porcentajeFinal = Math.max(1, Math.min(100, Math.floor(Number(producto.porcentajeGanancia) || 1)));
+
       setFormularioTemp({
         idProducto: producto.idProducto,
         nombre: producto.nombre,
@@ -689,8 +681,8 @@ const TablaProductos = forwardRef(
                 stock: Number(p.stock) || 0,
                 iva: p.iva ?? false,
                 porcentajeGanancia: Math.max(
-                  15,
-                  Math.floor(Number(p.porcentajeGanancia) || 15)
+                  1,
+                  Math.floor(Number(p.porcentajeGanancia) || 1)
                 ),
                 idCategoria: null,
                 materias: p.materias ?? [],
@@ -786,8 +778,8 @@ const TablaProductos = forwardRef(
           ? Number(Number(formularioTemp.precioMayorista).toFixed(2))
           : null;
       const porcentajeUsado = Math.max(
-        15,
-        Math.floor(Number(formularioTemp.porcentajeGanancia) || 15)
+        1,
+        Math.floor(Number(formularioTemp.porcentajeGanancia) || 1)
       );
       try {
         const headers = authHeaders();
@@ -844,7 +836,7 @@ const TablaProductos = forwardRef(
         setEsProductoFabricado(true);
         setFormularioTemp({
           idProducto: "",
-          porcentajeGanancia: 15,
+          porcentajeGanancia: 1,
           nombre: "",
           idCategoria: "",
           iva: null,
@@ -1366,12 +1358,12 @@ const TablaProductos = forwardRef(
                   type="number"
                   className="form-control"
                   value={formularioTemp.porcentajeGanancia}
-                  min="15"
+                  min="1"
                   step="1"
                   required
                   onChange={(e) => {
-                    const porcentajeRaw = Number(e.target.value) || 15;
-                    const porcentaje = Math.max(15, Math.floor(porcentajeRaw));
+                    const porcentajeRaw = Number(e.target.value) || 1;
+                    const porcentaje = Math.max(1, Math.floor(porcentajeRaw));
                     setFormularioTemp((prev) => ({
                       ...prev,
                       porcentajeGanancia: porcentaje,
@@ -1379,7 +1371,7 @@ const TablaProductos = forwardRef(
                   }}
                 />
                 <small className="form-text text-muted">
-                  Mínimo 15%. Ajusta para calcular el precio detal
+                  Mínimo 1% o Maximo 100%, si colocas un valor superior se tomará como 100%. Ajusta para calcular el precio detal
                   automáticamente.
                 </small>
               </div>
