@@ -692,7 +692,7 @@ const Portafolio = () => {
                         const nuevaFacturaData = {
                             total: 10000,
                             saldoPendiente: 10000 - carteraData.creditoAFavor > 0 ? 10000 - carteraData.creditoAFavor : 0,
-                            fecha: new Date().toISOString().split('T')[0]
+                            fecha: new Date().toISOString().split('.')[0]
                         };
                         await axios.post(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/facturas`, nuevaFacturaData, {
                             headers: {
@@ -773,7 +773,7 @@ const Portafolio = () => {
         try {
             const respuesta = await axios.post(`${urlBackend}/carteras/${personaCartera.id}/abonos`, {
                 cantidad,
-                fecha: new Date().toISOString().split('T')[0],
+                fecha: new Date().toISOString().split('.')[0],
                 idFactura: facturaSeleccionadaParaAbono.idFactura
             }, {
                 headers: {
@@ -886,7 +886,7 @@ const Portafolio = () => {
         if (fechaInicio && isNaN(new Date(fechaInicio))) return historial;
         if (fechaFin && isNaN(new Date(fechaFin))) return historial;
         return historial.filter(abono => {
-            const fechaAbono = new Date(abono.fechaAbono).toISOString().split('T')[0];
+            const fechaAbono = new Date(abono.fechaAbono).toISOString().split('.')[0];
             const cumpleFechaInicio = !fechaInicio || fechaAbono >= fechaInicio;
             const cumpleFechaFin = !fechaFin || fechaAbono <= fechaFin;
             return cumpleFechaInicio && cumpleFechaFin;
