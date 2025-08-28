@@ -2,7 +2,7 @@
 import { createContext, useState, useEffect } from "react";
 import { login, logout } from "../api/auth";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import api from "../api/axiosInstance";
 
 // Crea un contexto para la autenticación
 export const AuthContext = createContext();
@@ -36,10 +36,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await axios.get(
-          `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
+        const response = await api.get(`http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`);
         setUser(response.data);
       } catch (error) {
         console.error("Error al verificar sesión:", error.message);
@@ -69,10 +66,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("correo", userCorreo);
 
         // Actualiza el estado del usuario con el correo
-        const respuesta = await axios.get(
-          `http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
+        const respuesta = await api.get(`http://localhost:8080/angora/api/v1/auth/authenticated/${correo}`);
         console.log("Respuesta usuario: ", respuesta.data);
 
         // Actualiza el estado del usuario con la respuesta del backend

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/login.css";
 import Angora from "../assets/images/angora.png";
 import { AuthContext } from "../context/AuthContext.jsx";
-import axios from "axios";
+import api from "../api/axiosInstance";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -113,7 +113,7 @@ const Login = () => {
         password: inputNuevaContrasena,
       };
 
-      const response = await axios.post(
+      const response = await api.post(
         "http://localhost:8080/angora/api/v1/passwordReset/cambiar",
         datos
       );
@@ -143,7 +143,7 @@ const Login = () => {
     e.preventDefault();
     try {
       if (emailRecuperar) {
-        const response = await axios.delete(
+        const response = await api.delete(
           `http://localhost:8080/angora/api/v1/passwordReset/${emailRecuperar}`
         );
         console.log(
@@ -183,7 +183,7 @@ const Login = () => {
 
     try {
       // Validar si el correo existe
-      const validacionCorreo = await axios.get(
+      const validacionCorreo = await api.get(
         `http://localhost:8080/angora/api/v1/passwordReset/${emailRecuperar}`
       );
 
@@ -202,7 +202,7 @@ const Login = () => {
           fechaExpiracion: "",
         };
 
-        const response = await axios.post(
+        const response = await api.post(
           "http://localhost:8080/angora/api/v1/passwordReset",
           passwordResetDTO
         );
@@ -273,7 +273,7 @@ const Login = () => {
 
         try {
           // Consultar el código
-          const respuesta = await axios.post(
+          const respuesta = await api.post(
             "http://localhost:8080/angora/api/v1/passwordReset/validar",
             passwordResetDTO
           );

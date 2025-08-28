@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
-import axios from "axios";
+import api from "../api/axiosInstance";
 import Modal from "../components/Modal";
 import BotonCancelar from "../components/BotonCancelar";
 import BotonEliminar from "../components/BotonEliminar";
@@ -94,25 +94,13 @@ const Pedidos = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const inventarioResponse = await axios.get(
+        const inventarioResponse = await api.get(
           "http://localhost:8080/angora/api/v1/inventarioProducto/listado",
-          {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
         );
         setInventario(inventarioResponse.data);
 
-        const pedidosResponse = await axios.get(
+        const pedidosResponse = await api.get(
           "http://localhost:8080/angora/api/v1/pedidos/pendientes",
-          {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
         );
         console.log("Facturas pendientes recibidas:", pedidosResponse.data);
         setPedidosPendiente(
@@ -218,15 +206,9 @@ const Pedidos = () => {
     };
 
     try {
-      await axios.put(
+      await api.put(
         `http://localhost:8080/angora/api/v1/pedidos/confirmar/${pedidoAConfirmar.idFactura}`,
         confirmarFacturaDTO,
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
       );
 
       if (
@@ -234,17 +216,11 @@ const Pedidos = () => {
         pedidoAConfirmar.cliente &&
         pedidoAConfirmar.cliente.correo
       ) {
-        await axios.post(
+        await api.post(
           "http://localhost:8080/angora/api/v1/pedidos/enviar-factura",
           {
             idFactura: pedidoAConfirmar.idFactura,
             enviarCorreo: true,
-          },
-          {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${token}`,
-            },
           }
         );
       }
@@ -445,14 +421,8 @@ const Pedidos = () => {
 
   const eliminarPedido = async () => {
     try {
-      await axios.delete(
+      await api.delete(
         `http://localhost:8080/angora/api/v1/pedidos/${pedidoAEliminar.idFactura}`,
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
       );
       setPedidosPendiente(
         pedidosPendiente.filter(

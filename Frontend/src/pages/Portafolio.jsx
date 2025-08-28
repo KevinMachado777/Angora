@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from "../api/axiosInstance";
 import { CreadorTablaClientes } from '../components/CreadorTablaClientes';
 import TablaFacturas from "../components/TablaFacturas";
 import Modal from "../components/Modal";
@@ -72,22 +72,12 @@ const Portafolio = () => {
     useEffect(() => {
         const cargarClientes = async () => {
             try {
-                const respuestaClientes = await axios.get(`${urlBackend}/clientes`, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const respuestaClientes = await api.get(`${urlBackend}/clientes`);
                 console.log("Respuesta GET /api/clientes:", JSON.stringify(respuestaClientes.data, null, 2));
                 const clientes = await Promise.all(
                     (Array.isArray(respuestaClientes.data) ? respuestaClientes.data : []).map(async (cliente) => {
                         try {
-                            const respuestaCartera = await axios.get(`${urlBackend}/carteras/${cliente.idCliente}`, {
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                }
-                            });
+                            const respuestaCartera = await api.get(`${urlBackend}/carteras/${cliente.idCliente}`);
                             console.log(`Respuesta GET /api/carteras/${cliente.idCliente}:`, JSON.stringify(respuestaCartera.data, null, 2));
                             return {
                                 id: cliente.idCliente,
@@ -127,12 +117,7 @@ const Portafolio = () => {
             const clienteId = personaCartera?.id || personaSelect?.id;
             const cargarCartera = async () => {
                 try {
-                    const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    const respuesta = await api.get(`${urlBackend}/carteras/${clienteId}`);
                     const facturas = Array.isArray(respuesta.data.facturas)
                         ? respuesta.data.facturas.filter(f => f.saldoPendiente > 0)
                         : [];
@@ -226,12 +211,7 @@ const Portafolio = () => {
             return;
         }
         try {
-            const respuesta = await axios.get(`${urlBackend}/carteras/${persona.id}/historial`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const respuesta = await api.get(`${urlBackend}/carteras/${persona.id}/historial`);
             console.log("Respuesta GET /api/carteras/{id}/historial:", JSON.stringify(respuesta.data, null, 2));
             setHistorialAbonos(respuesta.data || []);
             setPersonaHistorial(persona);
@@ -275,12 +255,7 @@ const Portafolio = () => {
     const cerrarModalConfirmacion = async (aceptar) => {
         if (aceptar && personaDesactivar) {
             try {
-                const response = await axios.put(`${urlBackend}/clientes/${personaDesactivar.id}/desactivar`, {}, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const response = await api.put(`${urlBackend}/clientes/${personaDesactivar.id}/desactivar`, {});
                 console.log(`Respuesta PUT /api/clientes/${personaDesactivar.id}/desactivar:`, response.data);
                 setRegistros(registros.filter((r) => r.id !== personaDesactivar.id));
             } catch (error) {
@@ -317,12 +292,7 @@ const Portafolio = () => {
     const mostrarModalCarteras = async () => {
         try {
             console.log("Iniciando mostrarModalCarteras...");
-            const respuesta = await axios.get(`${urlBackend}/carteras?estado=true`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const respuesta = await api.get(`${urlBackend}/carteras?estado=true`);
             console.log("Respuesta cruda GET /api/carteras?estado=true:", {
                 status: respuesta.status,
                 headers: respuesta.headers,
@@ -394,12 +364,7 @@ const Portafolio = () => {
     const mostrarModalInactivos = async () => {
         try {
             console.log("Iniciando mostrarModalInactivos...");
-            const respuesta = await axios.get(`${urlBackend}/clientes/inactivos`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const respuesta = await api.get(`${urlBackend}/clientes/inactivos`);
             console.log("Respuesta GET /api/clientes/inactivos:", JSON.stringify(respuesta.data, null, 2));
             const clientes = Array.isArray(respuesta.data) ? respuesta.data : [];
             setClientesInactivos(clientes);
@@ -446,21 +411,11 @@ const Portafolio = () => {
     const cerrarModalConfirmacionReactivacion = async (aceptar) => {
         if (aceptar && clienteReactivar) {
             try {
-                const response = await axios.put(`${urlBackend}/clientes/${clienteReactivar.idCliente}/activar`, {}, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const response = await api.put(`${urlBackend}/clientes/${clienteReactivar.idCliente}/activar`, {});
                 console.log(`Respuesta PUT /api/clientes/${clienteReactivar.idCliente}/activar:`, response.data);
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 try {
-                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${clienteReactivar.idCliente}`, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    const respuestaCartera = await api.get(`${urlBackend}/carteras/${clienteReactivar.idCliente}`);
                     console.log(`Respuesta GET /api/carteras/${clienteReactivar.idCliente}:`, respuestaCartera.data);
                     carteraData = respuestaCartera.data;
                 } catch (error) {
@@ -590,49 +545,24 @@ const Portafolio = () => {
 
         try {
             if (personaSelect) {
-                const respuesta = await axios.put(`${urlBackend}/clientes/${personaSelect.id}`, clienteData, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const respuesta = await api.put(`${urlBackend}/clientes/${personaSelect.id}`, clienteData);
                 if (creditoActivo !== (personaSelect.cartera === "Activa")) {
-                    await axios.put(`${urlBackend}/carteras/${personaSelect.id}/estado`, { estado: creditoActivo }, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    await api.put(`${urlBackend}/carteras/${personaSelect.id}/estado`, { estado: creditoActivo });
                 }
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
-                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${personaSelect.id}`, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    const respuestaCartera = await api.get(`${urlBackend}/carteras/${personaSelect.id}`);
                     carteraData = respuestaCartera.data;
                     if (carteraData.facturas && carteraData.facturas.length > 0) {
                         const nuevaFactura = carteraData.facturas[carteraData.facturas.length - 1];
                         const creditoAFavor = carteraData.creditoAFavor || 0;
                         if (creditoAFavor > 0 && nuevaFactura.saldoPendiente > creditoAFavor) {
                             nuevaFactura.saldoPendiente -= creditoAFavor;
-                            await axios.put(`${urlBackend}/carteras/facturas/${nuevaFactura.idFactura}`, {
+                            await api.put(`${urlBackend}/carteras/facturas/${nuevaFactura.idFactura}`, {
                                 saldoPendiente: nuevaFactura.saldoPendiente
-                            }, {
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                }
                             });
-                            await axios.put(`${urlBackend}/carteras/${personaSelect.id}`, {
+                            await api.put(`${urlBackend}/carteras/${personaSelect.id}`, {
                                 creditoAFavor: 0
-                            }, {
-                                headers: {
-                                    'Accept': 'application/json',
-                                    'Authorization': `Bearer ${token}`
-                                }
                             });
                         }
                     }
@@ -656,12 +586,7 @@ const Portafolio = () => {
                     }
                 }));
             } else {
-                const respuesta = await axios.post(`${urlBackend}/clientes`, clienteData, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const respuesta = await api.post(`${urlBackend}/clientes`, clienteData);
                 if (respuesta.data.existe) {
                     if (respuesta.data.inactivo && respuesta.data.cliente?.idCliente === idCliente) {
                         abrirModalReactivacion(respuesta.data.cliente);
@@ -672,21 +597,11 @@ const Portafolio = () => {
                     }
                 }
                 if (creditoActivo) {
-                    await axios.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/estado`, { estado: true }, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    await api.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/estado`, { estado: true });
                 }
                 let carteraData = { estado: false, deudas: 0, facturas: [], abono: 0 };
                 if (creditoActivo) {
-                    const respuestaCartera = await axios.get(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`, {
-                        headers: {
-                            'Accept': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    const respuestaCartera = await api.get(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`);
                     carteraData = respuestaCartera.data;
                     if (carteraData.creditoAFavor > 0) {
                         const nuevaFacturaData = {
@@ -694,19 +609,9 @@ const Portafolio = () => {
                             saldoPendiente: 10000 - carteraData.creditoAFavor > 0 ? 10000 - carteraData.creditoAFavor : 0,
                             fecha: new Date().toISOString().split('T')[0]
                         };
-                        await axios.post(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/facturas`, nuevaFacturaData, {
-                            headers: {
-                                'Accept': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                        await axios.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`, {
+                        await api.post(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}/facturas`, nuevaFacturaData);
+                        await api.put(`${urlBackend}/carteras/${respuesta.data.cliente.idCliente}`, {
                             creditoAFavor: 0
-                        }, {
-                            headers: {
-                                'Accept': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            }
                         });
                         await recargarCartera(respuesta.data.cliente.idCliente);
                     }
@@ -771,15 +676,10 @@ const Portafolio = () => {
         }
 
         try {
-            const respuesta = await axios.post(`${urlBackend}/carteras/${personaCartera.id}/abonos`, {
+            const respuesta = await api.post(`${urlBackend}/carteras/${personaCartera.id}/abonos`, {
                 cantidad,
                 fecha: new Date().toISOString().split('T')[0],
                 idFactura: facturaSeleccionadaParaAbono.idFactura
-            }, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
             });
             const facturas = Array.isArray(respuesta.data.facturas)
                 ? respuesta.data.facturas.filter(f => f.saldoPendiente > 0)
@@ -810,12 +710,7 @@ const Portafolio = () => {
     // Función para recargar la cartera después de una nueva venta
     const recargarCartera = async (clienteId) => {
         try {
-            const respuesta = await axios.get(`${urlBackend}/carteras/${clienteId}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const respuesta = await api.get(`${urlBackend}/carteras/${clienteId}`);
             const facturas = Array.isArray(respuesta.data.facturas)
                 ? respuesta.data.facturas.filter(f => f.saldoPendiente > 0)
                 : [];
@@ -846,12 +741,7 @@ const Portafolio = () => {
                 throw new Error("ID de factura no válido.");
             }
 
-            const respuesta = await axios.get(`${urlBackend}/carteras/facturas/${idFactura}`, {
-                headers: {
-                    'Accept': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            const respuesta = await api.get(`${urlBackend}/carteras/facturas/${idFactura}`);
 
             console.log("Respuesta completa del endpoint /carteras/facturas/", idFactura, ":", JSON.stringify(respuesta.data, null, 2));
 

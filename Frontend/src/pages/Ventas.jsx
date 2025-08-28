@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
-import axios from "axios";
+import api from "../api/axiosInstance";
 import "../styles/ventas.css";
 import "../styles/inventario.css";
 import Modal from "../components/Modal";
@@ -59,13 +59,8 @@ const Ventas = () => {
     }
 
     // Cargar productos
-    axios
-      .get("http://localhost:8080/angora/api/v1/inventarioProducto/listado", {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
+    api
+      .get("http://localhost:8080/angora/api/v1/inventarioProducto/listado")
       .then((res) => {
         console.log("Productos recibidos:", res.data);
         setProductos(res.data);
@@ -85,13 +80,8 @@ const Ventas = () => {
       });
 
     // Cargar clientes
-    axios
-      .get("http://localhost:8080/angora/api/v1/clientes/activos-con-cartera", {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
+    api
+      .get("http://localhost:8080/angora/api/v1/clientes/activos-con-cartera")
       .then((res) => {
         console.log("Clientes recibidos:", res.data);
         const consumidorFinal = {
@@ -339,12 +329,7 @@ const Ventas = () => {
 
     try {
       console.log("factura", factura);
-      await axios.post("http://localhost:8080/angora/api/v1/ventas", factura, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await api.post("http://localhost:8080/angora/api/v1/ventas", factura);
       abrirModal("exito", "Venta registrada correctamente.");
       setMostrarModal(false);
       setPagoCon("");
@@ -507,15 +492,7 @@ const Ventas = () => {
 
               if (selected && selected.value !== 0) {
                 try {
-                  const res = await axios.get(
-                    `http://localhost:8080/angora/api/v1/carteras/${selected.value}`,
-                    {
-                      headers: {
-                        Accept: "application/json",
-                        Authorization: `Bearer ${token}`,
-                      },
-                    }
-                  );
+                  const res = await api.get(`http://localhost:8080/angora/api/v1/carteras/${selected.value}`);
                   setCarteraCliente(res.data);
                 } catch (error) {
                   console.error(
