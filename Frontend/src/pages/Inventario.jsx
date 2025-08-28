@@ -78,6 +78,8 @@ const Inventario = ({ token: propToken }) => {
     };
 
     // Exportar a Excel: productos (fetch) o materias (state). Añadimos hojas extra de lotes.
+    // Reemplaza la función exportToExcel completa con esta versión actualizada
+
     const exportToExcel = async () => {
         if (!token) {
             alert("No hay token de autenticación disponible.");
@@ -87,47 +89,59 @@ const Inventario = ({ token: propToken }) => {
 
         try {
             if (opcionSeleccionada === "opcion1") {
-                // Exportar productos + lotes usados (+ producciones-lotes para obtener idProduccion)
-                const [productosRes, categoriasRes, lotesUsadosRes, produccionesLotesRes] = await Promise.all([
+                // Exportar productos + lotes usados + producciones
+                const [productosRes, categoriasRes, lotesUsadosRes, produccionesRes] = await Promise.all([
                     api.get("/inventarioProducto", { headers }),
                     api.get("/categorias", { headers }).catch(() => ({ data: [] })),
                     api.get("/lotes-usados", { headers }).catch(() => ({ data: [] })),
-                    api.get("/producciones-lotes", { headers }).catch(() => ({ data: [] })),
+                    api.get("/producciones", { headers }).catch(() => ({ data: [] })),
                 ]);
 
                 const productos = productosRes.data || [];
                 const categorias = categoriasRes.data || [];
                 const lotesUsados = lotesUsadosRes.data || [];
-                const produccionesLotes = produccionesLotesRes.data || [];
+                const producciones = produccionesRes.data || [];
 
-                // Hoja Productos
+                // Hoja Productos - Actualizada según las entidades
                 const productosSheetData = productos.map((p) => ({
                     ID: p.idProducto,
                     Nombre: p.nombre,
                     Costo: p.costo,
-                    Precio: p.precio,
-                    Cantidad: p.stock ?? 0,
-                    Categoria:
-                        categorias.find((cat) => cat.idCategoria === p.idCategoria?.idCategoria)?.nombre || "Sin categoría",
+                    PrecioDetal: p.precioDetal,
+                    PrecioMayorista: p.precioMayorista || "N/A",
+                    Stock: p.stock || 0,
+                    StockMinimo: p.stockMinimo || "N/A",
+                    StockMaximo: p.stockMaximo || "N/A",
+                    PorcentajeGanancia: p.porcentajeGanancia || 0,
+                    IVA: p.iva ? "Sí" : "No",
+                    Categoria: categorias.find(
+                        (cat) => cat.idCategoria === p.idCategoria?.idCategoria
+                    )?.nombre || "Sin categoría",
+                    // Agregar materias primas asociadas como texto
+                    MateriasPrimas: p.materias
+                        ? p.materias.map(m => `${m.idMateria}:${m.cantidad}`).join("; ")
+                        : "Sin materias"
                 }));
 
-                // Obtener lotes (preferimos los que ya cargó el estado local)
+                // Obtener lotes de materia prima
                 let lotesLocal = lotesMateriaPrima;
                 if (!lotesLocal || lotesLocal.length === 0) {
-                    // pedir lotes si no vienen en state
                     const lotesRes = await api.get("/lotes", { headers }).catch(() => ({ data: [] }));
                     lotesLocal = lotesRes.data || [];
                 }
 
-                // Construir hoja LotesUsados con las 4 columnas que pediste + idProduccion
+                // Hoja LotesUsados - Actualizada según LoteUsado entity
                 const lotesUsadosSheetData = lotesUsados.map((lu) => {
                     const lote = lotesLocal.find((l) => l.idLote === lu.idLote) || {};
                     const producto = productos.find((p) => p.idProducto === lu.idProducto) || {};
 
-                    const cantidadInicial = lote?.cantidad ?? 0;
-                    const cantidadUsada = lu.cantidadUsada ?? 0;
+                    // Buscar la producción correspondiente usando idProduccion
+                    const produccion = producciones.find((p) => p.idProduccion === lu.idProduccion) || {};
 
-                    // Suma acumulada de usos del mismo lote hasta la fecha de esta producción (inclusive)
+                    const cantidadInicial = lote?.cantidad || lu.cantidadInicialLote || 0;
+                    const cantidadUsada = lu.cantidadUsada || 0;
+
+                    // Calcular cantidades antes y después
                     const usedUntilThis = lotesUsados
                         .filter(
                             (x) =>
@@ -136,60 +150,71 @@ const Inventario = ({ token: propToken }) => {
                                 lu.fechaProduccion &&
                                 new Date(x.fechaProduccion) <= new Date(lu.fechaProduccion)
                         )
-                        .reduce((s, x) => s + (x.cantidadUsada ?? 0), 0);
+                        .reduce((s, x) => s + (x.cantidadUsada || 0), 0);
 
-                    // Cantidad antes de la producción actual (restando los usos anteriores, excluyendo el actual)
                     const cantidadAntesFabricacion = cantidadInicial - (usedUntilThis - cantidadUsada);
-                    // Cantidad después
                     const cantidadDespuesFabricacion = Math.max(0, cantidadAntesFabricacion - cantidadUsada);
 
-                    const materiaNombre =
-                        lote?.idMateria != null
-                            ? registrosMateria.find((m) => m.idMateria === lote.idMateria)?.nombre || "N/A"
-                            : "N/A";
+                    const materiaNombre = lote?.idMateria != null
+                        ? registrosMateria.find((m) => m.idMateria === lote.idMateria)?.nombre || "N/A"
+                        : "N/A";
 
                     const proveedorNombre = lote?.idProveedor
                         ? proveedores.find((p) => p.idProveedor === lote.idProveedor)?.nombre || "N/A"
                         : "Sin proveedor";
 
-                    // Buscar produccionLote para obtener idProduccion si existe
-                    const produccionLote = produccionesLotes.find(
-                        (pl) =>
-                            pl.idLote === lu.idLote &&
-                            Math.abs((pl.cantidadUsadaDelLote ?? 0) - (lu.cantidadUsada ?? 0)) < 1e-6
-                    );
-
-                    const idProduccion = produccionLote?.idProduccion ?? lu.idProduccion ?? "N/A";
-
                     return {
-                        idRegistro: lu.id ?? "N/A",
-                        idProducto: lu.idProducto,
-                        productoNombre: producto?.nombre || "N/A",
-                        idLote: lu.idLote,
-                        materiaNombre,
-                        CantidadInicial: cantidadInicial,
-                        CantidadAntesFabricacion: cantidadAntesFabricacion,
+                        // Columnas de LoteUsado
+                        ID: lu.id,
+                        IdLote: lu.idLote,
+                        IdProducto: lu.idProducto,
+                        ProductoNombre: producto?.nombre || "N/A",
                         CantidadUsada: cantidadUsada,
+                        FechaProduccion: lu.fechaProduccion ? new Date(lu.fechaProduccion).toLocaleString() : "N/A",
+                        IdProduccion: lu.idProduccion,
+                        CantidadInicialLote: lu.cantidadInicialLote || cantidadInicial,
+
+                        // Columnas adicionales del lote
+                        MateriaNombre: materiaNombre,
+                        CantidadAntesFabricacion: cantidadAntesFabricacion,
                         CantidadDespuesFabricacion: cantidadDespuesFabricacion,
-                        idProduccion,
-                        fechaProduccion: lu.fechaProduccion ?? "",
-                        fechaIngresoLote: lote?.fechaIngreso ?? "",
-                        proveedor: proveedorNombre,
+                        FechaIngresoLote: lote?.fechaIngreso ? new Date(lote.fechaIngreso).toLocaleString() : "N/A",
+                        Proveedor: proveedorNombre,
+                        CostoUnitarioLote: lote?.costoUnitario || "N/A",
+                        CantidadDisponibleLote: lote?.cantidadDisponible || "N/A",
+                        IdOrdenLote: lote?.idOrden || "N/A",
+
+                        // Columnas de la producción
+                        FechaProduccionOriginal: produccion?.fecha ? new Date(produccion.fecha).toLocaleString() : "N/A",
+                        NotasProduccion: produccion?.notas || "N/A"
                     };
                 });
 
-                // Build workbook
+                // Hoja Producciones separada
+                const produccionesSheetData = producciones.map((prod) => ({
+                    IdProduccion: prod.idProduccion,
+                    IdProducto: prod.idProducto,
+                    ProductoNombre: productos.find(p => p.idProducto === prod.idProducto)?.nombre || "N/A",
+                    Fecha: prod.fecha ? new Date(prod.fecha).toLocaleString() : "N/A",
+                    Notas: prod.notas || "Sin notas"
+                }));
+
+                // Crear workbook con múltiples hojas
                 const wb = XLSX.utils.book_new();
+
                 const ws1 = XLSX.utils.json_to_sheet(productosSheetData);
                 XLSX.utils.book_append_sheet(wb, ws1, "Productos");
 
                 const ws2 = XLSX.utils.json_to_sheet(lotesUsadosSheetData);
                 XLSX.utils.book_append_sheet(wb, ws2, "LotesUsados");
 
-                XLSX.writeFile(wb, "Productos_y_LotesUsados.xlsx");
+                const ws3 = XLSX.utils.json_to_sheet(produccionesSheetData);
+                XLSX.utils.book_append_sheet(wb, ws3, "Producciones");
+
+                XLSX.writeFile(wb, "Productos_Completo.xlsx");
+
             } else {
-                // Exportar materias + lotes de materia prima
-                // usamos registrosMateria (state) y lotesMateriaPrima (state). Si no hay lotes en state pedimos.
+                // Exportar materias primas + lotes
                 let lotesLocal = lotesMateriaPrima;
                 if (!lotesLocal || lotesLocal.length === 0) {
                     const lotesRes = await api.get("/lotes", { headers }).catch(() => ({ data: [] }));
@@ -198,37 +223,45 @@ const Inventario = ({ token: propToken }) => {
 
                 const materias = registrosMateria || [];
 
+                // Hoja Materias - Actualizada según MateriaPrima entity
                 const materiasSheetData = materias.map((m) => ({
                     ID: m.idMateria,
                     Nombre: m.nombre,
-                    CostoUnitario: m.costo ?? 0,
-                    PrecioVenta: m.venta ?? 0,
-                    Cantidad: m.cantidad ?? 0,
+                    CostoUnitario: m.costo || 0,
+                    PrecioVenta: m.venta || 0,
+                    Cantidad: m.cantidad || 0
                 }));
 
+                // Hoja Lotes - Actualizada según Lote entity
                 const lotesMateriaSheetData = lotesLocal.map((l) => {
                     const materiaNombre = materias.find((mm) => mm.idMateria === l.idMateria)?.nombre || "N/A";
-                    const proveedorNombre = l.idProveedor ? (proveedores.find((p) => p.idProveedor === l.idProveedor)?.nombre || "N/A") : "Sin proveedor";
+                    const proveedorNombre = l.idProveedor
+                        ? (proveedores.find((p) => p.idProveedor === l.idProveedor)?.nombre || "N/A")
+                        : "Sin proveedor";
+
                     return {
-                        idLote: l.idLote,
-                        idMateria: l.idMateria,
-                        materiaNombre,
-                        costoUnitario: l.costoUnitario ?? "",
-                        cantidadInicial: l.cantidad ?? "",
-                        cantidadDisponible: l.cantidadDisponible ?? "",
-                        fechaIngreso: l.fechaIngreso ?? "",
-                        proveedor: proveedorNombre,
+                        IdLote: l.idLote,
+                        IdMateria: l.idMateria,
+                        MateriaNombre: materiaNombre,
+                        CostoUnitario: l.costoUnitario || 0,
+                        CantidadInicial: l.cantidad || 0,
+                        CantidadDisponible: l.cantidadDisponible || 0,
+                        CantidadUsada: l.cantidadUsada || 0,
+                        FechaIngreso: l.fechaIngreso ? new Date(l.fechaIngreso).toLocaleString() : "N/A",
+                        Proveedor: proveedorNombre,
+                        IdOrden: l.idOrden || "N/A"
                     };
                 });
 
                 const wb = XLSX.utils.book_new();
+
                 const ws1 = XLSX.utils.json_to_sheet(materiasSheetData);
-                XLSX.utils.book_append_sheet(wb, ws1, "Materias");
+                XLSX.utils.book_append_sheet(wb, ws1, "MateriasPrimas");
 
                 const ws2 = XLSX.utils.json_to_sheet(lotesMateriaSheetData);
                 XLSX.utils.book_append_sheet(wb, ws2, "LotesMateria");
 
-                XLSX.writeFile(wb, "Materias_y_Lotes.xlsx");
+                XLSX.writeFile(wb, "MateriasPrimas_Completo.xlsx");
             }
         } catch (err) {
             handleApiError(err, "exportar a excel");
