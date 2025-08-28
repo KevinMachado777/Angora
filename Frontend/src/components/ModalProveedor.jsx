@@ -32,7 +32,9 @@ const ModalProveedor = ({
   });
 
   const [proveedoresDisponibles, setProveedoresDisponibles] = useState([]);
-  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState([]);
+  const [materiasPrimasDisponibles, setMateriasPrimasDisponibles] = useState(
+    []
+  );
   const [nuevoItem, setNuevoItem] = useState({
     idMateria: "",
     nombre: "",
@@ -86,7 +88,10 @@ const ModalProveedor = ({
         enviarCorreo: true,
       });
 
-      abrirModal("exito", "Lista de compras enviada correctamente al proveedor.");
+      abrirModal(
+        "exito",
+        "Lista de compras enviada correctamente al proveedor."
+      );
       return true;
     } catch (error) {
       console.error(
@@ -96,7 +101,8 @@ const ModalProveedor = ({
       );
       abrirModal(
         "error",
-        `Error al enviar lista de compras: ${error.response?.data || error.message
+        `Error al enviar lista de compras: ${
+          error.response?.data || error.message
         }`
       );
       return false;
@@ -136,7 +142,8 @@ const ModalProveedor = ({
           );
           abrirModal(
             "error",
-            `Error al cargar proveedores: ${err.response?.data?.message || err.message
+            `Error al cargar proveedores: ${
+              err.response?.data?.message || err.message
             }`
           );
         });
@@ -155,7 +162,8 @@ const ModalProveedor = ({
           );
           abrirModal(
             "error",
-            `Error al cargar materias primas: ${err.response?.data?.message || err.message
+            `Error al cargar materias primas: ${
+              err.response?.data?.message || err.message
             }`
           );
         });
@@ -187,16 +195,16 @@ const ModalProveedor = ({
           total: datosIniciales.total || 0,
           items:
             datosIniciales.ordenMateriaPrimas &&
-              Array.isArray(datosIniciales.ordenMateriaPrimas)
+            Array.isArray(datosIniciales.ordenMateriaPrimas)
               ? datosIniciales.ordenMateriaPrimas.map((omp) => {
-                console.log("Mapeando omp:", omp);
-                return {
-                  id: omp.id,
-                  idMateria: omp.materiaPrima?.idMateria,
-                  nombre: omp.materiaPrima?.nombre || "",
-                  cantidad: omp.cantidad || 0,
-                };
-              })
+                  console.log("Mapeando omp:", omp);
+                  return {
+                    id: omp.id,
+                    idMateria: omp.materiaPrima?.idMateria,
+                    nombre: omp.materiaPrima?.nombre || "",
+                    cantidad: omp.cantidad || 0,
+                  };
+                })
               : [],
         });
       }
@@ -231,7 +239,6 @@ const ModalProveedor = ({
     return () => clearTimeout(timer);
   }, [modalMensaje.visible, modalMensaje.tipo, onClose]);
 
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormulario((prev) => ({ ...prev, [name]: value }));
@@ -265,7 +272,10 @@ const ModalProveedor = ({
 
     if (!materiaEncontrada) {
       console.log("ID buscado:", nuevoItem.idMateria);
-      console.log("IDs disponibles:", materiasPrimasDisponibles.map(mp => mp.idMateria));
+      console.log(
+        "IDs disponibles:",
+        materiasPrimasDisponibles.map((mp) => mp.idMateria)
+      );
       abrirModal("advertencia", "Materia prima no encontrada o ID inválido.");
       return;
     }
@@ -361,18 +371,22 @@ const ModalProveedor = ({
     let nuevoValor = value;
 
     switch (stateKey) {
-      case "nombre":
-        nuevoValor = value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, "").trim();
-        break;
+      
       case "telefono":
-        nuevoValor = value.replace(/\D/g, "").slice(0, 10); // Solo números, máximo 10
+        // Solo números, máximo 10 dígitos
+        nuevoValor = value.replace(/\D/g, "").slice(0, 10);
         break;
+
       case "direccion":
-        nuevoValor = value.trim(); // No restringimos caracteres, solo longitud
+        // Permitimos todos los caracteres, incluyendo espacios y puntos
+        nuevoValor = value;
         break;
+
       case "correo":
-        nuevoValor = value.trim(); // Permitimos formato de correo completo
+        // Permitimos el texto tal cual (ya se valida después con regex)
+        nuevoValor = value;
         break;
+
       default:
         break;
     }
@@ -392,7 +406,10 @@ const ModalProveedor = ({
     if (esOrden) {
       // Validaciones para la orden (sin cambios)
       if (!formulario.id) {
-        abrirModal("advertencia", "Debe seleccionar un proveedor para la orden.");
+        abrirModal(
+          "advertencia",
+          "Debe seleccionar un proveedor para la orden."
+        );
         return;
       }
 
@@ -423,13 +440,22 @@ const ModalProveedor = ({
       }
     } else {
       // Validaciones para proveedores
-      if (!formulario.nombre || formulario.nombre.length < 3 || !/^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]+$/.test(formulario.nombre)) {
-        abrirModal("advertencia", "El nombre debe tener al menos 3 caracteres y solo letras (incluyendo tildes y ñ).");
+      if (
+        !formulario.nombre ||
+        formulario.nombre.length < 3
+      ) {
+        abrirModal(
+          "advertencia",
+          "El nombre debe tener al menos 3 caracteres"
+        );
         return;
       }
 
       if (!formulario.telefono || !/^\d{10}$/.test(formulario.telefono)) {
-        abrirModal("advertencia", "El teléfono debe tener exactamente 10 dígitos numéricos.");
+        abrirModal(
+          "advertencia",
+          "El teléfono debe tener exactamente 10 dígitos numéricos."
+        );
         return;
       }
 
@@ -440,11 +466,17 @@ const ModalProveedor = ({
       }
 
       if (!formulario.direccion || formulario.direccion.length <= 3) {
-        abrirModal("advertencia", "La dirección debe tener más de 3 caracteres.");
+        abrirModal(
+          "advertencia",
+          "La dirección debe tener más de 3 caracteres."
+        );
         return;
       }
 
-      const existe = await verificarCorreoExistente(formulario.correo, formulario.id || 0);
+      const existe = await verificarCorreoExistente(
+        formulario.correo,
+        formulario.id || 0
+      );
       if (existe) {
         abrirModal("advertencia", "Ya existe un proveedor con ese correo.");
         return;
@@ -470,8 +502,8 @@ const ModalProveedor = ({
               {esOrden
                 ? "Orden de compra"
                 : datosIniciales
-                  ? "Editar proveedor"
-                  : "Agregar proveedor"}
+                ? "Editar proveedor"
+                : "Agregar proveedor"}
             </h2>
           </div>
 
@@ -499,12 +531,12 @@ const ModalProveedor = ({
                 value={
                   formulario.id
                     ? {
-                      value: parseInt(formulario.id),
-                      label:
-                        proveedoresDisponibles.find(
-                          (p) => p.idProveedor === parseInt(formulario.id)
-                        )?.nombre || "Proveedor seleccionado",
-                    }
+                        value: parseInt(formulario.id),
+                        label:
+                          proveedoresDisponibles.find(
+                            (p) => p.idProveedor === parseInt(formulario.id)
+                          )?.nombre || "Proveedor seleccionado",
+                      }
                     : null
                 }
                 onChange={(selected) => {
@@ -597,12 +629,12 @@ const ModalProveedor = ({
                   value={
                     nuevoItem.idMateria
                       ? {
-                        value: nuevoItem.idMateria,
-                        label:
-                          materiasPrimasDisponibles.find(
-                            (m) => m.idMateria === nuevoItem.idMateria
-                          )?.nombre || "Materia prima seleccionada",
-                      }
+                          value: nuevoItem.idMateria,
+                          label:
+                            materiasPrimasDisponibles.find(
+                              (m) => m.idMateria === nuevoItem.idMateria
+                            )?.nombre || "Materia prima seleccionada",
+                        }
                       : null
                   }
                   onChange={(selected) => {
@@ -772,16 +804,16 @@ const ModalProveedor = ({
               modalMensaje.tipo === "exito"
                 ? "bi bi-check-circle-fill text-success display-4 mb-2"
                 : modalMensaje.tipo === "error"
-                  ? "bi bi-x-circle-fill text-danger display-4 mb-2"
-                  : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
+                ? "bi bi-x-circle-fill text-danger display-4 mb-2"
+                : "bi bi-exclamation-triangle-fill text-warning display-4 mb-2"
             }
           ></i>
           <h2>
             {modalMensaje.tipo === "exito"
               ? "¡Éxito!"
               : modalMensaje.tipo === "error"
-                ? "Error"
-                : "Advertencia"}
+              ? "Error"
+              : "Advertencia"}
           </h2>
           <p>{modalMensaje.mensaje}</p>
         </div>
