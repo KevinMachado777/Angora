@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/ModalContrasena.css';
+import '../styles/modalContrasena.css';
 import api from '../api/axiosInstance';
 
 const ModalContrasena = ({ isOpen, onClose, user, setUser }) => {

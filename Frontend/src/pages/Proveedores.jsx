@@ -3,7 +3,7 @@ import { AuthContext } from "../context/AuthContext";
 import api from "../api/axiosInstance";
 import ModalProveedor from "../components/ModalProveedor";
 import ModalConfirmarOrden from "../components/ModalConfirmarOrden";
-import BotonAgregar from "../components/botonAgregar";
+import BotonAgregar from "../components/BotonAgregar";
 import BotonOrdenes from "../components/BotonOrdenes";
 import BotonProveedores from "../components/BotonProveedores";
 import Modal from "../components/Modal";

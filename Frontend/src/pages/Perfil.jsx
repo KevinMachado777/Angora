@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import "bootstrap-icons/font/bootstrap-icons.css";
-import "../styles/Perfil.css";
+import "../styles/perfil.css";
 import Modal from "../components/Modal";
 import BotonEditar from "../components/BotonEditar";
 import BotonCancelar from "../components/BotonCancelar";

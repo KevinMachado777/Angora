@@ -1,4 +1,3 @@
-// dashboardService.js - Actualizado
 import api from '../api/axiosInstance';
 
 class DashboardService {

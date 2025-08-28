@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../styles/TablaReportes.css';
+import '../styles/tablaReportes.css';
 
 const TablaReportes = ({ encabezados, registros, mapeo }) => {
     const [sortField, setSortField] = useState(null);

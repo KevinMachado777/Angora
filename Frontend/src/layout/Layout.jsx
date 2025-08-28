@@ -1,8 +1,8 @@
 
 import { useState } from 'react';
-import SideBar from './SideBar';
-import Header from './Header';
-import Footer from './Footer';
+import SideBar from '../components/SideBar';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 import '../styles/layout.css';
 
 const Layout = ({ children }) => {

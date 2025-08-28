@@ -11,7 +11,7 @@ import {
   Legend,
 } from "chart.js";
 import dashboardService from "../service/dashboardService";
-import "../styles/Dashboard.css";
+import "../styles/dashboard.css";
 
 ChartJS.register(
   CategoryScale,
