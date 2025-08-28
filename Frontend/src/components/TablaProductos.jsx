@@ -12,6 +12,7 @@ import BotonAceptar from "./BotonAceptar";
 import "../styles/tablaProductos.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import api from "../api/axiosInstance";
+import BotonEliminar from "./BotonEliminar";
 
 const TablaProductos = forwardRef(
   (
@@ -66,7 +67,7 @@ const TablaProductos = forwardRef(
     const [precioDetalModificadoManually, setPrecioDetalModificadoManually] =
       useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(5);
+    const [itemsPerPage] = useState(10);
     const [categorias, setCategorias] = useState([]);
     const [modalCategoriaAbierta, setModalCategoriaAbierta] = useState(false);
     const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
@@ -1099,13 +1100,13 @@ const TablaProductos = forwardRef(
                     Editar
                   </BotonEditar>
                   <button
-                    className="btn btn-sm btn-outline-secondary"
+                    className="btn btn-m btn-outline-seundary btn-info me-1 "
                     onClick={() => abrirModalStock(p)}
                   >
                     Stock
                   </button>
                   <button
-                    className="btn btn-sm btn-outline-info"
+                    className="btn btn-m btn-outline-seundary btn-primary"
                     onClick={() => abrirModalLotesUsados(p)}
                   >
                     Lotes Usados
@@ -1169,18 +1170,18 @@ const TablaProductos = forwardRef(
                   <td>{c.idCategoria}</td>
                   <td>{c.nombre}</td>
                   <td>
-                    <button
+                    <BotonEditar
                       className="btn btn-sm btn-outline-primary me-1"
                       onClick={() => abrirModalCategoria(c)}
                     >
-                      Editar
-                    </button>
-                    <button
+                      
+                    </BotonEditar>
+                    <BotonEliminar
                       className="btn btn-sm btn-outline-danger"
                       onClick={() => eliminarCategoria(c.idCategoria)}
                     >
                       Eliminar
-                    </button>
+                    </BotonEliminar>
                   </td>
                 </tr>
               ))}
@@ -1275,9 +1276,6 @@ const TablaProductos = forwardRef(
                     manejarCambioNombre(e, setFormularioTemp, "nombre")
                   }
                 />
-                <small className="form-text text-muted">
-                  Permite letras, números, espacios, guiones y guiones bajos.
-                </small>
               </div>
               <div className="mb-3">
                 <label className="form-label">Tipo de Producto</label>
@@ -1374,10 +1372,6 @@ const TablaProductos = forwardRef(
                     }));
                   }}
                 />
-                <small className="form-text text-muted">
-                  Mínimo 15%. Ajusta para calcular el precio detal
-                  automáticamente.
-                </small>
               </div>
               <div className="mb-3">
                 <label className="form-label">Precio Detal (COP)</label>
@@ -1592,8 +1586,7 @@ const TablaProductos = forwardRef(
                             <td>{materia ? materia.nombre : "N/A"}</td>
                             <td>{m.cantidad}</td>
                             <td>
-                              <button
-                                className="btn btn-sm btn-outline-primary me-1"
+                              <BotonEditar
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1607,8 +1600,8 @@ const TablaProductos = forwardRef(
                                 }}
                               >
                                 Editar
-                              </button>
-                              <button
+                              </BotonEditar>
+                              <BotonEliminar
                                 className="btn btn-sm btn-outline-danger"
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -1619,7 +1612,7 @@ const TablaProductos = forwardRef(
                                 }}
                               >
                                 Eliminar
-                              </button>
+                              </BotonEliminar>
                             </td>
                           </tr>
                         );
