@@ -42,6 +42,20 @@ export const CreadorTablaClientes = ({ cabeceros = [], registros = [], onEditar,
         });
     };
 
+    // Mapear propiedades de registro a los encabezados
+    const getRegistroValues = (registro) => {
+        return [
+            registro.id,
+            registro.nombre,
+            registro.apellido,
+            registro.correo,
+            registro.telefono,
+            registro.direccion,
+            registro.cartera,
+            registro.tipo
+        ];
+    };
+
     return (
         <div className="tabla-contenedor">
             <table className="tabla-clientes">
@@ -55,11 +69,11 @@ export const CreadorTablaClientes = ({ cabeceros = [], registros = [], onEditar,
                 </thead>
                 <tbody>
                     {currentItems.map((registro, filaIndex) => {
-                        const valores = Object.values(registro);
+                        const valores = getRegistroValues(registro);
                         return (
                             <tr key={filaIndex}>
                                 {valores.map((valor, colIndex) => (
-                                    <td key={colIndex}>{valor}</td>
+                                    <td key={colIndex}>{valor || "N/A"}</td>
                                 ))}
                                 <td>
                                     <BotonEditar onClick={() => onEditar(registro)} />

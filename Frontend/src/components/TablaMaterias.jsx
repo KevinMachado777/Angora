@@ -29,7 +29,7 @@ const TablaMaterias = forwardRef(
         const [error, setError] = useState(null);
         const [isLoading, setIsLoading] = useState(true);
         const [currentPage, setCurrentPage] = useState(1);
-        const [itemsPerPage] = useState(5);
+        const [itemsPerPage] = useState(10);
         const [currentPageLotes, setCurrentPageLotes] = useState(1);
         const [itemsPerPageLotes] = useState(5);
         const [fechaInicio, setFechaInicio] = useState("");
@@ -251,7 +251,7 @@ const TablaMaterias = forwardRef(
                 setError("No se encontró un token de autenticación. Por favor, inicia sesión.");
                 return;
             }
-
+            
             const datos = new FormData(e.target);
             const costoUnitario = Number(datos.get("costoUnitario"));
             const cantidadIngresada = Number(datos.get(loteSeleccionado ? "cantidad" : "cantidad")); // Cambiar a "cantidad" también en edición
@@ -263,8 +263,8 @@ const TablaMaterias = forwardRef(
                 return;
             }
 
-            if (cantidadIngresada < 0) {
-                setError("La cantidad no puede ser negativa");
+            if (cantidadIngresada <= 0) {
+                setError("La cantidad debe ser mayor a 0");
                 return;
             }
 
@@ -402,19 +402,19 @@ const TablaMaterias = forwardRef(
                                         Editar
                                     </BotonEditar>
                                     <button
-                                        className="btn btn-sm btn-outline-info me-1"
+                                        className="btn btn-m btn-outline-seundary btn-primary me-1 "
                                         onClick={() => abrirModalLotesMateria(materia)}
                                     >
                                         Ver Lotes
                                     </button>
                                     <button
-                                        className="btn btn-sm btn-outline-success"
+                                        className="btn btn-m btn-outline-seundary btn-info me-1 "
                                         onClick={() => abrirModalAgregarLote(materia)}
                                     >
                                         Agregar Lote
                                     </button>
                                     <button
-                                        className="btn btn-sm btn-outline-secondary ms-1"
+                                        className="btn btn-m btn-outline-seundary btn-secondary me-1 "
                                         onClick={() => abrirModalHistoricoLotes(materia)}
                                     >
                                         Ver Histórico
