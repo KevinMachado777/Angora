@@ -312,34 +312,34 @@ public class DataInitializer implements CommandLineRunner {
             List<Lote> lotes = new ArrayList<>();
 
             // Lote para Ácido sulfónico (idMateria = MP1)
-            lotes.add(new Lote("L1", "MP1", 3500, 50f, 50f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L1", "MP1", 3500, 50f, 50f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Glicerina (idMateria = MP2)
-            lotes.add(new Lote("L2", "MP2", 2500, 40f, 40f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L2", "MP2", 2500, 40f, 40f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Carbonato de sodio (idMateria = MP3)
-            lotes.add(new Lote("L3", "MP3", 1800, 60f, 60f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L3", "MP3", 1800, 60f, 60f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Lauril éter sulfato de sodio (idMateria = MP4)
-            lotes.add(new Lote("L4", "MP4", 4200, 30f, 30f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L4", "MP4", 4200, 30f, 30f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Fragancia lavanda (idMateria = MP5)
-            lotes.add(new Lote("L5", "MP5", 6000, 20f, 20f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L5", "MP5", 6000, 20f, 20f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Colorante azul (idMateria = MP6)
-            lotes.add(new Lote("L6", "MP6", 1000, 10f, 10f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L6", "MP6", 1000, 10f, 10f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Formol (idMateria = MP7)
-            lotes.add(new Lote("L7", "MP7", 1500, 15f, 15f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L7", "MP7", 1500, 15f, 15f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Agua destilada (idMateria = MP8)
-            lotes.add(new Lote("L8", "MP8", 300, 100f, 100f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L8", "MP8", 300, 100f, 100f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Cloruro de amonio (idMateria = MP9)
-            lotes.add(new Lote("L9", "MP9", 2000, 25f, 25f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L9", "MP9", 2000, 25f, 25f, LocalDateTime.now(), 1L, null, 0f));
 
             // Lote para Alcohol etílico (idMateria = MP10)
-            lotes.add(new Lote("L10", "MP10", 4500, 35f, 35f, LocalDateTime.now(), 1L, null));
+            lotes.add(new Lote("L10", "MP10", 4500, 35f, 35f, LocalDateTime.now(), 1L, null, 0f));
 
             loteRepository.saveAll(lotes);
             System.out.println("Lotes predeterminados creados exitosamente");

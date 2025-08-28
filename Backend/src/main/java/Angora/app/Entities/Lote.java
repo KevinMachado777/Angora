@@ -41,4 +41,9 @@ public class Lote {
     // Referencia opcional a la orden que generó este lote (si aplica)
     @Column(name = "id_orden")
     private Long idOrden;
+
+    @Column(name = "cantidad_usada")
+    private Float cantidadUsada;
+
+
 }

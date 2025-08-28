@@ -393,21 +393,21 @@ public class ProductoService {
                 for (Lote lote : lotes) {
                     if (restante <= 0) break;
                     float usar = Math.min(lote.getCantidadDisponible(), restante);
+                    float usada = lote.getCantidadUsada() + usar;
+                    lote.setCantidadUsada(usada);
                     lote.setCantidadDisponible(lote.getCantidadDisponible() - usar);
                     loteRepository.save(lote);
 
                     // Registrar ProduccionLote y LoteUsado
                     produccionLoteRepository.save(new ProduccionLote(idProduccion, lote.getIdLote(), usar));
-                    LoteUsado loteUsado = new LoteUsado(
-                            idProducto,
-                            lote.getIdLote(),
-                            usar,
-                            fechaActual,
-                            idProduccion,
-                            lote.getCantidad() // Guardar la cantidad inicial del lote
-                    );
+                    LoteUsado loteUsado = new LoteUsado();
+                    loteUsado.setIdProducto(idProducto);
+                    loteUsado.setIdLote(lote.getIdLote());
+                    loteUsado.setCantidadUsada(usar);
+                    loteUsado.setFechaProduccion(fechaActual);
+                    loteUsado.setIdProduccion(idProduccion);
+                    loteUsado.setCantidadInicialLote(lote.getCantidad() != null ? lote.getCantidad() : 0f);
                     loteUsadoRepository.save(loteUsado);
-
                     restante -= usar;
                 }
                 // Recalcular cantidad disponible actual de la materia
