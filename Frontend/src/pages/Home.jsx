@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useContext } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "animate.css";
-import "../styles/Home.css";
+import "../styles/home.css";
 
 import { AuthContext } from "../context/AuthContext";
 import ModalCambiarContrasena from '../components/ModalContrasena'; // Importa el nuevo componente modal
