@@ -198,7 +198,6 @@ const TablaMaterias = forwardRef(
             }
         };
 
-
         // Funciones para abrir los modales de lotes
         const abrirModalLotesMateria = (materia) => {
             const lotesDisponibles = lotesMateriaPrima.filter(
@@ -255,7 +254,7 @@ const TablaMaterias = forwardRef(
 
             const datos = new FormData(e.target);
             const costoUnitario = Number(datos.get("costoUnitario"));
-            const cantidadIngresada = Number(datos.get(loteSeleccionado ? "cantidadDisponible" : "cantidad"));
+            const cantidadIngresada = Number(datos.get(loteSeleccionado ? "cantidad" : "cantidad")); // Cambiar a "cantidad" también en edición
             const idLote = datos.get("idLote")?.trim();
 
             // Validaciones del lado cliente
@@ -284,8 +283,7 @@ const TablaMaterias = forwardRef(
                 idLote: loteSeleccionado ? loteSeleccionado.idLote : idLote,
                 idMateria: loteNuevo.idMateria,
                 costoUnitario: costoUnitario,
-                cantidad: loteSeleccionado ? loteSeleccionado.cantidad : cantidadIngresada,
-                cantidadDisponible: loteSeleccionado ? cantidadIngresada : cantidadIngresada,
+                cantidad: cantidadIngresada, // Usar cantidadIngresada para ambos casos
                 idProveedor: datos.get("idProveedor") ? Number(datos.get("idProveedor")) : null,
             };
 
@@ -734,11 +732,11 @@ const TablaMaterias = forwardRef(
                             </div>
 
                             <div className="mb-3">
-                                <label className="form-label">{loteSeleccionado ? "Cantidad Disponible" : "Cantidad"}</label>
+                                <label className="form-label">{loteSeleccionado ? "Cantidad Inicial" : "Cantidad"}</label>
                                 <input
-                                    name={loteSeleccionado ? "cantidadDisponible" : "cantidad"}
+                                    name="cantidad" // Cambiar a "cantidad" en ambos casos
                                     type="number"
-                                    value={loteSeleccionado ? loteNuevo.cantidadDisponible : loteNuevo.cantidad}
+                                    value={loteSeleccionado ? loteNuevo.cantidad : loteNuevo.cantidad}
                                     className="form-control"
                                     required
                                     min="0"
@@ -746,7 +744,7 @@ const TablaMaterias = forwardRef(
                                     onChange={(e) =>
                                         setLoteNuevo({
                                             ...loteNuevo,
-                                            [loteSeleccionado ? "cantidadDisponible" : "cantidad"]: e.target.value,
+                                            cantidad: e.target.value,
                                         })
                                     }
                                 />

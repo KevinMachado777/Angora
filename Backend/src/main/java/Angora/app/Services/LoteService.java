@@ -82,6 +82,7 @@ public class LoteService {
         loteEntity.setCostoUnitario(loteDto.getCostoUnitario());
         loteEntity.setCantidad(loteDto.getCantidad());
         loteEntity.setCantidadDisponible(loteDto.getCantidad());
+        loteEntity.setCantidadUsada(0f);
         loteEntity.setFechaIngreso(LocalDateTime.now());
         loteEntity.setIdProveedor(loteDto.getIdProveedor());
         loteEntity.setIdOrden(loteDto.getIdOrden());
@@ -126,7 +127,7 @@ public class LoteService {
         // Eliminada validación de cantidadDisponible
         existing.setCostoUnitario(loteDto.getCostoUnitario());
         existing.setCantidad(loteDto.getCantidad()); // Permitir actualizar cantidad
-        existing.setCantidadDisponible(loteDto.getCantidadDisponible());
+        existing.setCantidadDisponible(loteDto.getCantidad() - (existing.getCantidadUsada() != null ? existing.getCantidadUsada() :  0f)) ;
         existing.setIdProveedor(loteDto.getIdProveedor()); // Permitir actualizar proveedor
         Lote saved = loteRepository.save(existing);
 
