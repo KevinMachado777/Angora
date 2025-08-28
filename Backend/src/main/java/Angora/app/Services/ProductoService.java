@@ -63,7 +63,7 @@ public class ProductoService {
             product.setStockMinimo(producto.getStockMinimo());
             product.setStockMaximo(producto.getStockMaximo());
             product.setIva(producto.getIva());
-            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
+            product.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 1);
 
             // Manejar categoria nullable
             if (producto.getIdCategoria() != null) {
@@ -105,7 +105,7 @@ public class ProductoService {
         productoDto.setStockMinimo(producto.getStockMinimo());
         productoDto.setStockMaximo(producto.getStockMaximo());
         productoDto.setIva(producto.getIva());
-        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15);
+        productoDto.setPorcentajeGanancia(producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 1);
 
         if (producto.getIdCategoria() != null) {
             CategoriaIdDTO categoriaIdDto = new CategoriaIdDTO();
@@ -172,9 +172,10 @@ public class ProductoService {
                     .orElseThrow(() -> new RuntimeException("Categoría no encontrada con ID: " + productoDTO.getIdCategoria().getIdCategoria()));
         }
 
-        // Asegurar que porcentajeGanancia tenga un valor mínimo de 15
-        Integer porcentaje = productoDTO.getPorcentajeGanancia() != null ? productoDTO.getPorcentajeGanancia() : 15;
-        if (porcentaje < 15) porcentaje = 15;
+        // Asegurar que porcentajeGanancia tenga un valor mínimo de 1 y un maximo de 100
+        Integer porcentaje = productoDTO.getPorcentajeGanancia() != null ? productoDTO.getPorcentajeGanancia() : 1;
+        if (porcentaje < 1) porcentaje = 1;
+        if (porcentaje > 100) porcentaje = 100;
 
         Producto producto = Producto.builder()
                 .idProducto(productoDTO.getIdProducto())
@@ -247,8 +248,10 @@ public class ProductoService {
         producto.setIva(productoDTO.getIva());
 
         // Actualizar porcentajeGanancia
-        Integer porcentaje = productoDTO.getPorcentajeGanancia() != null ? productoDTO.getPorcentajeGanancia() : 15;
-        if (porcentaje < 15) porcentaje = 15;
+        Integer porcentaje = productoDTO.getPorcentajeGanancia() != null ? productoDTO.getPorcentajeGanancia() : 1;
+        if (porcentaje < 1) porcentaje = 1;
+        if (porcentaje > 100) porcentaje = 100;
+
         producto.setPorcentajeGanancia(porcentaje);
 
         // Manejar categoría
@@ -393,21 +396,21 @@ public class ProductoService {
                 for (Lote lote : lotes) {
                     if (restante <= 0) break;
                     float usar = Math.min(lote.getCantidadDisponible(), restante);
-                    float usada = lote.getCantidadUsada() + usar;
-                    lote.setCantidadUsada(usada);
                     lote.setCantidadDisponible(lote.getCantidadDisponible() - usar);
                     loteRepository.save(lote);
 
                     // Registrar ProduccionLote y LoteUsado
                     produccionLoteRepository.save(new ProduccionLote(idProduccion, lote.getIdLote(), usar));
-                    LoteUsado loteUsado = new LoteUsado();
-                    loteUsado.setIdProducto(idProducto);
-                    loteUsado.setIdLote(lote.getIdLote());
-                    loteUsado.setCantidadUsada(usar);
-                    loteUsado.setFechaProduccion(fechaActual);
-                    loteUsado.setIdProduccion(idProduccion);
-                    loteUsado.setCantidadInicialLote(lote.getCantidad() != null ? lote.getCantidad() : 0f);
+                    LoteUsado loteUsado = new LoteUsado(
+                            idProducto,
+                            lote.getIdLote(),
+                            usar,
+                            fechaActual,
+                            idProduccion,
+                            lote.getCantidad() // Guardar la cantidad inicial del lote
+                    );
                     loteUsadoRepository.save(loteUsado);
+
                     restante -= usar;
                 }
                 // Recalcular cantidad disponible actual de la materia
@@ -545,7 +548,7 @@ public class ProductoService {
                     nuevoPrecioMayoristaCalc = nuevoCostoRedondeado * markupMayorista;
                 }
             } else {
-                nuevoPrecioDetalCalc = nuevoCostoRedondeado * (1 + (producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 15) / 100.0);
+                nuevoPrecioDetalCalc = nuevoCostoRedondeado * (1 + (producto.getPorcentajeGanancia() != null ? producto.getPorcentajeGanancia() : 1) / 100.0);
                 if (oldPrecioMayorista > 0.0) {
                     nuevoPrecioMayoristaCalc = nuevoCostoRedondeado * 1.10; // 10% por defecto para mayorista
                 }

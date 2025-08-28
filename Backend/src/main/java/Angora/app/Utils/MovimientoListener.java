@@ -1,5 +1,8 @@
-package Angora.app.Entities;
+package Angora.app.Utils;
 
+import Angora.app.Entities.MateriaPrima;
+import Angora.app.Entities.Movimiento;
+import Angora.app.Entities.Producto;
 import Angora.app.Repositories.MovimientoRepository;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.EntityManager;
