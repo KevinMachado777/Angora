@@ -17,7 +17,7 @@ const Portafolio = () => {
     const urlBackend = "http://localhost:8080/angora/api/v1";
 
     // Define los encabezados de la tabla principal
-    const cabeceros = ["Id", "Nombre", "Apellido", "Correo", "Teléfono", "Dirección", "Cartera"];
+    const cabeceros = ["Id", "Nombre", "Apellido", "Correo", "Teléfono", "Dirección", "Cartera", "Tipo"];
 
     // Estados
     const [registros, setRegistros] = useState([]);
@@ -96,7 +96,9 @@ const Portafolio = () => {
                                 correo: cliente.email,
                                 telefono: cliente.telefono.toString(),
                                 direccion: cliente.direccion,
-                                cartera: respuestaCartera.data.estado ? "Activa" : "Desactivada"
+                                cartera: respuestaCartera.data.estado ? "Activa" : "Desactivada",
+                                mayorista: cliente.mayorista,
+                                tipo: cliente.mayorista ? "Mayorista" : "Común"
                             };
                         } catch (error) {
                             console.error(`No se encontró cartera para cliente ${cliente.idCliente}:`, error.response?.status);
@@ -107,7 +109,9 @@ const Portafolio = () => {
                                 correo: cliente.email,
                                 telefono: cliente.telefono.toString(),
                                 direccion: cliente.direccion,
-                                cartera: "Desactivada"
+                                cartera: "Desactivada",
+                                mayorista: cliente.mayorista,
+                                tipo: cliente.mayorista ? "Mayorista" : "Común"
                             };
                         }
                     })
@@ -360,7 +364,9 @@ const Portafolio = () => {
                         correo: clienteData.email || clienteData.correo || "",
                         telefono: clienteData.telefono?.toString() || "",
                         direccion: clienteData.direccion || "",
-                        cartera: cartera.estado ? "Activa" : "Desactivada"
+                        cartera: cartera.estado ? "Activa" : "Desactivada",
+                        mayorista: clienteData.mayorista,
+                        tipo: clienteData.mayorista ? "Mayorista" : "Común"
                     };
                 });
 
@@ -473,7 +479,9 @@ const Portafolio = () => {
                     correo: clienteReactivar.email,
                     telefono: clienteReactivar.telefono.toString(),
                     direccion: clienteReactivar.direccion,
-                    cartera: carteraData.estado ? "Activa" : "Desactivada"
+                    cartera: carteraData.estado ? "Activa" : "Desactivada",
+                    mayorista: clienteReactivar.mayorista,
+                    tipo: clienteReactivar.mayorista ? "Mayorista" : "Común"
                 }]);
                 setClientesInactivos(clientesInactivos.filter(c => c.idCliente !== clienteReactivar.idCliente));
                 if (!personaSelect && modalAbierta) {
@@ -644,7 +652,9 @@ const Portafolio = () => {
                     correo: respuesta.data.email,
                     telefono: respuesta.data.telefono.toString(),
                     direccion: respuesta.data.direccion,
-                    cartera: carteraData.estado ? "Activa" : "Desactivada"
+                    cartera: carteraData.estado ? "Activa" : "Desactivada",
+                    mayorista: respuesta.data.mayorista,
+                    tipo: respuesta.data.mayorista ? "Mayorista" : "Común"
                 } : r));
                 setCreditosPorCliente(prev => ({
                     ...prev,
@@ -718,7 +728,9 @@ const Portafolio = () => {
                     correo: respuesta.data.cliente.email,
                     telefono: respuesta.data.cliente.telefono.toString(),
                     direccion: respuesta.data.cliente.direccion,
-                    cartera: carteraData.estado ? "Activa" : "Desactivada"
+                    cartera: carteraData.estado ? "Activa" : "Desactivada",
+                    mayorista: respuesta.data.cliente.mayorista,
+                    tipo: respuesta.data.cliente.mayorista ? "Mayorista" : "Común"
                 }]);
                 setCreditosPorCliente(prev => ({
                     ...prev,

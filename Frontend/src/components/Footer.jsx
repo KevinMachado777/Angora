@@ -56,6 +56,12 @@ const Footer = () => {
                 <a href="https://www.instagram.com/fraganceys_eys?igsh=bnIwamplMHEwd3p1" target="_blank" rel="noreferrer">Instagram</a>
             </div>
 
+            <div>
+                <h5>Recursos</h5>
+                <a href="/public/manualTecnico.pdf" download>Manual tecnico</a>
+                <a href="/public/manualUsuario.pdf" download>Manual usuario</a>
+            </div>
+
             <div className="parte-final">
                 © Todos los derechos reservados 2025 Kase
             </div>
